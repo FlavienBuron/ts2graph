@@ -4,12 +4,14 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import haversine_distances
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
+
+from datasets.dataloaders.graphloader import GraphLoader
 
 EARTH_RADIUS = 6371.0088
 
 
-class AirQualityDataset(Dataset):
+class AirQualityLoader(GraphLoader):
     def __init__(
         self, dataset_path: str = "./datasets/data/air_quality/", small: bool = False
     ):

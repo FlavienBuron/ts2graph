@@ -1,7 +1,5 @@
 from argparse import ArgumentParser, Namespace
 
-from torch.utils.data import DataLoader
-
 from datasets.dataloader import get_dataset
 
 
@@ -27,7 +25,7 @@ def parse_args() -> Namespace:
 
 def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
-    dataloader: DataLoader = dataset.get_dataloader()
+    dataloader = dataset.get_dataloader()
     adj_matrix = dataset.get_similarity()
     print(adj_matrix.shape)
     _ = dataloader

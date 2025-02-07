@@ -1,16 +1,16 @@
 from typing import Union
 
-from datasets.air_quality import AirQualityDataset
-from datasets.synthetic import SyntheticDataset
+from datasets.dataloaders.air_quality import AirQualityLoader
+from datasets.dataloaders.synthetic import SyntheticLoader
 
 
-def get_dataset(dataset_name: str) -> Union[SyntheticDataset, AirQualityDataset]:
+def get_dataset(dataset_name: str) -> Union[SyntheticLoader, AirQualityLoader]:
     if dataset_name == "synthetic":
-        return SyntheticDataset()
+        return SyntheticLoader()
     if "air" in dataset_name:
         small = False
         if "small" in dataset_name:
             small = True
-        return AirQualityDataset(small=small)
+        return AirQualityLoader(small=small)
     else:
-        return SyntheticDataset()
+        return SyntheticLoader()

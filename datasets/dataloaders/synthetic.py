@@ -3,10 +3,12 @@ from typing import Dict, Optional
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
+
+from datasets.dataloaders.graphloader import GraphLoader
 
 
-class SyntheticDataset(Dataset):
+class SyntheticLoader(GraphLoader):
     def __init__(
         self,
         dataset_path: str = "./datasets/data/synthetic/",
