@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 class SyntheticDataset(Dataset):
     def __init__(
         self,
-        dataset_path: str = "./datasets/data/",
+        dataset_path: str = "./datasets/data/synthetic/",
         static_adj: bool = False,
         window: Optional[int] = None,
         use_exogenous: bool = True,

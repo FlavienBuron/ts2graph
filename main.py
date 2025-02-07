@@ -26,10 +26,11 @@ def parse_args() -> Namespace:
 
 
 def run(args: Namespace) -> None:
-    synthetic_dataset = get_dataset(args.dataset)
-    synthetic_dataloader: DataLoader = synthetic_dataset.get_dataloader()
-    synthetic_adj = synthetic_dataset.get_similarity()
-    print(synthetic_adj[0])
+    dataset = get_dataset(args.dataset)
+    dataloader: DataLoader = dataset.get_dataloader()
+    adj_matrix = dataset.get_similarity()
+    print(adj_matrix.shape)
+    _ = dataloader
 
 
 if __name__ == "__main__":
