@@ -10,7 +10,7 @@ class GraphLoader(Dataset, ABC):
         self.distances = None
 
     @abstractmethod
-    def get_similarity(self, *args, **kwargs) -> Any:
+    def get_adjacency(self, *args, **kwargs) -> Any:
         pass
 
     @abstractmethod

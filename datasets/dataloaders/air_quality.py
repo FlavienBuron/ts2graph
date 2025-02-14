@@ -3,10 +3,13 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
+import torch
 from sklearn.metrics.pairwise import haversine_distances
 from torch.utils.data import DataLoader
+from torch_geometric.utils import to_dense_adj
 
 from datasets.dataloaders.graphloader import GraphLoader
+from graphs_transformations.knn import from_knn
 
 EARTH_RADIUS = 6371.0088
 
@@ -33,7 +36,7 @@ class AirQualityLoader(GraphLoader):
         dist = self.geographical_distance(stations_coords)
         return data, dist
 
-    def get_similarity(
+    def get_adjacency(
         self,
         threshold: float = 0.1,
         threshold_on_input: bool = False,
@@ -51,6 +54,13 @@ class AirQualityLoader(GraphLoader):
             adj = np.maximum.reduce([adj, adj.T])
         return adj
 
+    def get_similarity_knn(self, k: int) -> torch.Tensor:
+        data = self.data.to_numpy().T
+        data = torch.tensor(data)
+        edge_index = from_knn(data=data, k=k)
+        adj = to_dense_adj(edge_index).squeeze()
+        return adj
+
     @staticmethod
     def geographical_distance(coords: pd.DataFrame, to_rad: bool = True) -> np.ndarray:
         """
@@ -64,3 +74,6 @@ class AirQualityLoader(GraphLoader):
 
     def get_dataloader(self, shuffle: bool = False, batch_size: int = 8) -> DataLoader:
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
+
+    def shape(self):
+        return self.data.shape

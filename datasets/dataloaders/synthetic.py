@@ -39,7 +39,7 @@ class SyntheticLoader(GraphLoader):
             result.update(u=u)
         return result
 
-    def get_similarity(self) -> torch.Tensor:
+    def get_adjacency(self) -> torch.Tensor:
         return self.adj
 
     @property
