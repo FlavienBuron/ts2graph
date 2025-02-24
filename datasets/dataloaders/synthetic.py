@@ -17,10 +17,13 @@ class SyntheticLoader(GraphLoader):
         use_exogenous: bool = True,
     ) -> None:
         super().__init__()
+        self.dataset_path = dataset_path
+        self.static_adj = static_adj
+
         if static_adj:
-            dataset_path = os.path.join(dataset_path, "charged_static.npz")
+            dataset_path = os.path.join(self.dataset_path, "charged_static.npz")
         else:
-            dataset_path = os.path.join(dataset_path, "charged_varying.npz")
+            dataset_path = os.path.join(self.dataset_path, "charged_varying.npz")
         data = np.load(dataset_path)
         self.use_exogenous: bool = use_exogenous
         self.window: int = window if window is not None else data["loc"].shape[1]
@@ -39,8 +42,18 @@ class SyntheticLoader(GraphLoader):
             result.update(u=u)
         return result
 
+    # def load(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    #     filename = "charged_static.npz" if self.static_adj else "charged_varying.npz"
+    #     data = np.load(os.path.join(self.dataset_path, filename))
+
     def get_adjacency(self) -> torch.Tensor:
         return self.adj
+
+    def corrupt(self, missing_type="perc"):
+        pass
+
+    def get_similarity_knn(self, k=5):
+        pass
 
     @property
     def n_channels(self) -> int:

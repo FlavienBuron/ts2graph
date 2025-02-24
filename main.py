@@ -27,7 +27,9 @@ def parse_args() -> Namespace:
 
 
 def graph_characteristics(adj):
-    G = nx.from_numpy_array(adj)
+    print(adj.numpy().shape)
+    G = nx.from_numpy_array(adj.numpy())
+    print(type(G.degree()))
     degrees = [d for _, d in G.degree()]
     clustering_coeff = nx.average_clustering(G)
     n_component = nx.number_connected_components(G)
@@ -40,14 +42,15 @@ def graph_characteristics(adj):
 
 def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
-    dataloader = dataset.get_dataloader()
+    dataset.corrupt()
+    _ = dataset.get_dataloader(shuffle=False, batch_size=8)
     adj_matrix = dataset.get_adjacency()
     adj_matrix_knn = dataset.get_similarity_knn(k=5)
-    print(adj_matrix.shape)
-    print(adj_matrix_knn.shape)
-    print(dataset.shape())
+    # print(adj_matrix.shape)
+    # print(adj_matrix_knn.shape)
+    # print(dataset.shape())
     graph_characteristics(adj_matrix)
-    graph_characteristics(adj_matrix_knn.numpy())
+    graph_characteristics(adj_matrix_knn)
 
 
 if __name__ == "__main__":
