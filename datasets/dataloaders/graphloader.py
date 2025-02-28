@@ -29,7 +29,9 @@ class GraphLoader(Dataset, ABC):
         pass
 
     @abstractmethod
-    def get_dataloader(self, shuffle: bool, batch_size: int) -> Any:
+    def get_dataloader(
+        self, use_missing_data: bool, shuffle: bool, batch_size: int
+    ) -> Any:
         pass
 
     @abstractmethod

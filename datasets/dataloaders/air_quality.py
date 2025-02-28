@@ -21,13 +21,19 @@ class AirQualityLoader(GraphLoader):
         self.dataset_path = dataset_path
         self.data, self.distances = self.load(small=small)
         self.missing_data = torch.empty_like(self.data)
-        self.missing_data = torch.empty_like(self.data)
+        self.missing_mask = torch.empty_like(self.data)
 
     def __len__(self) -> int:
         return self.data.shape[0]
 
-    def __getitem__(self, index: int) -> torch.Tensor:
-        return self.data[index, :]
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        if self.use_missing_data:
+            data = self.missing_data[index, :]
+            mask = self.missing_mask[index, :]
+        else:
+            data = self.data[index, :]
+            mask = torch.ones_like(data)
+        return data, mask
 
     def load_raw(self, small: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if small:
@@ -81,7 +87,10 @@ class AirQualityLoader(GraphLoader):
         dist = torch.from_numpy(haversine_distances(coords_array)).float()
         return dist
 
-    def get_dataloader(self, shuffle: bool = False, batch_size: int = 8) -> DataLoader:
+    def get_dataloader(
+        self, use_missing_data: bool, shuffle: bool = False, batch_size: int = 8
+    ) -> DataLoader:
+        self.use_missing_data = use_missing_data
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
 
     def shape(self):
