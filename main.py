@@ -1,10 +1,10 @@
 from argparse import ArgumentParser, Namespace
-from typing import Tuple
+from copy import deepcopy
 
 import networkx as nx
+import numpy as np
 import torch
 import torch.nn as nn
-from numpy import mean
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
@@ -47,14 +47,14 @@ def graph_characteristics(adj):
     largest_component = max(nx.connected_components(G), key=len)
     connectivity = len(largest_component) / G.number_of_nodes()
     print(
-        f"Degrees: {mean(degrees)} | Clustering coefficient: {clustering_coeff} | Number Components: {n_component} | Connectivity: {connectivity}"
+        f"Degrees: {np.mean(degrees):.4f} | Clustering coefficient: {clustering_coeff:.4f} | Number Components: {n_component} | Connectivity: {connectivity:.4f}"
     )
 
 
 def train_imputer(
     model: nn.Module,
     dataloader: DataLoader,
-    edge_index: Tuple[torch.Tensor, torch.Tensor],
+    edge_index: torch.Tensor,
     optimizer: Optimizer,
     epochs: int = 50,
 ):
@@ -73,13 +73,13 @@ def train_imputer(
             print(f"Batch {i}/{nb_batches} loss: {batch_loss:.4e}", end="\r")
             epoch_loss += batch_loss
         mean_loss = epoch_loss / nb_batches
-        print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss}")
+        print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
 
 
-def evalutate_imputer(
+def impute_missing_data(
     model: nn.Module,
     dataloader: DataLoader,
-    edge_index: Tuple[torch.Tensor, torch.Tensor],
+    edge_index: torch.Tensor,
 ):
     model.eval()
     with torch.no_grad():
@@ -93,50 +93,74 @@ def evalutate_imputer(
     return imputed_data
 
 
+def evaluate(
+    imputed_data: np.ndarray, target_data: np.ndarray, evaluation_mask: np.ndarray
+):
+    print("Target NaNs:", np.isnan(target_data[evaluation_mask]).sum())
+    print("Imputed NaNs:", np.isnan(imputed_data[evaluation_mask]).sum())
+    mae = mean_absolute_error(
+        target_data[evaluation_mask],
+        imputed_data[evaluation_mask],
+    )
+
+    mse = mean_squared_error(
+        target_data[evaluation_mask],
+        imputed_data[evaluation_mask],
+    )
+
+    rmse = root_mean_squared_error(
+        target_data[evaluation_mask],
+        imputed_data[evaluation_mask],
+    )
+
+    print(f"Imputation MAE: {mae:.4e}, MSE: {mse:.4e}, RMSE: {rmse:.4e}")
+
+
 def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
-    dataset.corrupt()
+    # dataset.corrupt()
     dataloader = dataset.get_dataloader(
-        use_missing_data=True, shuffle=False, batch_size=128
+        use_missing_data=False, shuffle=False, batch_size=128
     )
     adj_matrix = dataset.get_adjacency()
-    edge_index, _ = dense_to_sparse(adj_matrix)
+    geo_edge_index, _ = dense_to_sparse(adj_matrix)
     adj_matrix_knn = dataset.get_similarity_knn(k=5)
+    knn_edge_index, _ = dense_to_sparse(adj_matrix_knn)
     # print(adj_matrix.shape)
-    # print(adj_matrix_knn.shape)
     # print(dataset.shape())
     graph_characteristics(adj_matrix)
     graph_characteristics(adj_matrix_knn)
 
-    stgi = STGI(
+    # print(dataset.data[:5, :][dataset.mask[:5, :]])
+    # print(dataset.data[:5, :][~dataset.mask[:5, :]])
+    # print(dataset.mask[:5, :])
+    # print(dataset.missing_data[:5, :])
+
+    stgi_geo = STGI(
         in_dim=1,
         hidden_dim=32,
         gcn_out_dim=16,
         lstm_hidden_dim=64,
         num_layers=2,
     )
+    stgi_knn = deepcopy(stgi_geo)
 
     # stgi = torch.compile(stgi)
-    optimizer = Adam(stgi.parameters(), lr=1e-3)
-    train_imputer(stgi, dataloader, edge_index, optimizer, 50)
-    X_hat = evalutate_imputer(stgi, dataloader, edge_index)
+    geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
+    knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
+    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 1)
+    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 1)
+    imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index)
+    imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index)
 
-    mae = mean_absolute_error(
-        dataset.missing_data[dataset.missing_mask == 0].numpy(),
-        X_hat[dataset.missing_mask == 0],
+    evaluate(
+        imputed_data_geo.numpy(),
+        dataset.data.numpy(),
+        dataset.validation_mask.numpy(),
     )
-
-    mse = mean_squared_error(
-        dataset.missing_data[dataset.missing_mask == 0].numpy(),
-        X_hat[dataset.missing_mask == 0],
+    evaluate(
+        imputed_data_knn.numpy(), dataset.data.numpy(), dataset.validation_mask.numpy()
     )
-
-    rmse = root_mean_squared_error(
-        dataset.missing_data[dataset.missing_mask == 0].numpy(),
-        X_hat[dataset.missing_mask == 0],
-    )
-
-    print(f"Imputation MAE: {mae:.4e}, MSE: {mse:.4e}, RMSE: {rmse:.4e}")
 
 
 if __name__ == "__main__":

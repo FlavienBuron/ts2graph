@@ -40,9 +40,8 @@ class STGI(nn.Module):
         # Apply GCN to spatial features
         x = F.relu(self.gcn1(x, edge_index))
         x = F.relu(self.gcn2(x, edge_index))
-        # out_dim = x.shape[-1]
         x = x.reshape(time_steps, num_nodes, -1)
-        # print(x.shape)
+
         # Apply Bi-GRU for temporal modeling
         x, _ = self.lstm(
             x

@@ -1,5 +1,5 @@
 import os
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -19,20 +19,23 @@ class AirQualityLoader(GraphLoader):
         self, dataset_path: str = "./datasets/data/air_quality/", small: bool = False
     ):
         self.dataset_path = dataset_path
-        self.data, self.distances = self.load(small=small)
-        self.missing_data = torch.empty_like(self.data)
-        self.missing_mask = torch.empty_like(self.data)
+        self.data, self.mask, self.distances = self.load(small=small)
+        self.missing_data = self.data.nan_to_num(nan=0.0)
+        self.validation_mask = torch.zeros_like(self.data).bool()
+        self.corrupt_data = torch.empty_like(self.data)
+        self.corrupt_mask = torch.empty_like(self.data)
+        self.use_corrupted_data = False
 
     def __len__(self) -> int:
         return self.data.shape[0]
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        if self.use_missing_data:
-            data = self.missing_data[index, :]
-            mask = self.missing_mask[index, :]
+        if self.use_corrupted_data:
+            data = self.corrupt_data[index, :]
+            mask = self.corrupt_mask[index, :]
         else:
-            data = self.data[index, :]
-            mask = torch.ones_like(data)
+            data = self.missing_data[index, :]
+            mask = self.mask[index, :]
         return data, mask
 
     def load_raw(self, small: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -44,12 +47,34 @@ class AirQualityLoader(GraphLoader):
         stations = pd.DataFrame(pd.read_hdf(path, key="stations"))
         return data, stations
 
-    def load(self, small: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
+    def load(
+        self, small: bool = False
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         data, stations = self.load_raw(small=small)
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
         data = torch.from_numpy(data.to_numpy()).float()
-        return data, dist
+        mask = torch.where(data.isnan(), False, True)
+        data = self._normalize(data, mask)
+        return data, mask, dist
+
+    def split(self, validation_len: int, contiguous: bool, cols: List = None):
+        if contiguous:
+            for row_start in range(self.data.shape[0] - validation_len + 1):
+                window = self.data[row_start : row_start + validation_len, :]
+                if torch.count_nonzero(window.isnan()).le(
+                    validation_len * self.data.shape[1] * 0.5
+                ):
+                    val_mask = torch.zeros_like(self.data)
+                    val_mask[row_start : row_start + validation_len, :] = True
+                    val_mask[~self.mask] = False
+                    self.validation_mask = val_mask.bool()
+                    print(
+                        self.validation_mask[
+                            row_start - 1 : row_start + validation_len, :
+                        ]
+                    )
+                    break
 
     def get_adjacency(
         self,
@@ -69,9 +94,16 @@ class AirQualityLoader(GraphLoader):
             adj = torch.from_numpy(np.maximum.reduce([adj.numpy(), adj.T.numpy()]))
         return adj
 
-    def get_similarity_knn(self, k: int) -> torch.Tensor:
-        data = self.missing_data.T
-        edge_index = from_knn(data=data, k=k)
+    def get_similarity_knn(
+        self, k: int, use_corrupted_data: bool = False
+    ) -> torch.Tensor:
+        if use_corrupted_data:
+            data = self.corrupt_data.T
+            mask = self.corrupt_mask.T
+        else:
+            data = self.data.T
+            mask = self.mask.T
+        edge_index = from_knn(data=data, mask=mask, k=k)
         adj = to_dense_adj(edge_index).squeeze()
         return adj
 
@@ -90,13 +122,27 @@ class AirQualityLoader(GraphLoader):
     def get_dataloader(
         self, use_missing_data: bool, shuffle: bool = False, batch_size: int = 8
     ) -> DataLoader:
-        self.use_missing_data = use_missing_data
+        self.use_corrupted_data = use_missing_data
+        self.split(validation_len=self.data.shape[0] * 5 // 100, contiguous=True)
+        print(self.validation_mask)
+        self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
+        self.mask = self.mask & ~self.validation_mask
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
 
     def shape(self):
         return self.data.shape
 
     def corrupt(self, missing_type="perc"):
+        """
+        Add missing data to the dataset according to the specified missing pattern
+        Args:
+            missing_type (str): Denotes the type of missing pattern to apply. Currently only
+                missing percentage is available
+        """
+        print(
+            "WARNING: Air Quality dataset already contains missing data. This may change"
+            "the results compared to other studies using this dataset "
+        )
         if missing_type == "perc":
             self.missing_percentage()
         else:
@@ -104,22 +150,28 @@ class AirQualityLoader(GraphLoader):
 
     def missing_percentage(self, missing_percent: int = 20):
         data_length, _ = self.data.shape
-        missing_start = data_length // 5
-        missing_length = data_length // missing_percent
+        missing_start = data_length * 5 // 100
+        missing_length = data_length * missing_percent // 100
         missing_data = self.data
         missing_data[missing_start : missing_start + missing_length, 0] = torch.nan
         mask = torch.ones_like(missing_data)
         mask.masked_fill_(torch.isnan(self.data), 0.0)
-        self.missing_mask = mask
+        self.corrupt_mask = mask
         missing_data.nan_to_num_(nan=0.0)
-        self.missing_data = missing_data
+        self.corrupt_data = missing_data
 
-    def _normalize(self):
-        data = self.missing_data
-        mask = self.missing_data
+    def _normalize_corrupt(self):
+        data = self.corrupt_data
+        mask = self.corrupt_data
         # mean = data[mask].mean()
         # std = data[mask].std()
         min = data[mask].min()
         max = data[mask].max()
 
-        self.missing_data = (data - min) / (max - min)
+        self.corrupt_data = (data - min) / (max - min)
+
+    def _normalize(self, data, mask) -> torch.Tensor:
+        min = data[mask].min()
+        max = data[mask].max()
+
+        return (data - min) / (max - min)

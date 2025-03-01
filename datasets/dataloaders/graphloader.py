@@ -7,12 +7,15 @@ from torch.utils.data import Dataset
 
 class GraphLoader(Dataset, ABC):
     def __init__(self) -> None:
-        self.data = None
+        self.data: torch.Tensor
+        self.missing_data: torch.Tensor
+        self.mask: torch.Tensor
+        self.validation_mask: torch.Tensor
         self.distances = None
-        self.missing_data: torch.Tensor = torch.empty(
+        self.corrupt_data: torch.Tensor = torch.empty(
             0,
         )
-        self.missing_mask: torch.Tensor = torch.empty(
+        self.corrupt_mask: torch.Tensor = torch.empty(
             0,
         )
 
@@ -21,7 +24,7 @@ class GraphLoader(Dataset, ABC):
         pass
 
     @abstractmethod
-    def get_similarity_knn(self, k: int) -> Any:
+    def get_similarity_knn(self, k: int, *args, **kwargs) -> Any:
         pass
 
     @abstractmethod
