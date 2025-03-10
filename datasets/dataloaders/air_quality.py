@@ -16,11 +16,17 @@ EARTH_RADIUS = 6371.0088
 
 class AirQualityLoader(GraphLoader):
     def __init__(
-        self, dataset_path: str = "./datasets/data/air_quality/", small: bool = False
+        self,
+        dataset_path: str = "./datasets/data/air_quality/",
+        small: bool = False,
+        replace_nan=True,
+        nan_method="mean",
     ):
         self.dataset_path = dataset_path
         self.data, self.mask, self.distances = self.load(small=small)
-        self.missing_data = self.data.nan_to_num(nan=0.0)
+        self.missing_data = torch.empty_like(self.data)
+        if replace_nan:
+            self._replace_nan(nan_method)
         self.validation_mask = torch.zeros_like(self.data).bool()
         self.corrupt_data = torch.empty_like(self.data)
         self.corrupt_mask = torch.empty_like(self.data)
@@ -69,11 +75,11 @@ class AirQualityLoader(GraphLoader):
                     val_mask[row_start : row_start + validation_len, :] = True
                     val_mask[~self.mask] = False
                     self.validation_mask = val_mask.bool()
-                    print(
-                        self.validation_mask[
-                            row_start - 1 : row_start + validation_len, :
-                        ]
-                    )
+                    # print(
+                    #     self.validation_mask[
+                    #         row_start - 1 : row_start + validation_len, :
+                    #     ]
+                    # )
                     break
 
     def get_adjacency(
@@ -124,7 +130,7 @@ class AirQualityLoader(GraphLoader):
     ) -> DataLoader:
         self.use_corrupted_data = use_missing_data
         self.split(validation_len=self.data.shape[0] * 5 // 100, contiguous=True)
-        print(self.validation_mask)
+        # print(self.validation_mask)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.mask = self.mask & ~self.validation_mask
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
@@ -175,3 +181,15 @@ class AirQualityLoader(GraphLoader):
         max = data[mask].max()
 
         return (data - min) / (max - min)
+
+    def _replace_nan(self, method="mean"):
+        print("------------------ Replacing NaNs ------------------")
+        if method == "mean":
+            if torch.isnan(self.data).any():
+                # data.nan_to_num_(nan=0.0)
+                means = self.data.nanmean(dim=1).unsqueeze(1).expand_as(self.data)
+                # print(f"NaNs in means?: {torch.isnan(means).any()}")
+                means = means.nan_to_num(0.0)
+                self.missing_data = torch.where(self.mask, self.data, means)
+        elif method == "zero":
+            self.missing_data = self.data.nan_to_num(nan=0.0)

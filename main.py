@@ -17,6 +17,7 @@ from torch_geometric.utils import dense_to_sparse
 
 from datasets.dataloader import get_dataset
 from downsteam.imputation.STGI.stgi import STGI
+from graphs_transformations.ts2net import Ts2Net
 
 
 def parse_args() -> Namespace:
@@ -117,24 +118,38 @@ def evaluate(
 
 
 def run(args: Namespace) -> None:
+    # test = np.random.rand(10, 100)
     dataset = get_dataset(args.dataset)
-    # dataset.corrupt()
     dataloader = dataset.get_dataloader(
         use_missing_data=False, shuffle=False, batch_size=128
     )
-    adj_matrix = dataset.get_adjacency()
+
+    ts2net = Ts2Net()
+    adj_matrix = dataset.get_adjacency(threshold=0.3)
     geo_edge_index, _ = dense_to_sparse(adj_matrix)
-    adj_matrix_knn = dataset.get_similarity_knn(k=5)
+    adj_matrix_knn = dataset.get_similarity_knn(k=3)
     knn_edge_index, _ = dense_to_sparse(adj_matrix_knn)
-    # print(adj_matrix.shape)
-    # print(dataset.shape())
+
+    # data = dataset.missing_data.numpy()[:, :1]
+    # print(f"{data.shape=}")
+    # # print(f"{test.shape=}")
+    # print(f"Type: {type(data)}")
+    # print("Zero-only Rows:", np.all(data == 0, axis=1).sum())
+    # print("Zero-only Columns:", np.all(data == 0, axis=0).sum())
+    # print("Constant Rows:", np.all(data[:, 0][:, None] == data, axis=1).sum())
+    # print(f"NaNs? {np.isnan(data).any()}")
+    # print(f"inf? {np.isinf(data).any()}")
+    # print("Max Value:", np.max(data))
+    # print("Min Value:", np.min(data))
+    # print("Mean Value:", np.mean(data))
+    # print(f"Type = ts2net.tsnet_vg(test, "nvg")
+    # data_matx = ts2net.tsnet_vg(data, "nvg", num_cores=8)
+
     graph_characteristics(adj_matrix)
     graph_characteristics(adj_matrix_knn)
-
-    # print(dataset.data[:5, :][dataset.mask[:5, :]])
-    # print(dataset.data[:5, :][~dataset.mask[:5, :]])
-    # print(dataset.mask[:5, :])
-    # print(dataset.missing_data[:5, :])
+    # graph_characteristics(torch.from_numpy(test_matx))
+    # graph_characteristics(torch.from_numpy(data_matx))
+    #
 
     stgi_geo = STGI(
         in_dim=1,
@@ -144,12 +159,11 @@ def run(args: Namespace) -> None:
         num_layers=2,
     )
     stgi_knn = deepcopy(stgi_geo)
-
-    # stgi = torch.compile(stgi)
+    #
     geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
     knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
-    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 1)
-    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 1)
+    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 5)
+    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 5)
     imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index)
     imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index)
 
