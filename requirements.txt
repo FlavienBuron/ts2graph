@@ -4,6 +4,8 @@ pandas==2.2.3
 scikit-learn==1.6.1
 torch_geometric==2.6.1
 torch_cluster==1.6.3
+torch-scatter==2.1.2
+torch-sparse==0.6.18
 networkx==3.4.2
 torch-spatiotemporal==0.9.5
 rpy2==3.5.17
