@@ -1,4 +1,5 @@
 import warnings
+from typing import Optional
 
 import numpy as np
 import rpy2.robjects as robjects
@@ -37,12 +38,12 @@ class Ts2Net:
         else:
             print("'ts2net' already installed")
 
-        # # Define adjacency matrix function in R
-        # robjects.r("""
-        # get_adjacency_matrix <- function(graph, sparse = TRUE) {
-        #     as.matrix(get_adjacency_matrix(graph, sparse = sparse))
-        # }
-        # """)
+    def _ensure_dependencies_installed(self):
+        if not isinstalled("nonlinearTseries"):
+            print("Installing 'nonlinearTseries")
+            self.utils.install_packages("nonlinearTseries")
+
+        return importr("nonlinearTseries")
 
     def ts_dist(
         self,
@@ -78,14 +79,63 @@ class Ts2Net:
         return float(corr[0])
 
     def tsnet_vg(
-        self, x, method, directed=False, sparse=False, limit=np.inf, num_cores=1
+        self,
+        x: np.ndarray,
+        method: str = "nvg",
+        directed: bool = False,
+        sparse: bool = False,
+        limit: Optional[int | object] = None,
+        num_cores: int = 1,
     ):
         if self.r_ts2net is None:
             raise RuntimeError(
                 "ts2net was not loaded, tsnet_vg function is not available"
             )
-        net = self.r_ts2net.tsnet_vg(x, method, num_cores=num_cores)
 
+        r_data = robjects.FloatVector(x)
+        limit = limit if limit is not None else robjects.r("Inf")
+        net = self.r_ts2net.tsnet_vg(
+            r_data, method, directed, limit, num_cores=num_cores
+        )
+        adj_matrix = self._get_adjacency_matrix(net, sparse)
+        return adj_matrix
+
+    def tsnet_rn(
+        self,
+        x: np.ndarray,
+        radius: float,
+        embedding_dim: Optional[int] = None,
+        time_lag: int = 1,
+        sparse: bool = False,
+        do_plot: bool = False,
+        **kwargs,
+    ):
+        lib = self._ensure_dependencies_installed()
+        embedding_dim = (
+            embedding_dim
+            if embedding_dim is not None
+            else lib.estimateEmbeddingDim(x, time_lag=time_lag, do_plot=do_plot)
+        )
+        # r_data = robjects.FloatVector(x)
+        net = self.r_ts2net.tsnet_rn(
+            x, radius, embedding_dim, time_lag, do_plot, **kwargs
+        )
+        adj_matrix = self._get_adjacency_matrix(net, sparse)
+        return adj_matrix
+
+    def tsnet_qn(
+        self,
+        x: np.ndarray,
+        breaks,
+        weights_as_prob: bool = True,
+        remove_loops: bool = False,
+        sparse: bool = False,
+        **kwargs,
+    ):
+        r_data = robjects.FloatVector(x)
+        net = self.r_ts2net.tsnet_qn(
+            r_data, breaks, weights_as_prob, remove_loops, **kwargs
+        )
         adj_matrix = self._get_adjacency_matrix(net, sparse)
         return adj_matrix
 
@@ -114,8 +164,7 @@ if __name__ == "__main__":
     api = Ts2Net()
 
     ts1 = np.random.rand(10, 100)
-    ts2 = np.random.rand(10, 100)
 
-    print(f"Correlation Distance: {api.tsdist_cor(ts1, ts2)}")
-
-    print(f"Visibility Graph: {api.tsnet_vg(ts1, 'nvg')}")
+    print(f"Visibility Graph:\n {api.tsnet_vg(ts1, 'nvg').shape}.")
+    print(f"Recurrent Graph:\n {api.tsnet_rn(ts1, 3.0).shape}")
+    print(f"Quantile Graph:\n {api.tsnet_qn(ts1, ts1.shape[0]).shape}")

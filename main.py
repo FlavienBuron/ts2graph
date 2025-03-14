@@ -1,5 +1,4 @@
 from argparse import ArgumentParser, Namespace
-from copy import deepcopy
 
 import networkx as nx
 import numpy as np
@@ -14,9 +13,9 @@ from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torch_geometric.utils import dense_to_sparse
+from tsl.nn.models import GRINModel
 
 from datasets.dataloader import get_dataset
-from downsteam.imputation.STGI.stgi import STGI
 from graphs_transformations.ts2net import Ts2Net
 
 
@@ -66,8 +65,14 @@ def train_imputer(
         optimizer.zero_grad()
         epoch_loss = 0.0
         for i, (batch_data, batch_mask) in enumerate(dataloader):
-            imputed_batch_data, batch_loss = model(
-                batch_data.unsqueeze(2), edge_index, batch_mask.unsqueeze(2)
+            out = model(
+                x=batch_data.unsqueeze(2).unsqueeze(0),
+                edge_index=edge_index,
+                mask=batch_mask.unsqueeze(2).unsqueeze(0),
+            )
+            imputed_data = out[0].squeeze(0).squeeze(2)
+            batch_loss = torch.sum(batch_mask * (imputed_data - batch_data) ** 2) / (
+                torch.sum(batch_mask) + 1e-8
             )
             batch_loss.backward()
             optimizer.step()
@@ -129,43 +134,36 @@ def run(args: Namespace) -> None:
     geo_edge_index, _ = dense_to_sparse(adj_matrix)
     adj_matrix_knn = dataset.get_similarity_knn(k=3)
     knn_edge_index, _ = dense_to_sparse(adj_matrix_knn)
-
-    # data = dataset.missing_data.numpy()[:, :1]
-    # print(f"{data.shape=}")
-    # # print(f"{test.shape=}")
-    # print(f"Type: {type(data)}")
-    # print("Zero-only Rows:", np.all(data == 0, axis=1).sum())
-    # print("Zero-only Columns:", np.all(data == 0, axis=0).sum())
-    # print("Constant Rows:", np.all(data[:, 0][:, None] == data, axis=1).sum())
-    # print(f"NaNs? {np.isnan(data).any()}")
-    # print(f"inf? {np.isinf(data).any()}")
-    # print("Max Value:", np.max(data))
-    # print("Min Value:", np.min(data))
-    # print("Mean Value:", np.mean(data))
-    # print(f"Type = ts2net.tsnet_vg(test, "nvg")
     # data_matx = ts2net.tsnet_vg(data, "nvg", num_cores=8)
 
     graph_characteristics(adj_matrix)
     graph_characteristics(adj_matrix_knn)
-    # graph_characteristics(torch.from_numpy(test_matx))
     # graph_characteristics(torch.from_numpy(data_matx))
-    #
 
-    stgi_geo = STGI(
-        in_dim=1,
-        hidden_dim=32,
-        gcn_out_dim=16,
-        lstm_hidden_dim=64,
-        num_layers=2,
-    )
-    stgi_knn = deepcopy(stgi_geo)
+    # stgi_geo = STGI(
+    #     in_dim=1,
+    #     hidden_dim=32,
+    #     gcn_out_dim=16,
+    #     lstm_hidden_dim=64,
+    #     num_layers=2,
+    # )
+    # stgi_knn = deepcopy(stgi_geo)
+    grin_geo = GRINModel(input_size=1, hidden_size=32, merge_mode="mean")
+    grin_knn = GRINModel(input_size=1, hidden_size=32, merge_mode="mean")
+
     #
-    geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
-    knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
-    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 5)
-    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 5)
-    imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index)
-    imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index)
+    # geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
+    # knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
+    # train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 5)
+    # train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 5)
+    # imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index)
+    # imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index)
+    geo_optim = Adam(grin_geo.parameters(), lr=5e-4)
+    knn_optim = Adam(grin_knn.parameters(), lr=5e-4)
+    train_imputer(grin_geo, dataloader, geo_edge_index, geo_optim, 5)
+    train_imputer(grin_knn, dataloader, knn_edge_index, knn_optim, 5)
+    imputed_data_geo = impute_missing_data(grin_geo, dataloader, geo_edge_index)
+    imputed_data_knn = impute_missing_data(grin_knn, dataloader, knn_edge_index)
 
     evaluate(
         imputed_data_geo.numpy(),
