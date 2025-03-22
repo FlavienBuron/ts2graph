@@ -13,9 +13,9 @@ from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torch_geometric.utils import dense_to_sparse
-from tsl.nn.models import GRINModel
 
 from datasets.dataloader import get_dataset
+from downstream.imputation.STGI import STGI
 from graphs_transformations.ts2net import Ts2Net
 
 
@@ -65,15 +65,12 @@ def train_imputer(
         optimizer.zero_grad()
         epoch_loss = 0.0
         for i, (batch_data, batch_mask) in enumerate(dataloader):
-            out = model(
-                x=batch_data.unsqueeze(2).unsqueeze(0),
+            imputed_data, batch_loss = model(
+                x=batch_data.unsqueeze(2),
                 edge_index=edge_index,
-                mask=batch_mask.unsqueeze(2).unsqueeze(0),
+                mask=batch_mask.unsqueeze(2),
             )
-            imputed_data = out[0].squeeze(0).squeeze(2)
-            batch_loss = torch.sum(batch_mask * (imputed_data - batch_data) ** 2) / (
-                torch.sum(batch_mask) + 1e-8
-            )
+            imputed_data = imputed_data.squeeze(-1)
             batch_loss.backward()
             optimizer.step()
             print(f"Batch {i}/{nb_batches} loss: {batch_loss:.4e}", end="\r")
@@ -95,7 +92,7 @@ def impute_missing_data(
                 batch_data.unsqueeze(2), edge_index, batch_mask.unsqueeze(2)
             )
             imputed_batchs.append(imputed_batch)
-    imputed_data = torch.cat(imputed_batchs, dim=0)
+    imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
     return imputed_data
 
 
@@ -140,30 +137,37 @@ def run(args: Namespace) -> None:
     graph_characteristics(adj_matrix_knn)
     # graph_characteristics(torch.from_numpy(data_matx))
 
-    # stgi_geo = STGI(
-    #     in_dim=1,
-    #     hidden_dim=32,
-    #     gcn_out_dim=16,
-    #     lstm_hidden_dim=64,
-    #     num_layers=2,
-    # )
-    # stgi_knn = deepcopy(stgi_geo)
-    grin_geo = GRINModel(input_size=1, hidden_size=32, merge_mode="mean")
-    grin_knn = GRINModel(input_size=1, hidden_size=32, merge_mode="mean")
+    stgi_geo = STGI(
+        in_dim=1,
+        hidden_dim=32,
+        out_dim=16,
+        lstm_hidden_dim=64,
+        num_layers=2,
+    )
+    stgi_knn = STGI(
+        in_dim=1,
+        hidden_dim=32,
+        out_dim=16,
+        lstm_hidden_dim=64,
+        num_layers=2,
+    )
+
+    # grin_geo = GRINModel(input_size=1, hidden_size=32, merge_mode="mean")
+    # grin_knn = GRINModel(input_size=1, hidden_size=32, merge_mode="mean")
 
     #
-    # geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
-    # knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
-    # train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 5)
-    # train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 5)
-    # imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index)
-    # imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index)
-    geo_optim = Adam(grin_geo.parameters(), lr=5e-4)
-    knn_optim = Adam(grin_knn.parameters(), lr=5e-4)
-    train_imputer(grin_geo, dataloader, geo_edge_index, geo_optim, 5)
-    train_imputer(grin_knn, dataloader, knn_edge_index, knn_optim, 5)
-    imputed_data_geo = impute_missing_data(grin_geo, dataloader, geo_edge_index)
-    imputed_data_knn = impute_missing_data(grin_knn, dataloader, knn_edge_index)
+    geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
+    knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
+    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 10)
+    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 10)
+    imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index)
+    imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index)
+    # geo_optim = Adam(grin_geo.parameters(), lr=5e-4)
+    # knn_optim = Adam(grin_knn.parameters(), lr=5e-4)
+    # train_imputer(grin_geo, dataloader, geo_edge_index, geo_optim, 5)
+    # train_imputer(grin_knn, dataloader, knn_edge_index, knn_optim, 5)
+    # imputed_data_geo = impute_missing_data(grin_geo, dataloader, geo_edge_index)
+    # imputed_data_knn = impute_missing_data(grin_knn, dataloader, knn_edge_index)
 
     evaluate(
         imputed_data_geo.numpy(),

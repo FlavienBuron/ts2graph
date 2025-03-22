@@ -40,14 +40,15 @@ class STGI(nn.Module):
             lstm_hidden_dim * 2, in_dim
         )  # *2 for bidirectional GRU
 
-    def forward(self, x_missing, edge_index, mask):
+    def forward(self, x, edge_index, mask):
         """
         x: (batch_size, time_steps, num_nodes, feature_dim)
         edge_index: Graph edges (from adjacency matrix)
         mask: Binary mask (1 = observed, 0 = missing)
         """
-        time_steps, num_nodes, feature_dim = x_missing.shape
-        x = x_missing.reshape(-1, feature_dim)
+        time_steps, num_nodes, feature_dim = x.shape
+        ori_x = x.detach().clone()
+        x = x.reshape(-1, feature_dim)
         x = F.relu(self.layer1(x, edge_index))
         x = F.relu(self.layer2(x, edge_index))
         x = x.reshape(time_steps, num_nodes, -1)
@@ -61,8 +62,6 @@ class STGI(nn.Module):
         imputed_x = self.decoder(x)
 
         # Compute the batch MSE
-        x_loss = torch.sum(mask * (imputed_x - x_missing) ** 2) / (
-            torch.sum(mask) + 1e-8
-        )
-        x_final = torch.where(mask.bool(), x_missing, imputed_x)
+        x_loss = torch.sum(mask * (imputed_x - ori_x) ** 2) / (torch.sum(mask) + 1e-8)
+        x_final = torch.where(mask.bool(), ori_x, imputed_x)
         return x_final, x_loss
