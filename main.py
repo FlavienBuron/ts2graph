@@ -22,6 +22,12 @@ from graphs_transformations.ts2net import Ts2Net
 def parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument(
+        "--device",
+        type=str,
+        help="The device to use",
+        default="cuda" if torch.cuda.is_available() else "cpu",
+    )
+    parser.add_argument(
         "--dataset",
         "-d",
         type=str,
@@ -56,7 +62,8 @@ def train_imputer(
     dataloader: DataLoader,
     edge_index: torch.Tensor,
     optimizer: Optimizer,
-    epochs: int = 50,
+    epochs: int = 5,
+    device: str = "cpu",
 ):
     nb_batches = len(dataloader)
     model.train()
@@ -66,9 +73,9 @@ def train_imputer(
         epoch_loss = 0.0
         for i, (batch_data, batch_mask) in enumerate(dataloader):
             imputed_data, batch_loss = model(
-                x=batch_data.unsqueeze(2),
-                edge_index=edge_index,
-                mask=batch_mask.unsqueeze(2),
+                x=batch_data.unsqueeze(2).to(device),
+                edge_index=edge_index.to(device),
+                mask=batch_mask.unsqueeze(2).to(device),
             )
             imputed_data = imputed_data.squeeze(-1)
             batch_loss.backward()
@@ -83,21 +90,26 @@ def impute_missing_data(
     model: nn.Module,
     dataloader: DataLoader,
     edge_index: torch.Tensor,
+    device: str,
 ):
     model.eval()
     with torch.no_grad():
         imputed_batchs = []
         for batch_data, batch_mask in dataloader:
-            imputed_batch, loss = model(
-                batch_data.unsqueeze(2), edge_index, batch_mask.unsqueeze(2)
+            imputed_batch, _ = model(
+                batch_data.unsqueeze(2).to(device),
+                edge_index.to(device),
+                batch_mask.unsqueeze(2).to(device),
             )
-            imputed_batchs.append(imputed_batch)
+            imputed_batchs.append(imputed_batch.cpu().data())
     imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
     return imputed_data
 
 
 def evaluate(
-    imputed_data: np.ndarray, target_data: np.ndarray, evaluation_mask: np.ndarray
+    imputed_data: np.ndarray,
+    target_data: np.ndarray,
+    evaluation_mask: np.ndarray,
 ):
     print("Target NaNs:", np.isnan(target_data[evaluation_mask]).sum())
     print("Imputed NaNs:", np.isnan(imputed_data[evaluation_mask]).sum())
@@ -121,6 +133,7 @@ def evaluate(
 
 def run(args: Namespace) -> None:
     # test = np.random.rand(10, 100)
+    device = args.device
     dataset = get_dataset(args.dataset)
     dataloader = dataset.get_dataloader(
         use_missing_data=False, shuffle=False, batch_size=128
@@ -156,12 +169,14 @@ def run(args: Namespace) -> None:
     # grin_knn = GRINModel(input_size=1, hidden_size=32, merge_mode="mean")
 
     #
+    stgi_geo.to(device)
+    stgi_knn.to(device)
     geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
     knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
-    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 10)
-    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 10)
-    imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index)
-    imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index)
+    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 10, device)
+    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 10, device)
+    imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index, device)
+    imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index, device)
     # geo_optim = Adam(grin_geo.parameters(), lr=5e-4)
     # knn_optim = Adam(grin_knn.parameters(), lr=5e-4)
     # train_imputer(grin_geo, dataloader, geo_edge_index, geo_optim, 5)
