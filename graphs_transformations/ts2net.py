@@ -14,13 +14,13 @@ numpy2ri.activate()
 
 class Ts2Net:
     def __init__(self):
-        self._suppress_warnings("library(ts2net)")
-        self._suppress_warnings("library(utils)")
-        self._suppress_warnings("library(base)")
         robjects.r("options(warn = -1)")
         self.utils = importr("utils")
         self._ensure_ts2net_installed()
         self.r_ts2net = importr("ts2net")
+        self._suppress_warnings("library(ts2net)")
+        self._suppress_warnings("library(utils)")
+        self._suppress_warnings("library(base)")
 
     def _ensure_ts2net_installed(self):
         # packages = ("remote", "quantmod", "tseries", "nonlinearTseries", "ts2net")
