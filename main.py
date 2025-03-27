@@ -101,7 +101,7 @@ def impute_missing_data(
                 edge_index.to(device),
                 batch_mask.unsqueeze(2).to(device),
             )
-            imputed_batchs.append(imputed_batch.cpu().data())
+            imputed_batchs.append(imputed_batch.cpu().data)
     imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
     return imputed_data
 
