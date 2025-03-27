@@ -176,11 +176,17 @@ class AirQualityLoader(GraphLoader):
 
         self.corrupt_data = (data - min) / (max - min)
 
-    def _normalize(self, data, mask) -> torch.Tensor:
-        min = data[mask].min()
-        max = data[mask].max()
+    def _normalize(self, data, mask, type="min_max") -> torch.Tensor:
+        if type == "min_max":
+            min = data[mask].min()
+            max = data[mask].max()
 
-        return (data - min) / (max - min)
+            return (data - min) / (max - min)
+        else:
+            mean = data[mask].min()
+            std = data[mask].std()
+
+            return (data - mean) / (std + 1e-8)
 
     def _replace_nan(self, method="mean"):
         print("------------------ Replacing NaNs ------------------")
