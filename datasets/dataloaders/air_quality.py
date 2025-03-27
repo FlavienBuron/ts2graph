@@ -61,7 +61,7 @@ class AirQualityLoader(GraphLoader):
         dist = self._geographical_distance(stations_coords)
         data = torch.from_numpy(data.to_numpy()).float()
         mask = torch.where(data.isnan(), False, True)
-        data = self._normalize(data, mask)
+        data = self._normalize(data, mask, "std")
         return data, mask, dist
 
     def split(self, validation_len: int, contiguous: bool, cols: List = None):
