@@ -29,12 +29,11 @@ class Ts2Net:
         #     self.utils.install_packages(StrVector(names_to_install))
         if not isinstalled("ts2net"):
             print("Installing 'ts2net'")
-            self._suppress_warnings("""
-                if (!requireNamespace("remotes", quietly = TRUE)) {
-                    install.packages("remotes")
-                }
-                remotes::install_github("lnferreira/ts2net", dependencies = TRUE)
-            """)
+            if not robjects.r("requireNamespace('remotes', quietly=TRUE)"):
+                self._suppress_warnings('install.packages("remotes")')
+            self._suppress_warnings(
+                "remotes::install_github('lnferreira/ts2net', dependencies = TRUE)"
+            )
         else:
             print("'ts2net' already installed")
 
