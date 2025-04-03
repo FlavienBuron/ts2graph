@@ -82,9 +82,8 @@ def train_imputer(
                     mask=batch_mask.unsqueeze(2).to(device),
                 )
                 imputed_data = imputed_data.squeeze(-1)
-                print(f"{batch_data.shape=} {batch_mask.shape=} {imputed_data.shape=}")
                 # replace the missing data in the batch with the imputed data
-                batch_data[~batch_mask.bool()] = imputed_data[~batch_data.bool()]
+                batch_data[~batch_mask] = imputed_data[~batch_data]
                 iteration_imputed_data.append(batch_data.cpu())
                 batch_losses.append(batch_loss)
                 batch_loss.backward()
