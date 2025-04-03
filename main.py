@@ -92,11 +92,12 @@ def train_imputer(
                 print(f"Batch {i}/{nb_batches} loss: {batch_loss:.4e}", end="\r")
                 epoch_loss += batch_loss
             iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)
-            epoch_loss += torch.stack(batch_losses).detach().sum().item()
+            iter_loss = torch.stack(batch_losses).detach().sum().item()
+            epoch_loss += iter_loss
             # epoch_loss.backward()
             # optimizer.step()
             print(
-                f"Iteration {iter + 1}/{num_iteration} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss.item():.4e}",
+                f"Iteration {iter + 1}/{num_iteration} loss {iter_loss.item():.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss.item():.4e}",
             )
             dataloader.data = iteration_imputed_data
         mean_loss = epoch_loss / (nb_batches * num_iteration)
@@ -190,8 +191,8 @@ def run(args: Namespace) -> None:
     stgi_knn.to(device)
     geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
     knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
-    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 10, device=device)
-    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 10, device=device)
+    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 10, 3, device=device)
+    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 10, 3, device=device)
     imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index, device)
     imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index, device)
     # geo_optim = Adam(grin_geo.parameters(), lr=5e-4)
