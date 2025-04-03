@@ -171,7 +171,7 @@ def run(args: Namespace) -> None:
     )
 
     ts2net = Ts2Net()
-    adj_matrix = dataset.get_adjacency(threshold=0.9)
+    adj_matrix = dataset.get_adjacency(threshold=0.1)
     geo_edge_index, _ = dense_to_sparse(adj_matrix)
     adj_matrix_knn = dataset.get_similarity_knn(k=1)
     knn_edge_index, _ = dense_to_sparse(adj_matrix_knn)
