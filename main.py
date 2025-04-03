@@ -41,6 +41,13 @@ def parse_args() -> Namespace:
         help="which algorithm to use for graph completion e.g. 'KNN'",
         default=None,
     )
+    parser.add_argument(
+        "--iter_num",
+        "-i",
+        type=int,
+        help="The number of iteration from the model pass",
+        default=2,
+    )
     args = parser.parse_args()
     return args
 
@@ -193,8 +200,24 @@ def run(args: Namespace) -> None:
     stgi_knn.to(device)
     geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
     knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
-    train_imputer(stgi_geo, dataloader, geo_edge_index, geo_optim, 10, 2, device=device)
-    train_imputer(stgi_knn, dataloader, knn_edge_index, knn_optim, 10, 2, device=device)
+    train_imputer(
+        stgi_geo,
+        dataloader,
+        geo_edge_index,
+        geo_optim,
+        10,
+        args.iter_num,
+        device=device,
+    )
+    train_imputer(
+        stgi_knn,
+        dataloader,
+        knn_edge_index,
+        knn_optim,
+        10,
+        args.iter_num,
+        device=device,
+    )
     imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index, device)
     imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index, device)
     # geo_optim = Adam(grin_geo.parameters(), lr=5e-4)
