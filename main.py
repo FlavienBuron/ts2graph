@@ -222,8 +222,12 @@ def run(args: Namespace) -> None:
         args.iter_num,
         device=device,
     )
-    imputed_data_geo = impute_missing_data(stgi_geo, dataloader, geo_edge_index, device)
-    imputed_data_knn = impute_missing_data(stgi_knn, dataloader, knn_edge_index, device)
+    imputed_data_geo = impute_missing_data(
+        stgi_geo, dataloader, geo_edge_index, args.iter_num, device
+    )
+    imputed_data_knn = impute_missing_data(
+        stgi_knn, dataloader, knn_edge_index, args.iter_num, device
+    )
     # geo_optim = Adam(grin_geo.parameters(), lr=5e-4)
     # knn_optim = Adam(grin_knn.parameters(), lr=5e-4)
     # train_imputer(grin_geo, dataloader, geo_edge_index, geo_optim, 5)
