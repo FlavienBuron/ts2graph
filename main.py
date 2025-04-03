@@ -117,20 +117,24 @@ def impute_missing_data(
     model: nn.Module,
     dataloader: DataLoader,
     edge_index: torch.Tensor,
+    num_iteration: int,
     device: str,
 ):
     model.eval()
     with torch.no_grad():
-        imputed_batchs = []
-        for batch_data, batch_mask in dataloader:
-            imputed_batch, _ = model(
-                batch_data.unsqueeze(2).to(device),
-                edge_index.to(device),
-                batch_mask.unsqueeze(2).to(device),
-            )
-            imputed_batchs.append(imputed_batch.cpu().data)
-    imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
-    return imputed_data
+        for iter in range(num_iteration):
+            imputed_batchs = []
+            for batch_data, batch_mask in dataloader:
+                imputed_batch, _ = model(
+                    batch_data.unsqueeze(2).to(device),
+                    edge_index.to(device),
+                    batch_mask.unsqueeze(2).to(device),
+                )
+                imputed_batchs.append(imputed_batch.cpu().data)
+            imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
+            dataloader.data = imputed_data
+            del imputed_data
+    return dataloader.data
 
 
 def evaluate(
