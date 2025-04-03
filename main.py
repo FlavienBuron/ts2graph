@@ -63,7 +63,7 @@ def train_imputer(
     edge_index: torch.Tensor,
     optimizer: Optimizer,
     epochs: int = 5,
-    num_iteration=100,
+    num_iteration: int = 100,
     device: str = "cpu",
 ):
     nb_batches = len(dataloader)
