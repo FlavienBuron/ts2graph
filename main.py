@@ -93,8 +93,8 @@ def train_imputer(
                 epoch_loss += batch_loss
             iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)
             epoch_loss += torch.stack(batch_losses).sum()
-            epoch_loss.backward()
-            optimizer.step()
+            # epoch_loss.backward()
+            # optimizer.step()
             print(
                 f"Iteration {iter + 1}/{num_iteration} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss.item():.4e}",
                 end="\r",
