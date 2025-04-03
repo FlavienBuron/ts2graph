@@ -83,7 +83,7 @@ def train_imputer(
                 )
                 imputed_data = imputed_data.squeeze(-1)
                 # replace the missing data in the batch with the imputed data
-                batch_data[batch_mask.bool()] = imputed_data[batch_data.bool()]
+                batch_data[~batch_mask.bool()] = imputed_data[~batch_data.bool()]
                 iteration_imputed_data.append(batch_data.cpu())
                 batch_losses.append(batch_loss)
                 batch_loss.backward()
