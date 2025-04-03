@@ -19,6 +19,7 @@ class Ts2Net:
         self._ensure_ts2net_installed()
         self.r_ts2net = importr("ts2net")
         self._suppress_warnings("library(ts2net)")
+        self._ensure_dependencies_installed()
         self._suppress_warnings("library(utils)")
         self._suppress_warnings("library(base)")
 
