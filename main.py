@@ -63,6 +63,7 @@ def train_imputer(
     edge_index: torch.Tensor,
     optimizer: Optimizer,
     epochs: int = 5,
+    num_iteration=100,
     device: str = "cpu",
 ):
     nb_batches = len(dataloader)
@@ -71,18 +72,33 @@ def train_imputer(
     for epoch in range(epochs):
         optimizer.zero_grad()
         epoch_loss = 0.0
-        for i, (batch_data, batch_mask) in enumerate(dataloader):
-            imputed_data, batch_loss = model(
-                x=batch_data.unsqueeze(2).to(device),
-                edge_index=edge_index.to(device),
-                mask=batch_mask.unsqueeze(2).to(device),
-            )
-            imputed_data = imputed_data.squeeze(-1)
-            batch_loss.backward()
+        for iter in range(num_iteration):
+            iteration_imputed_data = []
+            batch_losses = []
+            for i, (batch_data, batch_mask) in enumerate(dataloader):
+                imputed_data, batch_loss = model(
+                    x=batch_data.unsqueeze(2).to(device),
+                    edge_index=edge_index.to(device),
+                    mask=batch_mask.unsqueeze(2).to(device),
+                )
+                imputed_data = imputed_data.squeeze(-1)
+                # replace the missing data in the batch with the imputed data
+                batch_data[batch_mask.bool()] = imputed_data[batch_data.bool()]
+                iteration_imputed_data.append(batch_data.cpu())
+                batch_losses.append(batch_loss)
+                batch_loss.backward()
+                optimizer.step()
+                print(f"Batch {i}/{nb_batches} loss: {batch_loss:.4e}", end="\r")
+                epoch_loss += batch_loss
+            iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)
+            epoch_loss += torch.stack(batch_losses).sum()
+            epoch_loss.backward()
             optimizer.step()
-            print(f"Batch {i}/{nb_batches} loss: {batch_loss:.4e}", end="\r")
-            epoch_loss += batch_loss
-        mean_loss = epoch_loss / nb_batches
+            print(
+                f"Iteration {iter + 1}/{num_iteration} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss.item():.4e}",
+                end="\r",
+            )
+        mean_loss = epoch_loss / (nb_batches * num_iteration)
         print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
 
 
