@@ -97,7 +97,6 @@ def train_imputer(
             # optimizer.step()
             print(
                 f"Iteration {iter + 1}/{num_iteration} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss.item():.4e}",
-                end="\r",
             )
             dataloader.data = iteration_imputed_data
         mean_loss = epoch_loss / (nb_batches * num_iteration)
