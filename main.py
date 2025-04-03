@@ -100,6 +100,7 @@ def train_imputer(
                 f"Iteration {iter + 1}/{num_iteration} loss {iter_loss:.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss.item():.4e}",
             )
             dataloader.data = iteration_imputed_data
+            del iteration_imputed_data
         mean_loss = epoch_loss / (nb_batches * num_iteration)
         print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
 
