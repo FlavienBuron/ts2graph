@@ -70,18 +70,18 @@ def train_imputer(
     model.train()
 
     for epoch in range(epochs):
-        optimizer.zero_grad()
         epoch_loss = 0.0
         for iter in range(num_iteration):
             iteration_imputed_data = []
             batch_losses = []
             for i, (batch_data, batch_mask) in enumerate(dataloader):
+                optimizer.zero_grad()
                 imputed_data, batch_loss = model(
                     x=batch_data.unsqueeze(2).to(device),
                     edge_index=edge_index.to(device),
                     mask=batch_mask.unsqueeze(2).to(device),
                 )
-                imputed_data = imputed_data.squeeze(-1)
+                imputed_data = imputed_data.squeeze(-1).detach()
                 # replace the missing data in the batch with the imputed data
                 imputed_batch = batch_data.clone()
                 imputed_batch[~batch_mask] = imputed_data[~batch_mask]
@@ -92,7 +92,7 @@ def train_imputer(
                 print(f"Batch {i}/{nb_batches} loss: {batch_loss:.4e}", end="\r")
                 epoch_loss += batch_loss
             iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)
-            epoch_loss += torch.stack(batch_losses).sum()
+            epoch_loss += torch.stack(batch_losses).sum().item()
             # epoch_loss.backward()
             # optimizer.step()
             print(
