@@ -48,14 +48,26 @@ class STGI(nn.Module):
         """
         time_steps, nodes, features = x.shape
         ori_x = x.detach().clone()
-        x = x.reshape(-1, features)
-        x = F.relu(self.layer1(x, edge_index))
-        x = F.relu(self.layer2(x, edge_index))
-        x = x.reshape(time_steps, nodes, -1)
+
+        gnn_output = []
+
+        for t in range(time_steps):
+            x_t = x[t]
+            x_t = F.relu(self.gnn1(x_t, edge_index))
+            x_t = F.relu(self.gnn2(x_t, edge_index))
+            gnn_output.append(x_t)
+
+        # Stack to shape (time, nodes, out_dim)
+        x = torch.stack(gnn_output, dim=0)
+        # Reshape for LSTM: (nodes, time, features)
+        x = x.reshape(1, 0, 2)
 
         # Apply Bi-GRU for temporal modeling
-        # Output shape: (batch_size, time_steps, num_nodes, lstm_hidden_dim * 2)
+        # Output shape: (num_nodes, time, lstm_hidden_dim * 2)
         x, _ = self.lstm(x)
+
+        # Reshape back to (time, node, feature)
+        x = x.permute(1, 0, 2)
 
         # Decode missing values
         # Shape: (batch_size, time_steps, num_nodes, feature_dim)
