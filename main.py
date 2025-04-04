@@ -178,6 +178,7 @@ def run(args: Namespace) -> None:
         use_missing_data=False, shuffle=False, batch_size=128
     )
     graph_technique, param = args.graph_technique
+    param = int(param)
     ts2net = Ts2Net()
     if "loc" in graph_technique:
         adj_matrix = dataset.get_adjacency(threshold=param)
