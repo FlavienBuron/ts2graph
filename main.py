@@ -39,7 +39,7 @@ def parse_args() -> Namespace:
         "-g",
         nargs="2",
         help="which algorithm to use for graph completion e.g. 'KNN'",
-        default=["knn", 3],
+        # default=["knn", 3],
     )
     parser.add_argument("--")
     parser.add_argument(
@@ -172,6 +172,7 @@ def evaluate(
 
 def run(args: Namespace) -> None:
     # test = np.random.rand(10, 100)
+    print(args)
     device = args.device
     dataset = get_dataset(args.dataset)
     dataloader = dataset.get_dataloader(
