@@ -41,7 +41,6 @@ def parse_args() -> Namespace:
         help="which algorithm to use for graph completion e.g. 'KNN'",
         default=["knn", 3],
     )
-    parser.add_argument("--")
     parser.add_argument(
         "--iter_num",
         "-i",
