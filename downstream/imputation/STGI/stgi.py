@@ -46,6 +46,7 @@ class STGI(nn.Module):
         edge_index: Graph edges (from adjacency matrix)
         mask: Binary mask (1 = observed, 0 = missing)
         """
+        print(f"{x.shape=}")
         time_steps, num_nodes, feature_dim = x.shape
         ori_x = x.detach().clone()
         x = x.reshape(-1, feature_dim)
