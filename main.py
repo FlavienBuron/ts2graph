@@ -35,18 +35,26 @@ def parse_args() -> Namespace:
         required=True,
     )
     parser.add_argument(
-        "--algorithm",
-        "-a",
-        type=str,
+        "--graph_technique",
+        "-g",
+        nargs="2",
         help="which algorithm to use for graph completion e.g. 'KNN'",
-        default=None,
+        default=["knn", 3],
     )
+    parser.add_argument("--")
     parser.add_argument(
         "--iter_num",
         "-i",
         type=int,
         help="The number of iteration from the model pass",
         default=2,
+    )
+    parser.add_argument(
+        "--layer",
+        "-l",
+        type=str,
+        help="The GNN layer type to use e.g. GCNConv",
+        default="GCNConv",
     )
     args = parser.parse_args()
     return args
@@ -169,79 +177,44 @@ def run(args: Namespace) -> None:
     dataloader = dataset.get_dataloader(
         use_missing_data=False, shuffle=False, batch_size=128
     )
-
+    graph_technique, param = args.graph_technique
     ts2net = Ts2Net()
-    adj_matrix = dataset.get_adjacency(threshold=0.1)
-    geo_edge_index, _ = dense_to_sparse(adj_matrix)
-    adj_matrix_knn = dataset.get_similarity_knn(k=1)
-    knn_edge_index, _ = dense_to_sparse(adj_matrix_knn)
-    # data_matx = ts2net.tsnet_vg(data, "nvg", num_cores=8)
+    if "loc" in graph_technique:
+        adj_matrix = dataset.get_adjacency(threshold=param)
+    else:
+        adj_matrix = dataset.get_similarity_knn(k=param)
+    edge_index, _ = dense_to_sparse(adj_matrix)
 
     graph_characteristics(adj_matrix)
-    graph_characteristics(adj_matrix_knn)
-    # graph_characteristics(torch.from_numpy(data_matx))
 
-    stgi_geo = STGI(
+    stgi = STGI(
         in_dim=1,
         hidden_dim=32,
         out_dim=16,
         lstm_hidden_dim=64,
         num_layers=2,
-    )
-    stgi_knn = STGI(
-        in_dim=1,
-        hidden_dim=32,
-        out_dim=16,
-        lstm_hidden_dim=64,
-        num_layers=2,
+        model_type=args.layer,
     )
 
-    # grin_geo = GRINModel(input_size=1, hidden_size=32, merge_mode="mean")
-    # grin_knn = GRINModel(input_size=1, hidden_size=32, merge_mode="mean")
-
-    #
-    stgi_geo.to(device)
-    stgi_knn.to(device)
-    geo_optim = Adam(stgi_geo.parameters(), lr=5e-4)
-    knn_optim = Adam(stgi_knn.parameters(), lr=5e-4)
+    stgi.to(device)
+    geo_optim = Adam(stgi.parameters(), lr=5e-4)
     train_imputer(
-        stgi_geo,
+        stgi,
         dataloader,
-        geo_edge_index,
+        edge_index,
         geo_optim,
         10,
         args.iter_num,
         device=device,
     )
-    train_imputer(
-        stgi_knn,
-        dataloader,
-        knn_edge_index,
-        knn_optim,
-        10,
-        args.iter_num,
-        device=device,
-    )
     imputed_data_geo = impute_missing_data(
-        stgi_geo, dataloader, geo_edge_index, args.iter_num, device
+        stgi, dataloader, edge_index, args.iter_num, device
     )
-    imputed_data_knn = impute_missing_data(
-        stgi_knn, dataloader, knn_edge_index, args.iter_num, device
-    )
-    # geo_optim = Adam(grin_geo.parameters(), lr=5e-4)
-    # knn_optim = Adam(grin_knn.parameters(), lr=5e-4)
-    # train_imputer(grin_geo, dataloader, geo_edge_index, geo_optim, 5)
-    # train_imputer(grin_knn, dataloader, knn_edge_index, knn_optim, 5)
-    # imputed_data_geo = impute_missing_data(grin_geo, dataloader, geo_edge_index)
-    # imputed_data_knn = impute_missing_data(grin_knn, dataloader, knn_edge_index)
 
     evaluate(
         imputed_data_geo.numpy(),
         dataset.data.numpy(),
         dataset.validation_mask.numpy(),
-    )
-    evaluate(
-        imputed_data_knn.numpy(), dataset.data.numpy(), dataset.validation_mask.numpy()
     )
 
 
