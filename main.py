@@ -182,6 +182,12 @@ def run(args: Namespace) -> None:
     ts2net = Ts2Net()
     if "loc" in graph_technique:
         adj_matrix = dataset.get_adjacency(threshold=param)
+    elif "zero" in graph_technique:
+        adj_matrix = dataset.get_adjacency(threshold=param)
+        adj_matrix = torch.zeros_like(adj_matrix)
+    elif "one" in graph_technique:
+        adj_matrix = dataset.get_adjacency(threshold=param)
+        adj_matrix = torch.ones_like(adj_matrix)
     else:
         adj_matrix = dataset.get_similarity_knn(k=param)
     edge_index, _ = dense_to_sparse(adj_matrix)
