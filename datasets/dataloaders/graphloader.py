@@ -36,6 +36,7 @@ class GraphLoader(Dataset, ABC):
         if new_data.device.type != "cpu":
             new_data = new_data.cpu()
 
+        new_data = new_data.clone()
         # Store old data ref for cleanup
         old_data = self.data
 

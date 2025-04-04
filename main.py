@@ -90,38 +90,50 @@ def train_imputer(
         for iter in range(num_iteration):
             iteration_imputed_data = []
             batch_losses = []
+
+            # create a collection to hold batch data references temporatily
+            batch_references = []
+
             for i, (batch_data, batch_mask) in enumerate(dataloader):
+                batch_references.append((batch_data.clone(), batch_mask.clone()))
+
                 optimizer.zero_grad()
-                imputed_data, batch_loss = model(
-                    x=batch_data.unsqueeze(2).to(device),
-                    edge_index=edge_index.to(device),
-                    mask=batch_mask.unsqueeze(2).to(device),
-                )
-                imputed_data = imputed_data.squeeze(-1)
+                with torch.set_grad_enabled(True):
+                    imputed_data, batch_loss = model(
+                        x=batch_data.unsqueeze(2).to(device),
+                        edge_index=edge_index.to(device),
+                        mask=batch_mask.unsqueeze(2).to(device),
+                    )
+                    imputed_data = imputed_data.squeeze(-1)
 
-                # replace the missing data in the batch with the imputed data
-                imputed_batch = batch_data.clone()
+                    batch_loss.backward()
+                    optimizer.step()
 
-                imputed_batch[~batch_mask] = imputed_data[~batch_mask]
-                iteration_imputed_data.append(batch_data.cpu())
+                with torch.no_grad():
+                    # replace the missing data in the batch with the imputed data
+                    imputed_batch = batch_data.clone()
+                    imputed_data = imputed_data.detach().cpu()
+                    mask_cpu = batch_mask.cpu()
+                    imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
+                    iteration_imputed_data.append(imputed_batch)
 
-                batch_losses.append(batch_loss.item())
+                    batch_losses.append(batch_loss.item())
 
-                batch_loss.backward()
-                optimizer.step()
+                print(f"Batch {i}/{nb_batches} loss: {batch_loss.item():.4e}", end="\r")
+                del batch_data, batch_mask, imputed_data, mask_cpu
 
-                print(f"Batch {i}/{nb_batches} loss: {batch_loss:.4e}", end="\r")
-
-                epoch_loss += batch_loss
-
-            iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)
+            with torch.no_grad():
+                iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)
             iter_loss = sum(batch_losses)
             epoch_loss += iter_loss
+            import gc
+
+            gc.collect()
             print(
                 f"Iteration {iter + 1}/{num_iteration} loss {iter_loss:.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss.item():.4e}",
             )
             dataset.update_data(iteration_imputed_data)
-            del iteration_imputed_data, batch_losses
+            del iteration_imputed_data, batch_losses, batch_references
         mean_loss = epoch_loss / (nb_batches * num_iteration)
         print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
 
