@@ -130,7 +130,7 @@ def train_imputer(
 
             gc.collect()
             print(
-                f"Iteration {iter + 1}/{num_iteration} loss {iter_loss:.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss.item():.4e}",
+                f"Iteration {iter + 1}/{num_iteration} loss {iter_loss:.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss:.4e}",
             )
             dataset.update_data(iteration_imputed_data)
             del iteration_imputed_data, batch_losses, batch_references
