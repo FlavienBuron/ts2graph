@@ -37,9 +37,9 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--graph_technique",
         "-g",
-        nargs="2",
+        nargs=2,
         help="which algorithm to use for graph completion e.g. 'KNN'",
-        # default=["knn", 3],
+        default=["knn", 3],
     )
     parser.add_argument("--")
     parser.add_argument(
