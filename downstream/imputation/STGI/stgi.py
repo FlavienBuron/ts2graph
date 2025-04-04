@@ -30,7 +30,7 @@ class STGI(nn.Module):
             out_dim,
             lstm_hidden_dim,
             num_layers,
-            batch_first=True,
+            # batch_first=True,
             bidirectional=True,
             proj_size=0,
         )
@@ -60,14 +60,14 @@ class STGI(nn.Module):
         # Stack to shape (time, nodes, out_dim)
         x = torch.stack(gnn_output, dim=0)
         # Reshape for LSTM: (nodes, time, features)
-        x = x.reshape(1, 0, 2)
+        # x = x.reshape(1, 0, 2)
 
         # Apply Bi-GRU for temporal modeling
         # Output shape: (num_nodes, time, lstm_hidden_dim * 2)
         x, _ = self.lstm(x)
 
         # Reshape back to (time, node, feature)
-        x = x.permute(1, 0, 2)
+        # x = x.permute(1, 0, 2)
 
         # Decode missing values
         # Shape: (batch_size, time_steps, num_nodes, feature_dim)
