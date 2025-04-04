@@ -22,8 +22,8 @@ class STGI(nn.Module):
 
         ModelClass = getattr(pyg_nn, model_type)
 
-        self.layer1 = ModelClass(in_dim, hidden_dim, **kwargs)
-        self.layer2 = ModelClass(hidden_dim, out_dim, **kwargs)
+        self.gnn1 = ModelClass(in_dim, hidden_dim, **kwargs)
+        self.gnn2 = ModelClass(hidden_dim, out_dim, **kwargs)
 
         # Temporal Bi-GRU
         self.lstm = nn.LSTM(
