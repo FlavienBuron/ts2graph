@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 from torch_geometric.utils import dense_to_sparse
 
 from datasets.dataloader import get_dataset
+from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.STGI import STGI
 from graphs_transformations.ts2net import Ts2Net
 
@@ -73,6 +74,7 @@ def graph_characteristics(adj):
 
 def train_imputer(
     model: nn.Module,
+    dataset: GraphLoader,
     dataloader: DataLoader,
     edge_index: torch.Tensor,
     optimizer: Optimizer,
@@ -96,32 +98,37 @@ def train_imputer(
                     mask=batch_mask.unsqueeze(2).to(device),
                 )
                 imputed_data = imputed_data.squeeze(-1)
+
                 # replace the missing data in the batch with the imputed data
                 imputed_batch = batch_data.clone()
+
                 imputed_batch[~batch_mask] = imputed_data[~batch_mask]
                 iteration_imputed_data.append(batch_data.cpu())
-                batch_losses.append(batch_loss.detach())
+
+                batch_losses.append(batch_loss.item())
+
                 batch_loss.backward()
                 optimizer.step()
+
                 print(f"Batch {i}/{nb_batches} loss: {batch_loss:.4e}", end="\r")
+
                 epoch_loss += batch_loss
+
             iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)
-            iter_loss = torch.stack(batch_losses).detach().sum().item()
+            iter_loss = sum(batch_losses)
             epoch_loss += iter_loss
-            # epoch_loss.backward()
-            # optimizer.step()
             print(
                 f"Iteration {iter + 1}/{num_iteration} loss {iter_loss:.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss.item():.4e}",
             )
-            dataloader.data = iteration_imputed_data
-            del iteration_imputed_data
-            del batch_losses
+            dataset.update_data(iteration_imputed_data)
+            del iteration_imputed_data, batch_losses
         mean_loss = epoch_loss / (nb_batches * num_iteration)
         print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
 
 
 def impute_missing_data(
     model: nn.Module,
+    dataset: GraphLoader,
     dataloader: DataLoader,
     edge_index: torch.Tensor,
     num_iteration: int,
@@ -139,9 +146,9 @@ def impute_missing_data(
                 )
                 imputed_batchs.append(imputed_batch.cpu().data)
             imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
-            dataloader.data = imputed_data
+            dataset.update_data(imputed_data)
             del imputed_data
-    return dataloader.data
+    return dataset.data
 
 
 def evaluate(
@@ -207,6 +214,7 @@ def run(args: Namespace) -> None:
     geo_optim = Adam(stgi.parameters(), lr=5e-4)
     train_imputer(
         stgi,
+        dataset,
         dataloader,
         edge_index,
         geo_optim,
@@ -215,7 +223,12 @@ def run(args: Namespace) -> None:
         device=device,
     )
     imputed_data_geo = impute_missing_data(
-        stgi, dataloader, edge_index, args.iter_num, device
+        stgi,
+        dataset,
+        dataloader,
+        edge_index,
+        args.iter_num,
+        device,
     )
 
     evaluate(
