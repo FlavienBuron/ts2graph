@@ -46,13 +46,12 @@ class STGI(nn.Module):
         edge_index: Graph edges (from adjacency matrix)
         mask: Binary mask (1 = observed, 0 = missing)
         """
-        print(f"{x.shape=}")
-        time_steps, num_nodes, feature_dim = x.shape
+        time_steps, nodes, features = x.shape
         ori_x = x.detach().clone()
-        x = x.reshape(-1, feature_dim)
+        x = x.reshape(-1, features)
         x = F.relu(self.layer1(x, edge_index))
         x = F.relu(self.layer2(x, edge_index))
-        x = x.reshape(time_steps, num_nodes, -1)
+        x = x.reshape(time_steps, nodes, -1)
 
         # Apply Bi-GRU for temporal modeling
         # Output shape: (batch_size, time_steps, num_nodes, lstm_hidden_dim * 2)
