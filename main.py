@@ -75,13 +75,15 @@ def graph_characteristics(adj):
 def train_imputer(
     model: nn.Module,
     dataset: GraphLoader,
-    dataloader: DataLoader,
     edge_index: torch.Tensor,
     optimizer: Optimizer,
     epochs: int = 5,
     num_iteration: int = 100,
     device: str = "cpu",
 ):
+    dataloader: DataLoader = dataset.get_dataloader(
+        use_corrupted_data=False, shuffle=False, batch_size=128
+    )
     nb_batches = len(dataloader)
     model.train()
 
@@ -135,20 +137,23 @@ def train_imputer(
             dataset.update_data(iteration_imputed_data)
             del iteration_imputed_data, batch_losses, batch_references
         mean_loss = epoch_loss / (nb_batches * num_iteration)
+        dataset.reset_current_data()
         print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
 
 
 def impute_missing_data(
     model: nn.Module,
     dataset: GraphLoader,
-    dataloader: DataLoader,
     edge_index: torch.Tensor,
     num_iteration: int,
     device: str,
 ):
+    dataloader: DataLoader = dataset.get_dataloader(
+        use_corrupted_data=False, shuffle=False, batch_size=128
+    )
     model.eval()
     with torch.no_grad():
-        for iter in range(num_iteration):
+        for _ in range(num_iteration):
             imputed_batchs = []
             for batch_data, batch_mask in dataloader:
                 imputed_batch, _ = model(
@@ -160,7 +165,7 @@ def impute_missing_data(
             imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
             dataset.update_data(imputed_data)
             del imputed_data
-    return dataset.data
+    return dataset.current_data
 
 
 def evaluate(
@@ -193,9 +198,6 @@ def run(args: Namespace) -> None:
     print(args)
     device = args.device
     dataset = get_dataset(args.dataset)
-    dataloader = dataset.get_dataloader(
-        use_missing_data=False, shuffle=False, batch_size=128
-    )
     graph_technique, param = args.graph_technique
     param = float(param)
     ts2net = Ts2Net()
@@ -228,7 +230,6 @@ def run(args: Namespace) -> None:
     train_imputer(
         stgi,
         dataset,
-        dataloader,
         edge_index,
         geo_optim,
         10,
@@ -238,16 +239,13 @@ def run(args: Namespace) -> None:
     imputed_data_geo = impute_missing_data(
         stgi,
         dataset,
-        dataloader,
         edge_index,
         args.iter_num,
         device,
     )
-    dataset = get_dataset(args.dataset)
-    dataset.get_dataloader(use_missing_data=False, shuffle=False, batch_size=128)
     evaluate(
         imputed_data_geo.numpy(),
-        dataset.data.numpy(),
+        dataset.original_data.numpy(),
         dataset.validation_mask.numpy(),
     )
 

@@ -8,8 +8,11 @@ from torch.utils.data import Dataset
 
 class GraphLoader(Dataset, ABC):
     def __init__(self) -> None:
-        self.data: torch.Tensor
-        self.missing_data: torch.Tensor
+        self.original_data: (
+            torch.Tensor
+        )  # The original data with/without missing values. Static
+        self.missing_data: torch.Tensor  # The original data with the missing values
+        self.current_data: torch.Tensor  # The working copy, used during training
         self.mask: torch.Tensor
         self.validation_mask: torch.Tensor
         self.distances = None
@@ -36,20 +39,15 @@ class GraphLoader(Dataset, ABC):
         if new_data.device.type != "cpu":
             new_data = new_data.cpu()
 
-        new_data = new_data.clone()
-        # Store old data ref for cleanup
-        old_data = self.data
-
-        self.data = new_data
-
-        del old_data
-
-        import gc
-
-        gc.collect()
+        # Only update missing values
+        self.current_data[~self.mask] = new_data[~self.mask]
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+    def reset_current_data(self) -> None:
+        """Reset the current data to the initial missing data state"""
+        self.current_data = self.missing_data.clone()
 
     @abstractmethod
     def corrupt(self, missing_type: str = "perc"):
@@ -65,7 +63,7 @@ class GraphLoader(Dataset, ABC):
 
     @abstractmethod
     def get_dataloader(
-        self, use_missing_data: bool, shuffle: bool, batch_size: int
+        self, use_corrupted_data: bool, shuffle: bool, batch_size: int
     ) -> Any:
         pass
 

@@ -23,24 +23,24 @@ class AirQualityLoader(GraphLoader):
         nan_method="mean",
     ):
         self.dataset_path = dataset_path
-        self.data, self.mask, self.distances = self.load(small=small)
-        self.missing_data = torch.empty_like(self.data)
+        self.original_data, self.mask, self.distances = self.load(small=small)
+        self.missing_data = torch.empty_like(self.original_data)
         if replace_nan:
             self._replace_nan(nan_method)
-        self.validation_mask = torch.zeros_like(self.data).bool()
-        self.corrupt_data = torch.empty_like(self.data)
-        self.corrupt_mask = torch.empty_like(self.data)
+        self.validation_mask = torch.zeros_like(self.original_data).bool()
+        self.corrupt_data = torch.empty_like(self.original_data)
+        self.corrupt_mask = torch.empty_like(self.original_data)
         self.use_corrupted_data = False
 
     def __len__(self) -> int:
-        return self.data.shape[0]
+        return self.original_data.shape[0]
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
         if self.use_corrupted_data:
             data = self.corrupt_data[index, :]
             mask = self.corrupt_mask[index, :]
         else:
-            data = self.missing_data[index, :]
+            data = self.current_data[index, :]
             mask = self.mask[index, :]
         return data, mask
 
@@ -66,12 +66,12 @@ class AirQualityLoader(GraphLoader):
 
     def split(self, validation_len: int, contiguous: bool, cols: List = None):
         if contiguous:
-            for row_start in range(self.data.shape[0] - validation_len + 1):
-                window = self.data[row_start : row_start + validation_len, :]
+            for row_start in range(self.original_data.shape[0] - validation_len + 1):
+                window = self.original_data[row_start : row_start + validation_len, :]
                 if torch.count_nonzero(window.isnan()).le(
-                    validation_len * self.data.shape[1] * 0.5
+                    validation_len * self.original_data.shape[1] * 0.5
                 ):
-                    val_mask = torch.zeros_like(self.data)
+                    val_mask = torch.zeros_like(self.original_data)
                     val_mask[row_start : row_start + validation_len, :] = True
                     val_mask[~self.mask] = False
                     self.validation_mask = val_mask.bool()
@@ -107,7 +107,7 @@ class AirQualityLoader(GraphLoader):
             data = self.corrupt_data.T
             mask = self.corrupt_mask.T
         else:
-            data = self.data.T
+            data = self.original_data.T
             mask = self.mask.T
         edge_index = from_knn(data=data, mask=mask, k=k)
         adj = to_dense_adj(edge_index).squeeze()
@@ -126,17 +126,20 @@ class AirQualityLoader(GraphLoader):
         return dist
 
     def get_dataloader(
-        self, use_missing_data: bool, shuffle: bool = False, batch_size: int = 8
+        self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
     ) -> DataLoader:
-        self.use_corrupted_data = use_missing_data
-        self.split(validation_len=self.data.shape[0] * 5 // 100, contiguous=True)
+        self.use_corrupted_data = use_corrupted_data
+        self.split(
+            validation_len=self.original_data.shape[0] * 5 // 100, contiguous=True
+        )
         # print(self.validation_mask)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
+        self.current_data = self.missing_data.clone()
         self.mask = self.mask & ~self.validation_mask
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
 
     def shape(self):
-        return self.data.shape
+        return self.original_data.shape
 
     def corrupt(self, missing_type="perc"):
         """
@@ -155,13 +158,13 @@ class AirQualityLoader(GraphLoader):
             pass
 
     def missing_percentage(self, missing_percent: int = 20):
-        data_length, _ = self.data.shape
+        data_length, _ = self.original_data.shape
         missing_start = data_length * 5 // 100
         missing_length = data_length * missing_percent // 100
-        missing_data = self.data
+        missing_data = self.original_data
         missing_data[missing_start : missing_start + missing_length, 0] = torch.nan
         mask = torch.ones_like(missing_data)
-        mask.masked_fill_(torch.isnan(self.data), 0.0)
+        mask.masked_fill_(torch.isnan(self.original_data), 0.0)
         self.corrupt_mask = mask
         missing_data.nan_to_num_(nan=0.0)
         self.corrupt_data = missing_data
@@ -191,11 +194,15 @@ class AirQualityLoader(GraphLoader):
     def _replace_nan(self, method="mean"):
         print("------------------ Replacing NaNs ------------------")
         if method == "mean":
-            if torch.isnan(self.data).any():
+            if torch.isnan(self.original_data).any():
                 # data.nan_to_num_(nan=0.0)
-                means = self.data.nanmean(dim=1).unsqueeze(1).expand_as(self.data)
+                means = (
+                    self.original_data.nanmean(dim=1)
+                    .unsqueeze(1)
+                    .expand_as(self.original_data)
+                )
                 # print(f"NaNs in means?: {torch.isnan(means).any()}")
                 means = means.nan_to_num(0.0)
-                self.missing_data = torch.where(self.mask, self.data, means)
+                self.missing_data = torch.where(self.mask, self.original_data, means)
         elif method == "zero":
-            self.missing_data = self.data.nan_to_num(nan=0.0)
+            self.missing_data = self.original_data.nan_to_num(nan=0.0)
