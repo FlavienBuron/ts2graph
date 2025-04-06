@@ -75,15 +75,13 @@ def graph_characteristics(adj):
 def train_imputer(
     model: nn.Module,
     dataset: GraphLoader,
+    dataloader: DataLoader,
     edge_index: torch.Tensor,
     optimizer: Optimizer,
     epochs: int = 5,
     num_iteration: int = 100,
     device: str = "cpu",
 ):
-    dataloader: DataLoader = dataset.get_dataloader(
-        use_corrupted_data=False, shuffle=False, batch_size=128
-    )
     nb_batches = len(dataloader)
     model.train()
 
@@ -144,13 +142,11 @@ def train_imputer(
 def impute_missing_data(
     model: nn.Module,
     dataset: GraphLoader,
+    dataloader: DataLoader,
     edge_index: torch.Tensor,
     num_iteration: int,
     device: str,
 ):
-    dataloader: DataLoader = dataset.get_dataloader(
-        use_corrupted_data=False, shuffle=False, batch_size=128
-    )
     model.eval()
     with torch.no_grad():
         for _ in range(num_iteration):
@@ -198,6 +194,9 @@ def run(args: Namespace) -> None:
     print(args)
     device = args.device
     dataset = get_dataset(args.dataset)
+    dataloader = dataset.get_dataloader(
+        use_corrupted_data=False, shuffle=False, batch_size=128
+    )
     graph_technique, param = args.graph_technique
     param = float(param)
     ts2net = Ts2Net()
@@ -230,6 +229,7 @@ def run(args: Namespace) -> None:
     train_imputer(
         stgi,
         dataset,
+        dataloader,
         edge_index,
         geo_optim,
         10,
@@ -239,6 +239,7 @@ def run(args: Namespace) -> None:
     imputed_data_geo = impute_missing_data(
         stgi,
         dataset,
+        dataloader,
         edge_index,
         args.iter_num,
         device,

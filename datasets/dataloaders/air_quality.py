@@ -75,11 +75,6 @@ class AirQualityLoader(GraphLoader):
                     val_mask[row_start : row_start + validation_len, :] = True
                     val_mask[~self.mask] = False
                     self.validation_mask = val_mask.bool()
-                    # print(
-                    #     self.validation_mask[
-                    #         row_start - 1 : row_start + validation_len, :
-                    #     ]
-                    # )
                     break
 
     def get_adjacency(
