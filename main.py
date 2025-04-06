@@ -243,6 +243,7 @@ def run(args: Namespace) -> None:
         device,
     )
     dataset = get_dataset(args.dataset)
+    dataset.get_dataloader(use_missing_data=False, shuffle=False, batch_size=128)
     evaluate(
         imputed_data_geo.numpy(),
         dataset.data.numpy(),
