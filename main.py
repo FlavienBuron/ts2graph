@@ -242,7 +242,7 @@ def run(args: Namespace) -> None:
         args.iter_num,
         device,
     )
-
+    dataset = get_dataset(args.dataset)
     evaluate(
         imputed_data_geo.numpy(),
         dataset.data.numpy(),
