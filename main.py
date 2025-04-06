@@ -197,7 +197,7 @@ def run(args: Namespace) -> None:
         use_missing_data=False, shuffle=False, batch_size=128
     )
     graph_technique, param = args.graph_technique
-    param = int(param)
+    param = float(param)
     ts2net = Ts2Net()
     if "loc" in graph_technique:
         adj_matrix = dataset.get_adjacency(threshold=param)
@@ -208,6 +208,7 @@ def run(args: Namespace) -> None:
         adj_matrix = dataset.get_adjacency(threshold=param)
         adj_matrix = torch.ones_like(adj_matrix)
     else:
+        param = int(param)
         adj_matrix = dataset.get_similarity_knn(k=param)
     edge_index, _ = dense_to_sparse(adj_matrix)
 
