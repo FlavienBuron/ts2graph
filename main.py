@@ -243,7 +243,8 @@ def run(args: Namespace) -> None:
         args.iter_num,
         device,
     )
-    print(f"{imputed_data_geo.shape=}")
+    print(f"{dataset.validation_mask.shape=}")
+    print(f"{dataset.original_data[dataset.validation_mask].shape=}")
     evaluate(
         imputed_data_geo.numpy(),
         dataset.original_data.numpy(),
