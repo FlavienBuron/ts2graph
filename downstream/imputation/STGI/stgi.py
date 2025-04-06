@@ -76,7 +76,7 @@ class STGI(nn.Module):
 
         # Decode missing values
         # Shape: (batch_size, time_steps, num_nodes, feature_dim)
-        imputed_x = self.decoder(x)
+        imputed_x = self.gnn_decoder(x)
 
         # Compute the batch MSE
         x_loss = torch.sum(mask * (imputed_x - ori_x) ** 2) / (torch.sum(mask) + 1e-8)
