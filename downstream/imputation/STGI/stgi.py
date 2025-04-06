@@ -40,6 +40,11 @@ class STGI(nn.Module):
             lstm_hidden_dim * 2, in_dim
         )  # *2 for bidirectional GRU
 
+        self.gnn_decoder = nn.Linear(
+            out_dim,
+            in_dim,
+        )
+
     def forward(self, x, edge_index, mask):
         """
         x: (batch_size, time_steps, num_nodes, feature_dim)
@@ -64,7 +69,7 @@ class STGI(nn.Module):
 
         # Apply Bi-GRU for temporal modeling
         # Output shape: (num_nodes, time, lstm_hidden_dim * 2)
-        x, _ = self.lstm(x)
+        # x, _ = self.lstm(x)
 
         # Reshape back to (time, node, feature)
         # x = x.permute(1, 0, 2)
