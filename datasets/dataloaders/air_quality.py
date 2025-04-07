@@ -125,7 +125,7 @@ class AirQualityLoader(GraphLoader):
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
         self.split(
-            validation_len=self.original_data.shape[0] * 5 // 100, contiguous=True
+            validation_len=self.original_data.shape[0] * 10 // 100, contiguous=True
         )
         # print(self.validation_mask)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
@@ -136,7 +136,7 @@ class AirQualityLoader(GraphLoader):
     def shape(self):
         return self.original_data.shape
 
-    def corrupt(self, missing_type="perc"):
+    def corrupt(self, missing_type="perc", missing_size=20):
         """
         Add missing data to the dataset according to the specified missing pattern
         Args:
@@ -148,7 +148,7 @@ class AirQualityLoader(GraphLoader):
             "the results compared to other studies using this dataset "
         )
         if missing_type == "perc":
-            self.missing_percentage()
+            self.missing_percentage(missing_size)
         else:
             pass
 
