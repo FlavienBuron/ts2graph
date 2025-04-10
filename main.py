@@ -56,6 +56,13 @@ def parse_args() -> Namespace:
         help="The GNN layer type to use e.g. GCNConv",
         default="GCNConv",
     )
+    parser.add_argument(
+        "--epochs",
+        "-e",
+        type=str,
+        help="The number of Epochs that the model shoud be trained on",
+        default=10,
+    )
     args = parser.parse_args()
     return args
 
@@ -233,7 +240,7 @@ def run(args: Namespace) -> None:
         dataloader,
         edge_index,
         geo_optim,
-        10,
+        args.epochs,
         args.iter_num,
         device=device,
     )
