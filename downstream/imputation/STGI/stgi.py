@@ -59,7 +59,7 @@ class STGI(nn.Module):
         for t in range(time_steps):
             x_t = x[t]
             x_t = F.relu(self.gnn1(x_t, edge_index))
-            x_t = F.relu(self.gnn2(x_t, edge_index))
+            # x_t = F.relu(self.gnn2(x_t, edge_index))
             gnn_output.append(x_t)
 
         # Stack to shape (time, nodes, out_dim)
@@ -76,7 +76,8 @@ class STGI(nn.Module):
 
         # Decode missing values
         # Shape: (batch_size, time_steps, num_nodes, feature_dim)
-        imputed_x = self.gnn_decoder(x)
+        # imputed_x = self.gnn_decoder(x)
+        imputed_x = x
 
         # Compute the batch MSE
         x_loss = torch.sum(mask * (imputed_x - ori_x) ** 2) / (torch.sum(mask) + 1e-8)

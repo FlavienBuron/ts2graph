@@ -241,7 +241,7 @@ def run(args: Namespace) -> None:
     stgi = STGI(
         in_dim=1,
         hidden_dim=args.hidden_dim,
-        out_dim=args.out_dim,
+        out_dim=1,
         lstm_hidden_dim=64,
         num_layers=2,
         model_type=args.layer,
