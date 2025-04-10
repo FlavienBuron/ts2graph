@@ -59,7 +59,7 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--epochs",
         "-e",
-        type=str,
+        type=int,
         help="The number of Epochs that the model shoud be trained on",
         default=10,
     )
