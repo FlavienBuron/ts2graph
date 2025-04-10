@@ -63,7 +63,7 @@ class STGI(nn.Module):
             gnn_output.append(x_t)
 
         # Stack to shape (time, nodes, out_dim)
-        x = torch.stack(gnn_output, dim=0)
+        x = torch.stack(gnn_output, dim=1)
         # Reshape for LSTM: (nodes, time, features)
         # x = x.reshape(1, 0, 2)
 
