@@ -65,7 +65,7 @@ def parse_args() -> Namespace:
     )
     parser.add_argument(
         "--hidden_dim",
-        "-h",
+        "-hd",
         type=int,
         help="The size of the hidden dimension of the GNN",
         default=32,
