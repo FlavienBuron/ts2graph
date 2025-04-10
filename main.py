@@ -63,6 +63,21 @@ def parse_args() -> Namespace:
         help="The number of Epochs that the model shoud be trained on",
         default=10,
     )
+    parser.add_argument(
+        "--hidden_dim",
+        "-h",
+        type=int,
+        help="The size of the hidden dimension of the GNN",
+        default=32,
+    )
+    parser.add_argument(
+        "--out_dim",
+        "-o",
+        type=int,
+        help="The dimension of the output of the GNN layers",
+        default=16,
+    )
+
     args = parser.parse_args()
     return args
 
@@ -225,8 +240,8 @@ def run(args: Namespace) -> None:
 
     stgi = STGI(
         in_dim=1,
-        hidden_dim=32,
-        out_dim=16,
+        hidden_dim=args.hidden_dim,
+        out_dim=args.out_dim,
         lstm_hidden_dim=64,
         num_layers=2,
         model_type=args.layer,
