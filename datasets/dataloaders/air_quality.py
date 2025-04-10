@@ -125,7 +125,7 @@ class AirQualityLoader(GraphLoader):
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
         self.split(
-            validation_len=self.original_data.shape[0] * 10 // 100, contiguous=True
+            validation_len=self.original_data.shape[0] * 50 // 100, contiguous=True
         )
         # print(self.validation_mask)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
