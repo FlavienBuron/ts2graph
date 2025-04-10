@@ -196,7 +196,7 @@ def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
     # dataset.corrupt(missing_type="perc", missing_size=50)
     dataloader = dataset.get_dataloader(
-        use_corrupted_data=True, shuffle=False, batch_size=128
+        use_corrupted_data=False, shuffle=False, batch_size=128
     )
     graph_technique, param = args.graph_technique
     param = float(param)
