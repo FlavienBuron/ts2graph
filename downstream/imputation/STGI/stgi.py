@@ -59,7 +59,8 @@ class STGI(nn.Module):
         for t in range(time_steps):
             x_t = x[t]
             x_t = F.relu(self.gnn1(x_t, edge_index))
-            x_t = F.relu(self.gnn2(x_t, edge_index))
+            # x_t = F.relu(self.gnn2(x_t, edge_index))
+            x_t = self.gnn2(x_t, edge_index)
             gnn_output.append(x_t)
 
         # Stack to shape (time, nodes, out_dim)
