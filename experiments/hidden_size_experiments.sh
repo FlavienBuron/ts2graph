@@ -2,7 +2,7 @@
 
 # Get current date in YYMMDD format
 DATE=$(date +%y%m%d)
-LOGFILE="${DATE}-experiments.txt"
+LOGFILE="${DATE}-hs-experiments.txt"
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
