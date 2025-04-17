@@ -1,4 +1,3 @@
-run() {
     . .venv/bin/activate
 
     # Get current date in YYMMDD format
@@ -32,4 +31,3 @@ run() {
     python -u main.py -d air -g one 1 -i 1 -e 10 -hd 64 -o 16 | tee -a "$LOGFILE"
     python -u main.py -d air -g loc 0.5 -i 1 -e 10 -hd 64 -o 16 | tee -a "$LOGFILE"
     python -u main.py -d air -g knn 100 -i 1 -e 10 -hd 64 -o 16 | tee -a "$LOGFILE"
-}
