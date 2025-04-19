@@ -23,8 +23,8 @@ class STGI(nn.Module):
         ModelClass = getattr(pyg_nn, model_type)
 
         self.gnn1 = ModelClass(in_dim, hidden_dim, **kwargs)
-        self.gnn3 = ModelClass(hidden_dim, hidden_dim * 2, **kwargs)
-        self.gnn2 = ModelClass(hidden_dim * 2, out_dim, **kwargs)
+        self.gnn3 = ModelClass(hidden_dim, hidden_dim, **kwargs)
+        self.gnn2 = ModelClass(hidden_dim, in_dim, **kwargs)
 
         # Temporal Bi-GRU
         self.lstm = nn.LSTM(
@@ -61,7 +61,7 @@ class STGI(nn.Module):
             x_t = x[t]
             x_t = F.relu(self.gnn1(x_t, edge_index))
             x_t = F.relu(self.gnn3(x_t, edge_index))
-            x_t = F.relu(self.gnn2(x_t, edge_index))
+            x_t = self.gnn2(x_t, edge_index)
             gnn_output.append(x_t)
 
         # Stack to shape (time, nodes, out_dim)
@@ -78,7 +78,8 @@ class STGI(nn.Module):
 
         # Decode missing values
         # Shape: (batch_size, time_steps, num_nodes, feature_dim)
-        imputed_x = self.gnn_decoder(x)
+        # imputed_x = self.gnn_decoder(x)
+        imputed_x = x
 
         # Compute the batch MSE
         x_loss = torch.sum(mask * (imputed_x - ori_x) ** 2) / (torch.sum(mask) + 1e-8)
