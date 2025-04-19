@@ -271,6 +271,7 @@ def run(args: Namespace) -> None:
         args.epochs,
         args.iter_num,
         device=device,
+        verbose=args.verbose,
     )
     imputed_data_geo = impute_missing_data(
         stgi,
