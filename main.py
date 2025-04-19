@@ -77,6 +77,13 @@ def parse_args() -> Namespace:
         help="The dimension of the output of the GNN layers",
         default=16,
     )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        type=int,
+        help="Should the training intermediate results be printed",
+        default=1,
+    )
 
     args = parser.parse_args()
     return args
@@ -103,6 +110,7 @@ def train_imputer(
     epochs: int = 5,
     num_iteration: int = 100,
     device: str = "cpu",
+    verbose: bool = True,
 ):
     nb_batches = len(dataloader)
     model.train()
@@ -140,8 +148,11 @@ def train_imputer(
                     iteration_imputed_data.append(imputed_batch)
 
                     batch_losses.append(batch_loss.item())
-
-                print(f"Batch {i}/{nb_batches} loss: {batch_loss.item():.4e}", end="\r")
+                if verbose:
+                    print(
+                        f"Batch {i}/{nb_batches} loss: {batch_loss.item():.4e}",
+                        end="\r",
+                    )
                 del batch_data, batch_mask, imputed_data, mask_cpu
 
             with torch.no_grad():
@@ -151,14 +162,16 @@ def train_imputer(
             import gc
 
             gc.collect()
-            print(
-                f"Iteration {iter + 1}/{num_iteration} loss {iter_loss:.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss:.4e}",
-            )
+            if verbose:
+                print(
+                    f"Iteration {iter + 1}/{num_iteration} loss {iter_loss:.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss:.4e}",
+                )
             dataset.update_data(iteration_imputed_data)
             del iteration_imputed_data, batch_losses, batch_references
         mean_loss = epoch_loss / (nb_batches * num_iteration)
         dataset.reset_current_data()
-        print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
+        if verbose:
+            print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
 
 
 def impute_missing_data(
