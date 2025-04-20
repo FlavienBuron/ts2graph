@@ -62,7 +62,6 @@ class STGI(nn.Module):
             x_t = x[t]
             x_t = F.relu(self.gnn1(x_t, edge_index))
             x_t = F.relu(self.gnn3(x_t, edge_index))
-            x_t = F.relu(self.gnn4(x_t, edge_index))
             x_t = self.gnn2(x_t, edge_index)
             gnn_output.append(x_t)
 
@@ -77,7 +76,10 @@ class STGI(nn.Module):
 
         # Reshape back to (time, node, feature)
         # x = x.permute(1, 0, 2)
+        x = x.reshape((-1, features))
 
+        x = self.gnn4(x, edge_index)
+        x = x.reshape((time_steps, nodes, features))
         # Decode missing values
         # Shape: (batch_size, time_steps, num_nodes, feature_dim)
         # imputed_x = self.gnn_decoder(x)
