@@ -23,8 +23,8 @@ class STGI(nn.Module):
         ModelClass = getattr(pyg_nn, model_type)
 
         self.gnn1 = ModelClass(in_dim, hidden_dim, **kwargs)
-        self.gnn3 = ModelClass(hidden_dim, hidden_dim, **kwargs)
-        self.gnn2 = ModelClass(hidden_dim, in_dim, **kwargs)
+        self.gnn2 = ModelClass(hidden_dim, hidden_dim*2, **kwargs)
+        self.gnn3 = ModelClass(hidden_dim*2, in_dim, **kwargs)
 
         # Temporal Bi-GRU
         self.lstm = nn.LSTM(
@@ -59,9 +59,11 @@ class STGI(nn.Module):
 
         for t in range(time_steps):
             x_t = x[t]
+            x_res = x_t
             x_t = F.leaky_relu(self.gnn1(x_t, edge_index))
-            x_t = F.leaky_relu(self.gnn3(x_t, edge_index))
-            x_t = self.gnn2(x_t, edge_index)
+            x_t = F.leaky_relu(self.gnn2(x_t, edge_index))
+            x_t = self.gnn3(x_t, edge_index)
+            x_t += x_res # Add residual connection
             gnn_output.append(x_t)
 
         # Stack to shape (time, nodes, out_dim)
