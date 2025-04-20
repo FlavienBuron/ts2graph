@@ -24,8 +24,8 @@ class STGI(nn.Module):
 
         self.gnn1 = ModelClass(in_dim, hidden_dim, **kwargs)
         self.gnn3 = ModelClass(hidden_dim, hidden_dim, **kwargs)
-        self.gnn4 = ModelClass(hidden_dim, hidden_dim, **kwargs)
-        self.gnn2 = ModelClass(hidden_dim, in_dim, **kwargs)
+        self.gnn2 = ModelClass(hidden_dim, out_dim, **kwargs)
+        self.gnn4 = ModelClass(out_dim, in_dim, **kwargs)
 
         # Temporal Bi-GRU
         self.lstm = nn.LSTM(
