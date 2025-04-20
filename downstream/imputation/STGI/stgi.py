@@ -24,6 +24,7 @@ class STGI(nn.Module):
 
         self.gnn1 = ModelClass(in_dim, hidden_dim, **kwargs)
         self.gnn3 = ModelClass(hidden_dim, hidden_dim, **kwargs)
+        self.gnn4 = ModelClass(hidden_dim, hidden_dim, **kwargs)
         self.gnn2 = ModelClass(hidden_dim, in_dim, **kwargs)
 
         # Temporal Bi-GRU
@@ -61,6 +62,7 @@ class STGI(nn.Module):
             x_t = x[t]
             x_t = F.relu(self.gnn1(x_t, edge_index))
             x_t = F.relu(self.gnn3(x_t, edge_index))
+            x_t = F.relu(self.gnn4(x_t, edge_index))
             x_t = self.gnn2(x_t, edge_index)
             gnn_output.append(x_t)
 
