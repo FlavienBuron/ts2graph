@@ -19,6 +19,10 @@ from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.STGI import STGI
 from graphs_transformations.ts2net import Ts2Net
+from graphs_transformations.utils import (
+    compute_edge_difference_smoothness,
+    compute_laplacian_smoothness,
+)
 
 random.seed(42)
 np.random.seed(42)
@@ -137,12 +141,26 @@ def train_imputer(
 
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
+                    before_ls = compute_laplacian_smoothness(
+                        batch_data.detach(), edge_index
+                    )
+                    before_eds = compute_edge_difference_smoothness(
+                        batch_data.detach(), edge_index
+                    )
+
                     imputed_data, batch_loss = model(
                         x=batch_data.unsqueeze(2).to(device),
                         edge_index=edge_index.to(device),
                         mask=batch_mask.unsqueeze(2).to(device),
                     )
                     imputed_data = imputed_data.squeeze(-1)
+
+                    after_ls = compute_laplacian_smoothness(
+                        batch_data.detach(), edge_index
+                    )
+                    after_eds = compute_edge_difference_smoothness(
+                        batch_data.detach(), edge_index
+                    )
 
                     batch_loss.backward()
                     optimizer.step()
@@ -161,6 +179,10 @@ def train_imputer(
                         f"Batch {i}/{nb_batches} loss: {batch_loss.item():.4e}",
                         end="\r",
                     )
+                print(f"Laplacian smootheness: before {before_ls}, after {after_ls}")
+                print(
+                    f"Edge Difference smoothness: before {before_eds}, after {after_eds}"
+                )
                 del batch_data, batch_mask, imputed_data, mask_cpu
 
             with torch.no_grad():
