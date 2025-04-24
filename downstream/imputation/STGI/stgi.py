@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch_geometric.nn as pyg_nn
 
 
@@ -58,9 +59,8 @@ class STGI(nn.Module):
 
         for t in range(time_steps):
             x_t = x[t]
-            x_res = x_t
-            x_t = self.gnn1(x_t, edge_index)
-            x_t = self.gnn2(x_t, edge_index)
+            x_t = F.gelu(self.gnn1(x_t, edge_index))
+            x_t = F.gelu(self.gnn2(x_t, edge_index))
             x_t = self.gnn3(x_t, edge_index)
             gnn_output.append(x_t)
 
