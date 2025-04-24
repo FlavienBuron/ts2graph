@@ -9,8 +9,6 @@ class STGI(nn.Module):
         self,
         in_dim,
         hidden_dim,
-        out_dim,
-        lstm_hidden_dim,
         num_layers,
         model_type: str = "GCNConv",
         **kwargs,
@@ -22,29 +20,15 @@ class STGI(nn.Module):
 
         ModelClass = getattr(pyg_nn, model_type)
 
-        self.gnn1 = ModelClass(in_dim, hidden_dim, **kwargs)
-        self.gnn2 = ModelClass(hidden_dim, hidden_dim * 2, **kwargs)
-        self.gnn3 = ModelClass(hidden_dim * 2, in_dim, **kwargs)
+        self.gnn_layers = nn.ModuleList()
 
-        # Temporal Bi-GRU
-        self.lstm = nn.LSTM(
-            out_dim,
-            lstm_hidden_dim,
-            num_layers,
-            # batch_first=True,
-            bidirectional=True,
-            proj_size=0,
-        )
-
-        # Decoder (MLP for imputation)
-        self.decoder = nn.Linear(
-            lstm_hidden_dim * 2, in_dim
-        )  # *2 for bidirectional GRU
-
-        self.gnn_decoder = nn.Linear(
-            out_dim,
-            in_dim,
-        )
+        if num_layers == 1:
+            self.gnn_layers.append(ModelClass(in_dim, in_dim, **kwargs))
+        else:
+            self.gnn_layers.append(ModelClass(in_dim, hidden_dim, **kwargs))
+            for _ in range(num_layers - 2):
+                self.gnn_layers.append(ModelClass(hidden_dim, hidden_dim, **kwargs))
+            self.gnn_layers.append(ModelClass(hidden_dim, in_dim, **kwargs))
 
     def forward(self, x, edge_index, mask):
         """
@@ -52,33 +36,21 @@ class STGI(nn.Module):
         edge_index: Graph edges (from adjacency matrix)
         mask: Binary mask (1 = observed, 0 = missing)
         """
-        time_steps, nodes, features = x.shape
+        time_steps, nodes, _ = x.shape
         ori_x = x.detach().clone()
 
         gnn_output = []
 
         for t in range(time_steps):
             x_t = x[t]
-            x_t = F.gelu(self.gnn1(x_t, edge_index))
-            x_t = F.gelu(self.gnn2(x_t, edge_index))
-            x_t = self.gnn3(x_t, edge_index)
+            for i, gnn in enumerate(self.gnn_layers):
+                x_t = gnn(x_t, edge_index)
+                if i < len(self.gnn_layers) - 1:
+                    x_t = F.gelu(x_t)
             gnn_output.append(x_t)
 
         # Stack to shape (time, nodes, out_dim)
         x = torch.stack(gnn_output, dim=0)
-        # Reshape for LSTM: (nodes, time, features)
-        # x = x.reshape(1, 0, 2)
-
-        # Apply Bi-GRU for temporal modeling
-        # Output shape: (num_nodes, time, lstm_hidden_dim * 2)
-        # x, _ = self.lstm(x)
-
-        # Reshape back to (time, node, feature)
-        # x = x.permute(1, 0, 2)
-
-        # Decode missing values
-        # Shape: (batch_size, time_steps, num_nodes, feature_dim)
-        # imputed_x = self.gnn_decoder(x)
         imputed_x = x
 
         # Compute the batch MSE
