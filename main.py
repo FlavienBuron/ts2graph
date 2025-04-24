@@ -1,3 +1,4 @@
+import random
 from argparse import ArgumentParser, Namespace
 
 import networkx as nx
@@ -18,6 +19,13 @@ from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.STGI import STGI
 from graphs_transformations.ts2net import Ts2Net
+
+random.seed(42)
+np.random.seed(42)
+torch.manual_seed(42)
+import os
+
+os.environ["PYTHONHASHSEED"] = str(42)
 
 
 def parse_args() -> Namespace:
