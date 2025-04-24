@@ -47,7 +47,7 @@ def parse_args() -> Namespace:
         "-i",
         type=int,
         help="The number of iteration from the model pass",
-        default=2,
+        default=1,
     )
     parser.add_argument(
         "--layer_type",
