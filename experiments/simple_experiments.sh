@@ -3,8 +3,10 @@
     # Get current date in YYMMDD format
     DATE=$(date +%y%m%d)
     LOGFILE="./experiments/results/${DATE}-simple-experiments.txt"
+    COMMIT_MSG=$(git log -1 --pretty=%B)
 
     echo "Running experiments on $DATE" >> "$LOGFILE"
+    echo "Last commit: $COMMIT_MSG" >> "$LOGFILE"
 
     # Test the impact of hidden layer size
 
