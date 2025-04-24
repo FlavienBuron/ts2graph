@@ -50,11 +50,18 @@ def parse_args() -> Namespace:
         default=2,
     )
     parser.add_argument(
-        "--layer",
+        "--layer_type",
         "-l",
         type=str,
         help="The GNN layer type to use e.g. GCNConv",
         default="GCNConv",
+    )
+    parser.add_argument(
+        "--layer_num",
+        "-ln",
+        type=int,
+        help="The GNN depth",
+        default=1,
     )
     parser.add_argument(
         "--epochs",
@@ -69,13 +76,6 @@ def parse_args() -> Namespace:
         type=int,
         help="The size of the hidden dimension of the GNN",
         default=32,
-    )
-    parser.add_argument(
-        "--out_dim",
-        "-o",
-        type=int,
-        help="The dimension of the output of the GNN layers",
-        default=16,
     )
     parser.add_argument(
         "--verbose",
@@ -254,9 +254,8 @@ def run(args: Namespace) -> None:
     stgi = STGI(
         in_dim=1,
         hidden_dim=args.hidden_dim,
-        lstm_hidden_dim=64,
-        num_layers=1,
-        model_type=args.layer,
+        num_layers=args.layer_num,
+        model_type=args.layer_type,
     )
 
     stgi.to(device)
