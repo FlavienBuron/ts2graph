@@ -125,10 +125,15 @@ def train_imputer(
     verbose: bool = True,
 ):
     nb_batches = len(dataloader)
+    batch_size = dataloader.batch_size
     model.train()
 
     for epoch in range(epochs):
         epoch_loss = 0.0
+        sum_ls_before = 0.0
+        sum_ls_after = 0.0
+        sum_eds_before = 0.0
+        sum_eds_after = 0.0
         for iter in range(num_iteration):
             iteration_imputed_data = []
             batch_losses = []
@@ -141,10 +146,10 @@ def train_imputer(
 
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
-                    before_ls = compute_laplacian_smoothness(
+                    sum_ls_before += compute_laplacian_smoothness(
                         batch_data.detach(), edge_index
                     )
-                    before_eds = compute_edge_difference_smoothness(
+                    sum_eds_before += compute_edge_difference_smoothness(
                         batch_data.detach(), edge_index
                     )
 
@@ -155,11 +160,11 @@ def train_imputer(
                     )
                     imputed_data = imputed_data.squeeze(-1)
 
-                    after_ls = compute_laplacian_smoothness(
-                        batch_data.detach(), edge_index
+                    sum_ls_after += compute_laplacian_smoothness(
+                        imputed_data.detach(), edge_index
                     )
-                    after_eds = compute_edge_difference_smoothness(
-                        batch_data.detach(), edge_index
+                    sum_eds_after += compute_edge_difference_smoothness(
+                        imputed_data.detach(), edge_index
                     )
 
                     batch_loss.backward()
@@ -179,10 +184,6 @@ def train_imputer(
                         f"Batch {i}/{nb_batches} loss: {batch_loss.item():.4e}",
                         end="\r",
                     )
-                print(f"Laplacian smootheness: before {before_ls}, after {after_ls}")
-                print(
-                    f"Edge Difference smoothness: before {before_eds}, after {after_eds}"
-                )
                 del batch_data, batch_mask, imputed_data, mask_cpu
 
             with torch.no_grad():
@@ -202,6 +203,12 @@ def train_imputer(
         dataset.reset_current_data()
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
+        print(
+            f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches)}, after {sum_ls_after / (batch_size * nb_batches)}"
+        )
+        print(
+            f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches)}, after {sum_eds_after / (batch_size * nb_batches)}"
+        )
 
 
 def impute_missing_data(

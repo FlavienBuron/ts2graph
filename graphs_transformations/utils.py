@@ -13,7 +13,7 @@ def compute_laplacian_smoothness(x, edge_index):
     smoothness = torch.bmm(
         torch.bmm(x_reshaped, laplacian_expanded), x_reshaped.transpose(1, 2)
     ).squeeze()
-    return smoothness.mean()
+    return smoothness.sum().item()
 
 
 def compute_edge_difference_smoothness(x, edge_index, edge_weigth=None):
@@ -28,4 +28,4 @@ def compute_edge_difference_smoothness(x, edge_index, edge_weigth=None):
         smoothness = weighted_sq_diff.sum(dim=1)
     else:
         smoothness = sq_diff.sum(dim=1)
-    return smoothness
+    return smoothness.sum().item()
