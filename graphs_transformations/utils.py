@@ -8,7 +8,6 @@ def compute_laplacian_smoothness(x, edge_index):
     laplacian = to_dense_adj(
         lap_edge_index, edge_attr=lap_edge_weight, max_num_nodes=nodes
     )[0]
-    print(f"{laplacian.shape=} {x.shape=}")
     x_reshaped = x.unsqueeze(1)
     laplacian_expanded = laplacian.unsqueeze(0).expand(batch_size, -1, -1)
     smoothness = torch.bmm(
