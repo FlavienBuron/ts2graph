@@ -147,7 +147,7 @@ def train_imputer(
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
                     sum_ls_before += compute_laplacian_smoothness(
-                        batch_data.detach(), edge_index
+                        batch_data.detach(), edge_index, debug=True
                     )
                     sum_eds_before += compute_edge_difference_smoothness(
                         batch_data.detach(), edge_index
@@ -161,7 +161,7 @@ def train_imputer(
                     imputed_data = imputed_data.squeeze(-1)
 
                     sum_ls_after += compute_laplacian_smoothness(
-                        imputed_data.detach(), edge_index
+                        imputed_data.detach(), edge_index, debug=True
                     )
                     sum_eds_after += compute_edge_difference_smoothness(
                         imputed_data.detach(), edge_index
