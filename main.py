@@ -249,10 +249,10 @@ def impute_missing_data(
                 )
                 imputed_batchs.append(imputed_batch.cpu().data)
                 sum_ls_after += compute_laplacian_smoothness(
-                    imputed_batch, edge_index, edge_weight
+                    imputed_batch.squeeze(-1), edge_index, edge_weight
                 )
                 sum_eds_after += compute_edge_difference_smoothness(
-                    imputed_batch, edge_index, edge_weight
+                    imputed_batch.squeeze(-1), edge_index, edge_weight
                 )
             imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
             dataset.update_data(imputed_data)
