@@ -2,12 +2,27 @@ import torch
 from torch_geometric.utils import get_laplacian, to_dense_adj
 
 
-def compute_laplacian_smoothness(x, edge_index):
+def compute_laplacian_smoothness(x, edge_index, debug=False):
     batch_size, nodes = x.shape
     lap_edge_index, lap_edge_weight = get_laplacian(edge_index, normalization="sym")
     laplacian = to_dense_adj(
         lap_edge_index, edge_attr=lap_edge_weight, max_num_nodes=nodes
     ).squeeze(0)
+
+    if debug:
+        # Check if Laplacian is symmetric
+        is_symmetric = torch.allclose(laplacian, laplacian.t(), atol=1e-6)
+        print(f"Laplacian is symmetric: {is_symmetric}")
+
+        # Check eigenvalues to verify positive semi-definiteness
+        try:
+            eigenvalues = torch.linalg.eigvalsh(laplacian)
+            min_eig = eigenvalues.min().item()
+            max_eig = eigenvalues.max().item()
+            print(f"Eigenvalue range: [{min_eig:.6f}, {max_eig:.6f}]")
+            print(f"Any negative eigenvalues: {(eigenvalues < -1e-6).any().item()}")
+        except Exception as e:
+            print(f"Error computing eigenvalues: {e}")
     x_reshaped = x.unsqueeze(1)
     laplacian_expanded = laplacian.unsqueeze(0).expand(batch_size, -1, -1)
     smoothness = torch.bmm(
