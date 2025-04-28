@@ -118,6 +118,7 @@ def train_imputer(
     dataset: GraphLoader,
     dataloader: DataLoader,
     edge_index: torch.Tensor,
+    edge_weight: torch.Tensor,
     optimizer: Optimizer,
     epochs: int = 5,
     num_iteration: int = 100,
@@ -125,7 +126,7 @@ def train_imputer(
     verbose: bool = True,
 ):
     nb_batches = len(dataloader)
-    batch_size = dataloader.batch_size
+    batch_size = dataloader.batch_size if dataloader.batch_size else 1
     model.train()
 
     for epoch in range(epochs):
@@ -147,24 +148,27 @@ def train_imputer(
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
                     sum_ls_before += compute_laplacian_smoothness(
-                        batch_data.detach(), edge_index, debug=True
+                        batch_data.detach(), edge_index, edge_weight, debug=True
                     )
                     sum_eds_before += compute_edge_difference_smoothness(
-                        batch_data.detach(), edge_index
+                        batch_data.detach(),
+                        edge_index,
+                        edge_weight,
                     )
 
                     imputed_data, batch_loss = model(
                         x=batch_data.unsqueeze(2).to(device),
                         edge_index=edge_index.to(device),
+                        edge_weight=edge_weight.to(device),
                         mask=batch_mask.unsqueeze(2).to(device),
                     )
                     imputed_data = imputed_data.squeeze(-1)
 
                     sum_ls_after += compute_laplacian_smoothness(
-                        imputed_data.detach(), edge_index, debug=True
+                        imputed_data.detach(), edge_index, edge_weight, debug=True
                     )
                     sum_eds_after += compute_edge_difference_smoothness(
-                        imputed_data.detach(), edge_index
+                        imputed_data.detach(), edge_index, edge_weight
                     )
 
                     batch_loss.backward()
@@ -204,10 +208,10 @@ def train_imputer(
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
         print(
-            f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches)}, after {sum_ls_after / (batch_size * nb_batches)}"
+            f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
         )
         print(
-            f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches)}, after {sum_eds_after / (batch_size * nb_batches)}"
+            f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
         )
 
 
@@ -216,23 +220,50 @@ def impute_missing_data(
     dataset: GraphLoader,
     dataloader: DataLoader,
     edge_index: torch.Tensor,
+    edge_weight: torch.Tensor,
     num_iteration: int,
     device: str,
 ):
     model.eval()
     with torch.no_grad():
+        sum_ls_before = 0.0
+        sum_ls_after = 0.0
+        sum_eds_before = 0.0
+        sum_eds_after = 0.0
+        batch_size = dataloader.batch_size if dataloader.batch_size else 1
+        nb_batches = len(dataloader)
         for _ in range(num_iteration):
             imputed_batchs = []
             for batch_data, batch_mask in dataloader:
+                sum_ls_before += compute_laplacian_smoothness(
+                    batch_data, edge_index, edge_weight
+                )
+                sum_eds_before += compute_edge_difference_smoothness(
+                    batch_data, edge_index, edge_weight
+                )
                 imputed_batch, _ = model(
                     batch_data.unsqueeze(2).to(device),
                     edge_index.to(device),
+                    edge_weight.to(device),
                     batch_mask.unsqueeze(2).to(device),
                 )
                 imputed_batchs.append(imputed_batch.cpu().data)
+                sum_ls_after += compute_laplacian_smoothness(
+                    imputed_batch, edge_index, edge_weight
+                )
+                sum_eds_after += compute_edge_difference_smoothness(
+                    imputed_batch, edge_index, edge_weight
+                )
             imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
             dataset.update_data(imputed_data)
             del imputed_data
+        print(
+            f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
+        )
+        print(
+            f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
+        )
+
     return dataset.current_data
 
 
@@ -284,7 +315,7 @@ def run(args: Namespace) -> None:
     else:
         param = int(param)
         adj_matrix = dataset.get_similarity_knn(k=param)
-    edge_index, _ = dense_to_sparse(adj_matrix)
+    edge_index, edge_weight = dense_to_sparse(adj_matrix)
 
     graph_characteristics(adj_matrix)
 
@@ -302,22 +333,24 @@ def run(args: Namespace) -> None:
         dataset,
         dataloader,
         edge_index,
+        edge_weight,
         geo_optim,
         args.epochs,
         args.iter_num,
         device=device,
         verbose=args.verbose,
     )
-    imputed_data_geo = impute_missing_data(
+    imputed_data = impute_missing_data(
         stgi,
         dataset,
         dataloader,
         edge_index,
+        edge_weight,
         args.iter_num,
         device,
     )
     evaluate(
-        imputed_data_geo.numpy(),
+        imputed_data.numpy(),
         dataset.original_data.numpy(),
         dataset.validation_mask.numpy(),
     )

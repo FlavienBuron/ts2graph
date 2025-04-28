@@ -2,12 +2,17 @@ import torch
 from torch_geometric.utils import get_laplacian, to_dense_adj
 
 
-def compute_laplacian_smoothness(x, edge_index, debug=False):
+def compute_laplacian_smoothness(x, edge_index, edge_weight=None, debug=False):
     batch_size, nodes = x.shape
-    lap_edge_index, lap_edge_weight = get_laplacian(edge_index, normalization="sym")
+    lap_edge_index, lap_edge_weight = get_laplacian(
+        edge_index, edge_weight, normalization="sym"
+    )
     laplacian = to_dense_adj(
         lap_edge_index, edge_attr=lap_edge_weight, max_num_nodes=nodes
     ).squeeze(0)
+
+    # FIX: Force symmetry and positive semi-definiteness
+    laplacian = 0.5 * (laplacian + laplacian.t())  # Ensure symmetry
 
     if debug:
         # Check if Laplacian is symmetric
@@ -31,15 +36,15 @@ def compute_laplacian_smoothness(x, edge_index, debug=False):
     return smoothness.sum().item()
 
 
-def compute_edge_difference_smoothness(x, edge_index, edge_weigth=None):
+def compute_edge_difference_smoothness(x, edge_index, edge_weight=None):
     row, col = edge_index
     x_row = x[:, row]
     x_col = x[:, col]
     diff = x_row - x_col
     sq_diff = diff**2
-    if edge_weigth is not None:
-        edge_weigth_expanded = edge_weigth.unsqueeze(0)
-        weighted_sq_diff = sq_diff * edge_weigth_expanded
+    if edge_weight is not None:
+        edge_weight_expanded = edge_weight.unsqueeze(0)
+        weighted_sq_diff = sq_diff * edge_weight_expanded
         smoothness = weighted_sq_diff.sum(dim=1)
     else:
         smoothness = sq_diff.sum(dim=1)

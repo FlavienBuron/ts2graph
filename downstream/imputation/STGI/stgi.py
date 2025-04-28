@@ -30,10 +30,11 @@ class STGI(nn.Module):
                 self.gnn_layers.append(ModelClass(hidden_dim, hidden_dim, **kwargs))
             self.gnn_layers.append(ModelClass(hidden_dim, in_dim, **kwargs))
 
-    def forward(self, x, edge_index, mask):
+    def forward(self, x, edge_index, edge_weight, mask):
         """
         x: (batch_size, time_steps, num_nodes, feature_dim)
         edge_index: Graph edges (from adjacency matrix)
+        edge_weight: Graph edges weights (from adjacency matrix)
         mask: Binary mask (1 = observed, 0 = missing)
         """
         time_steps, nodes, _ = x.shape
@@ -44,7 +45,7 @@ class STGI(nn.Module):
         for t in range(time_steps):
             x_t = x[t]
             for i, gnn in enumerate(self.gnn_layers):
-                x_t = gnn(x_t, edge_index)
+                x_t = gnn(x_t, edge_index, edge_weight)
                 if i < len(self.gnn_layers) - 1:
                     x_t = F.gelu(x_t)
             gnn_output.append(x_t)
