@@ -14,6 +14,10 @@ def compute_laplacian_smoothness(x, edge_index, edge_weight=None, debug=False):
     # FIX: Force symmetry and positive semi-definiteness
     laplacian = 0.5 * (laplacian + laplacian.t())  # Ensure symmetry
 
+    eigenvalues, eigenvectors = torch.linalg.eigh(laplacian)
+    eigenvalues = torch.clamp(eigenvalues, min=0.0)  # Remove negative eigenvalues
+    laplacian = eigenvectors @ torch.diag(eigenvalues) @ eigenvectors.t()
+
     if debug:
         # Check if Laplacian is symmetric
         is_symmetric = torch.allclose(laplacian, laplacian.t(), atol=1e-6)
