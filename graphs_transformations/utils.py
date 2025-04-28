@@ -2,7 +2,9 @@ import torch
 from torch_geometric.utils import get_laplacian, to_dense_adj
 
 
-def compute_laplacian_smoothness(x, edge_index, edge_weight=None, debug=False):
+def compute_laplacian_smoothness(
+    x, edge_index, edge_weight=None, mask=None, debug=False
+):
     batch_size, nodes = x.shape
     lap_edge_index, lap_edge_weight = get_laplacian(
         edge_index, edge_weight, normalization="sym"
@@ -32,6 +34,10 @@ def compute_laplacian_smoothness(x, edge_index, edge_weight=None, debug=False):
             print(f"Any negative eigenvalues: {(eigenvalues < -1e-6).any().item()}")
         except Exception as e:
             print(f"Error computing eigenvalues: {e}")
+
+    if mask is not None:
+        x *= mask.float()
+
     x_reshaped = x.unsqueeze(1)
     laplacian_expanded = laplacian.unsqueeze(0).expand(batch_size, -1, -1)
     smoothness = torch.bmm(
@@ -40,15 +46,27 @@ def compute_laplacian_smoothness(x, edge_index, edge_weight=None, debug=False):
     return smoothness.sum().item()
 
 
-def compute_edge_difference_smoothness(x, edge_index, edge_weight=None):
+def compute_edge_difference_smoothness(x, edge_index, edge_weight=None, mask=None):
+    edge_mask = torch.ones_like(edge_index)
     row, col = edge_index
     x_row = x[:, row]
     x_col = x[:, col]
     diff = x_row - x_col
     sq_diff = diff**2
+
+    if mask is not None:
+        # Create edge mask based on node masks
+        mask_row = mask[:, row]
+        mask_col = mask[:, col]
+        edge_mask = (
+            mask_row & mask_col
+        )  # Only consider edges where both endpoints are observed
     if edge_weight is not None:
         edge_weight_expanded = edge_weight.unsqueeze(0)
-        weighted_sq_diff = sq_diff * edge_weight_expanded
+        if mask is not None:
+            weighted_sq_diff = sq_diff * edge_weight_expanded * edge_mask.float()
+        else:
+            weighted_sq_diff = sq_diff * edge_weight_expanded
         smoothness = weighted_sq_diff.sum(dim=1)
     else:
         smoothness = sq_diff.sum(dim=1)

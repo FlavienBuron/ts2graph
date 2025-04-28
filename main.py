@@ -135,6 +135,8 @@ def train_imputer(
         sum_ls_after = 0.0
         sum_eds_before = 0.0
         sum_eds_after = 0.0
+        sum_ls_before_masked = 0.0
+        sum_eds_before_masked = 0.0
         for iter in range(num_iteration):
             iteration_imputed_data = []
             batch_losses = []
@@ -151,9 +153,14 @@ def train_imputer(
                         batch_data.detach(), edge_index, edge_weight
                     )
                     sum_eds_before += compute_edge_difference_smoothness(
-                        batch_data.detach(),
-                        edge_index,
-                        edge_weight,
+                        batch_data.detach(), edge_index, edge_weight
+                    )
+
+                    sum_ls_before_masked += compute_laplacian_smoothness(
+                        batch_data.detach(), edge_index, edge_weight, mask=batch_mask
+                    )
+                    sum_eds_before_masked += compute_edge_difference_smoothness(
+                        batch_data.detach(), edge_index, edge_weight, mask=batch_mask
                     )
 
                     imputed_data, batch_loss = model(
@@ -208,10 +215,16 @@ def train_imputer(
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
         print(
+            f"Average Masked Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
+        )
+        print(
             f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
         )
         print(
             f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
+        )
+        print(
+            f"Average Masked Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
         )
 
 
@@ -249,7 +262,7 @@ def impute_missing_data(
                 )
                 imputed_batchs.append(imputed_batch.cpu().data)
                 sum_ls_after += compute_laplacian_smoothness(
-                    imputed_batch.squeeze(-1), edge_index, edge_weight
+                    imputed_batch.squeeze(-1), edge_index, edge_weight, mask=batch_mask
                 )
                 sum_eds_after += compute_edge_difference_smoothness(
                     imputed_batch.squeeze(-1), edge_index, edge_weight
