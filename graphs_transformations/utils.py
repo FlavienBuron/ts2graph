@@ -38,7 +38,7 @@ def compute_laplacian_smoothness(
     if mask is not None:
         x *= mask.float()
 
-    x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
+    # x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
 
     x_reshaped = x.unsqueeze(1)
     laplacian_expanded = laplacian.unsqueeze(0).expand(batch_size, -1, -1)
@@ -55,7 +55,9 @@ def compute_laplacian_smoothness(
         return smoothness_total.item()
 
 
-def compute_edge_difference_smoothness(x, edge_index, edge_weight=None, mask=None):
+def compute_edge_difference_smoothness(
+    x, edge_index, edge_weight=None, mask=None, normalize=True
+):
     edge_mask = torch.ones_like(edge_index)
     row, col = edge_index
     x_row = x[:, row]
@@ -79,4 +81,11 @@ def compute_edge_difference_smoothness(x, edge_index, edge_weight=None, mask=Non
         smoothness = weighted_sq_diff.sum(dim=1)
     else:
         smoothness = sq_diff.sum(dim=1)
-    return smoothness.sum().item()
+    smoothness = smoothness.sum().item()
+
+    if normalize:
+        energy = (x**2).sum(dim=1) + 1e-8  # [B]
+        norm_smoothness = smoothness / energy
+        return norm_smoothness.sum().item()
+    else:
+        return smoothness.sum().item()
