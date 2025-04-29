@@ -3,7 +3,7 @@ from torch_geometric.utils import get_laplacian, to_dense_adj
 
 
 def compute_laplacian_smoothness(
-    x, edge_index, edge_weight=None, mask=None, debug=False
+    x, edge_index, edge_weight=None, mask=None, normalize=True, debug=False
 ):
     batch_size, nodes = x.shape
     lap_edge_index, lap_edge_weight = get_laplacian(
@@ -38,12 +38,21 @@ def compute_laplacian_smoothness(
     if mask is not None:
         x *= mask.float()
 
+    x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
+
     x_reshaped = x.unsqueeze(1)
     laplacian_expanded = laplacian.unsqueeze(0).expand(batch_size, -1, -1)
     smoothness = torch.bmm(
         torch.bmm(x_reshaped, laplacian_expanded), x_reshaped.transpose(1, 2)
     ).squeeze()
-    return smoothness.sum().item()
+
+    smoothness_total = smoothness.sum()
+
+    if normalize:
+        energy = torch.sum(x**2) + 1e-8
+        return (smoothness_total / energy).item()
+    else:
+        return smoothness_total.item()
 
 
 def compute_edge_difference_smoothness(x, edge_index, edge_weight=None, mask=None):
