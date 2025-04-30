@@ -19,6 +19,7 @@ class AirQualityLoader(GraphLoader):
         self,
         dataset_path: str = "./datasets/data/air_quality/",
         small: bool = False,
+        normalization_type=None,
         replace_nan=True,
         nan_method="mean",
     ):
@@ -54,14 +55,14 @@ class AirQualityLoader(GraphLoader):
         return data, stations
 
     def load(
-        self, small: bool = False
+        self, small: bool = False, normalization_type=None
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         data, stations = self.load_raw(small=small)
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
         data = torch.from_numpy(data.to_numpy()).float()
         mask = torch.where(data.isnan(), False, True)
-        data = self._normalize(data, mask, "std")
+        data = self._normalize(data, mask, normalization_type)
         return data, mask, dist
 
     def split(self, validation_len: int, contiguous: bool, cols: List = None):
@@ -96,7 +97,11 @@ class AirQualityLoader(GraphLoader):
         return adj
 
     def get_similarity_knn(
-        self, k: int, use_corrupted_data: bool = False
+        self,
+        k: int,
+        use_corrupted_data: bool = False,
+        loop: bool = False,
+        cosine: bool = False,
     ) -> torch.Tensor:
         if use_corrupted_data:
             data = self.corrupt_data.T
@@ -104,7 +109,7 @@ class AirQualityLoader(GraphLoader):
         else:
             data = self.original_data.T
             mask = self.mask.T
-        edge_index = from_knn(data=data, mask=mask, k=k)
+        edge_index = from_knn(data=data, mask=mask, k=k, loop=loop, cosine=cosine)
         adj = to_dense_adj(edge_index).squeeze()
         return adj
 
@@ -174,17 +179,19 @@ class AirQualityLoader(GraphLoader):
 
         self.corrupt_data = (data - min) / (max - min)
 
-    def _normalize(self, data, mask, type="min_max") -> torch.Tensor:
+    def _normalize(self, data, mask, type=None) -> torch.Tensor:
         if type == "min_max":
             min = data[mask].min()
             max = data[mask].max()
 
             return (data - min) / (max - min)
-        else:
+        elif type == "std":
             mean = data[mask].min()
             std = data[mask].std()
 
             return (data - mean) / (std + 1e-8)
+        else:
+            return data
 
     def _replace_nan(self, method="mean"):
         print("------------------ Replacing NaNs ------------------")

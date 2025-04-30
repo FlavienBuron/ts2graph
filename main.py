@@ -48,11 +48,33 @@ def parse_args() -> Namespace:
         required=True,
     )
     parser.add_argument(
+        "--normalization_type",
+        "-n",
+        type=str,
+        help="How should the data be normalized",
+        default=None,
+        choices=[None, "min_max", "std"],
+    )
+    parser.add_argument(
         "--graph_technique",
         "-g",
         nargs=2,
         help="which algorithm to use for graph completion e.g. 'KNN'",
         default=["knn", 3],
+    )
+    parser.add_argument(
+        "--self_loop",
+        "-sl",
+        type=int,
+        help="whether the graphs allows for nodes to connect to themselves",
+        default=False,
+    )
+    parser.add_argument(
+        "--similarity_metric",
+        "-sm",
+        type=str,
+        help="if used by the graph completion algorithm, which similarity metric to use in the completion",
+        default="",
     )
     parser.add_argument(
         "--iter_num",
@@ -318,16 +340,20 @@ def run(args: Namespace) -> None:
     param = float(param)
     ts2net = Ts2Net()
     if "loc" in graph_technique:
-        adj_matrix = dataset.get_adjacency(threshold=param)
+        adj_matrix = dataset.get_adjacency(threshold=param, include_self=args.self_loop)
     elif "zero" in graph_technique:
         adj_matrix = dataset.get_adjacency(threshold=param)
         adj_matrix = torch.zeros_like(adj_matrix)
     elif "one" in graph_technique:
         adj_matrix = dataset.get_adjacency(threshold=param)
         adj_matrix = torch.ones_like(adj_matrix)
+        if not bool(args.self_loop):
+            adj_matrix.fill_diagonal_(0.0)
     else:
         param = int(param)
-        adj_matrix = dataset.get_similarity_knn(k=param)
+        adj_matrix = dataset.get_similarity_knn(
+            k=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
+        )
     edge_index, edge_weight = dense_to_sparse(adj_matrix)
 
     graph_characteristics(adj_matrix)
@@ -376,4 +402,4 @@ if __name__ == "__main__":
     # TODO: Transform dataset into standardized format
     # TODO: Check for the presence of adjacency data, positional data etc, or have the user use arg
     # TODO: Add adjacency based method from GRIN
-    # TODO: Add KNN based method from MPIN
+    # TODO: Add KNN base

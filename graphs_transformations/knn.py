@@ -4,7 +4,11 @@ from torch_geometric.nn import knn_graph
 
 
 def from_knn(
-    data: Tensor, mask: torch.Tensor, k: int, temportal: bool = False
+    data: Tensor,
+    mask: torch.Tensor,
+    k: int,
+    loop=False,
+    cosine=False,
 ) -> torch.Tensor:
     # print(f"{data.var(dim=1)=} {torch.min(data.var(dim=1))=}")
     if torch.isnan(data).any():
@@ -21,5 +25,5 @@ def from_knn(
     # Step 3: Check for identical rows
     if torch.allclose(data, data[0].unsqueeze(0).expand_as(data)):
         raise ValueError("All rows in the data tensor are identical.")
-    edge_index = knn_graph(x=data, k=k)
+    edge_index = knn_graph(x=data, k=k, loop=loop, cosine=cosine)
     return edge_index
