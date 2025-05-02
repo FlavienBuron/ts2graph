@@ -22,6 +22,7 @@ from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
     compute_laplacian_smoothness,
+    save_graph_characteristics,
 )
 
 random.seed(42)
@@ -118,7 +119,20 @@ def parse_args() -> Namespace:
         help="Should the training intermediate results be printed",
         default=1,
     )
-
+    parser.add_argument(
+        "--graph_stats",
+        "-gs",
+        type=tuple[bool, str],
+        help="whether to output the graph statistics",
+        default=[False, "./experiments/results/grapha_stats/"],
+    )
+    parser.add_argument(
+        "--downstream_task",
+        "-ds",
+        type=bool,
+        help="whether to execute the downstream task (imputation)",
+        default=True,
+    )
     args = parser.parse_args()
     return args
 
@@ -355,8 +369,10 @@ def run(args: Namespace) -> None:
             k=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
         )
     edge_index, edge_weight = dense_to_sparse(adj_matrix)
-
-    graph_characteristics(adj_matrix)
+    get_stats, save_stats_path = args.graph_stats
+    if get_stats:
+        save_path = os.path.join(save_stats_path, f"{graph_technique}_{param}")
+        save_graph_characteristics(adj_matrix, save_path)
 
     stgi = STGI(
         in_dim=1,
