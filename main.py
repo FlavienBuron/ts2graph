@@ -1,7 +1,6 @@
 import random
 from argparse import ArgumentParser, Namespace
 
-import networkx as nx
 import numpy as np
 import torch
 import torch.nn as nn
@@ -135,18 +134,6 @@ def parse_args() -> Namespace:
     )
     args = parser.parse_args()
     return args
-
-
-def graph_characteristics(adj):
-    G = nx.from_numpy_array(adj.numpy())
-    degrees = [d for _, d in G.degree()]
-    clustering_coeff = nx.average_clustering(G)
-    n_component = nx.number_connected_components(G)
-    largest_component = max(nx.connected_components(G), key=len)
-    connectivity = len(largest_component) / G.number_of_nodes()
-    print(
-        f"Degrees: {np.mean(degrees):.4f} | Clustering coefficient: {clustering_coeff:.4f} | Number Components: {n_component} | Connectivity: {connectivity:.4f}"
-    )
 
 
 def train_imputer(
