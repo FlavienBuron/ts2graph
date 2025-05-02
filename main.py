@@ -121,9 +121,9 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--graph_stats",
         "-gs",
-        type=tuple[bool, str],
+        type=bool,
         help="whether to output the graph statistics",
-        default=[False, "./experiments/results/grapha_stats/"],
+        default=False,
     )
     parser.add_argument(
         "--downstream_task",
@@ -356,8 +356,8 @@ def run(args: Namespace) -> None:
             k=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
         )
     edge_index, edge_weight = dense_to_sparse(adj_matrix)
-    get_stats, save_stats_path = args.graph_stats
-    if get_stats:
+    if args.graph_stats:
+        save_stats_path = "./experiments/results/graphs_stats/"
         save_path = os.path.join(save_stats_path, f"{graph_technique}_{param}")
         save_graph_characteristics(adj_matrix, save_path)
 
