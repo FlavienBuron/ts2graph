@@ -350,6 +350,10 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
 
             # Assortativity
             try:
+                degrees = [d for _, d in subgraph.degree()]
+                if len(degrees) < 2 or np.std(degrees) == 0:
+                    raise ValueError("Degenerate degree distribution")
+
                 comp_metrics["binary_degree_assortativity"] = (
                     nx.degree_assortativity_coefficient(subgraph, weight=None)
                 )
