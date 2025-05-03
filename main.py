@@ -121,16 +121,14 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--graph_stats",
         "-gs",
-        type=bool,
+        action="store_true",
         help="whether to output the graph statistics",
-        default=False,
     )
     parser.add_argument(
         "--downstream_task",
         "-dt",
-        type=bool,
+        action="store_false",
         help="whether to execute the downstream task (imputation)",
-        default=True,
     )
     args = parser.parse_args()
     return args
