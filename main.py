@@ -170,13 +170,14 @@ def train_imputer(
 
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
+                    # Get the Smoothess values before imputation
                     sum_ls_before += compute_laplacian_smoothness(
                         batch_data.detach(), edge_index, edge_weight
                     )
                     sum_eds_before += compute_edge_difference_smoothness(
                         batch_data.detach(), edge_index, edge_weight
                     )
-
+                    # Mask, to compare
                     sum_ls_before_masked += compute_laplacian_smoothness(
                         batch_data.detach(), edge_index, edge_weight, mask=batch_mask
                     )
@@ -184,6 +185,7 @@ def train_imputer(
                         batch_data.detach(), edge_index, edge_weight, mask=batch_mask
                     )
 
+                    # Imputation step
                     imputed_data, batch_loss = model(
                         x=batch_data.unsqueeze(2).to(device),
                         edge_index=edge_index.to(device),
@@ -191,14 +193,6 @@ def train_imputer(
                         mask=batch_mask.unsqueeze(2).to(device),
                     )
                     imputed_data = imputed_data.squeeze(-1)
-
-                    sum_ls_after += compute_laplacian_smoothness(
-                        imputed_data.detach(), edge_index, edge_weight
-                    )
-                    sum_eds_after += compute_edge_difference_smoothness(
-                        imputed_data.detach(), edge_index, edge_weight
-                    )
-
                     batch_loss.backward()
                     optimizer.step()
 
@@ -209,6 +203,14 @@ def train_imputer(
                     mask_cpu = batch_mask.cpu()
                     imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
                     iteration_imputed_data.append(imputed_batch)
+
+                    # Get the Smoothess AFTER imputation
+                    sum_ls_after += compute_laplacian_smoothness(
+                        imputed_data.detach(), edge_index, edge_weight
+                    )
+                    sum_eds_after += compute_edge_difference_smoothness(
+                        imputed_data.detach(), edge_index, edge_weight
+                    )
 
                     batch_losses.append(batch_loss.item())
                 if verbose:
@@ -264,10 +266,12 @@ def impute_missing_data(
         sum_ls_after = 0.0
         sum_eds_before = 0.0
         sum_eds_after = 0.0
+        sum_ls_before_masked = 0.0
+        sum_eds_before_masked = 0.0
         batch_size = dataloader.batch_size if dataloader.batch_size else 1
         nb_batches = len(dataloader)
         for _ in range(num_iteration):
-            imputed_batchs = []
+            imputed_batches = []
             for batch_data, batch_mask in dataloader:
                 sum_ls_before += compute_laplacian_smoothness(
                     batch_data, edge_index, edge_weight
@@ -275,20 +279,34 @@ def impute_missing_data(
                 sum_eds_before += compute_edge_difference_smoothness(
                     batch_data, edge_index, edge_weight
                 )
-                imputed_batch, _ = model(
+                # Mask, to compare
+                sum_ls_before_masked += compute_laplacian_smoothness(
+                    batch_data.detach(), edge_index, edge_weight, mask=batch_mask
+                )
+                sum_eds_before_masked += compute_edge_difference_smoothness(
+                    batch_data.detach(), edge_index, edge_weight, mask=batch_mask
+                )
+
+                imputed_data, _ = model(
                     batch_data.unsqueeze(2).to(device),
                     edge_index.to(device),
                     edge_weight.to(device),
                     batch_mask.unsqueeze(2).to(device),
                 )
-                imputed_batchs.append(imputed_batch.cpu().data)
+                imputed_data = imputed_data.squeeze(-1)
+                imputed_batch = batch_data.clone().detach().cpu()
+                mask_cpu = batch_mask.cpu()
+                imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
+
+                imputed_batches.append(imputed_batch)
+
                 sum_ls_after += compute_laplacian_smoothness(
-                    imputed_batch.squeeze(-1), edge_index, edge_weight, mask=batch_mask
+                    imputed_batch, edge_index, edge_weight, mask=batch_mask
                 )
                 sum_eds_after += compute_edge_difference_smoothness(
-                    imputed_batch.squeeze(-1), edge_index, edge_weight
+                    imputed_batch, edge_index, edge_weight
                 )
-            imputed_data = torch.cat(imputed_batchs, dim=0).squeeze(-1)
+            imputed_data = torch.cat(imputed_batches, dim=0)
             dataset.update_data(imputed_data)
             del imputed_data
         print(
@@ -306,21 +324,21 @@ def evaluate(
     target_data: np.ndarray,
     evaluation_mask: np.ndarray,
 ):
-    print("Target NaNs:", np.isnan(target_data[evaluation_mask]).sum())
-    print("Imputed NaNs:", np.isnan(imputed_data[evaluation_mask]).sum())
+    print("Target NaNs:", np.isnan(target_data[~evaluation_mask]).sum())
+    print("Imputed NaNs:", np.isnan(imputed_data[~evaluation_mask]).sum())
     mae = mean_absolute_error(
-        target_data[evaluation_mask],
-        imputed_data[evaluation_mask],
+        target_data[~evaluation_mask],
+        imputed_data[~evaluation_mask],
     )
 
     mse = mean_squared_error(
-        target_data[evaluation_mask],
-        imputed_data[evaluation_mask],
+        target_data[~evaluation_mask],
+        imputed_data[~evaluation_mask],
     )
 
     rmse = root_mean_squared_error(
-        target_data[evaluation_mask],
-        imputed_data[evaluation_mask],
+        target_data[~evaluation_mask],
+        imputed_data[~evaluation_mask],
     )
 
     print(f"Imputation MAE: {mae:.4e}, MSE: {mse:.4e}, RMSE: {rmse:.4e}")
