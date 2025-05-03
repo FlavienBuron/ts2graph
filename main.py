@@ -127,7 +127,7 @@ def parse_args() -> Namespace:
     )
     parser.add_argument(
         "--downstream_task",
-        "-ds",
+        "-dt",
         type=bool,
         help="whether to execute the downstream task (imputation)",
         default=True,
@@ -355,47 +355,49 @@ def run(args: Namespace) -> None:
         adj_matrix = dataset.get_similarity_knn(
             k=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
         )
-    edge_index, edge_weight = dense_to_sparse(adj_matrix)
     if args.graph_stats:
         save_stats_path = "./experiments/results/graphs_stats/"
         save_path = os.path.join(save_stats_path, f"{graph_technique}_{param}")
         save_graph_characteristics(adj_matrix, save_path)
 
-    stgi = STGI(
-        in_dim=1,
-        hidden_dim=args.hidden_dim,
-        num_layers=args.layer_num,
-        model_type=args.layer_type,
-    )
+    if args.downstream_task:
+        edge_index, edge_weight = dense_to_sparse(adj_matrix)
 
-    stgi.to(device)
-    geo_optim = Adam(stgi.parameters(), lr=5e-4)
-    train_imputer(
-        stgi,
-        dataset,
-        dataloader,
-        edge_index,
-        edge_weight,
-        geo_optim,
-        args.epochs,
-        args.iter_num,
-        device=device,
-        verbose=args.verbose,
-    )
-    imputed_data = impute_missing_data(
-        stgi,
-        dataset,
-        dataloader,
-        edge_index,
-        edge_weight,
-        args.iter_num,
-        device,
-    )
-    evaluate(
-        imputed_data.numpy(),
-        dataset.original_data.numpy(),
-        dataset.validation_mask.numpy(),
-    )
+        stgi = STGI(
+            in_dim=1,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.layer_num,
+            model_type=args.layer_type,
+        )
+
+        stgi.to(device)
+        geo_optim = Adam(stgi.parameters(), lr=5e-4)
+        train_imputer(
+            stgi,
+            dataset,
+            dataloader,
+            edge_index,
+            edge_weight,
+            geo_optim,
+            args.epochs,
+            args.iter_num,
+            device=device,
+            verbose=args.verbose,
+        )
+        imputed_data = impute_missing_data(
+            stgi,
+            dataset,
+            dataloader,
+            edge_index,
+            edge_weight,
+            args.iter_num,
+            device,
+        )
+        evaluate(
+            imputed_data.numpy(),
+            dataset.original_data.numpy(),
+            dataset.validation_mask.numpy(),
+        )
 
 
 if __name__ == "__main__":
