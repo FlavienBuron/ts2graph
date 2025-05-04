@@ -137,9 +137,7 @@ class AirQualityLoader(GraphLoader):
                 current_val_points += sample_size
 
         final_percentage = (
-            (current_val_points / total_valid_points) * 100
-            if total_valid_points > 0
-            else 0
+            (current_val_points / total_valid_points) if total_valid_points > 0 else 0
         )
 
         print(

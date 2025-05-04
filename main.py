@@ -324,6 +324,7 @@ def evaluate(
     target_data: np.ndarray,
     evaluation_mask: np.ndarray,
 ):
+    evaluation_mask = ~evaluation_mask.astype(bool)
     print("Target NaNs:", np.isnan(target_data[~evaluation_mask]).sum())
     print("Imputed NaNs:", np.isnan(imputed_data[~evaluation_mask]).sum())
     mae = mean_absolute_error(
