@@ -62,6 +62,9 @@ class AirQualityLoader(GraphLoader):
         dist = self._geographical_distance(stations_coords)
         data = torch.from_numpy(data.to_numpy()).float()
         mask = torch.where(data.isnan(), False, True)
+        assert torch.isnan(data[~mask]).all(), (
+            "non-missing values found under missing values mask"
+        )
         data = self._normalize(data, mask, normalization_type)
         return data, mask, dist
 
@@ -142,6 +145,10 @@ class AirQualityLoader(GraphLoader):
 
         print(
             f"Target Val. Percentage: {validation_percent:.2f}, Achieved: {final_percentage:.2f}"
+        )
+
+        assert torch.isnan(self.original_data[val_mask]).any(), (
+            "Missing values found under evaluation mask"
         )
 
         self.validation_mask = val_mask
