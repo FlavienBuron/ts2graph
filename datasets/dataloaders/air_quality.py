@@ -65,18 +65,88 @@ class AirQualityLoader(GraphLoader):
         data = self._normalize(data, mask, normalization_type)
         return data, mask, dist
 
-    def split(self, validation_len: int, contiguous: bool, cols: List = None):
-        if contiguous:
-            for row_start in range(self.original_data.shape[0] - validation_len + 1):
-                window = self.original_data[row_start : row_start + validation_len, :]
-                if torch.count_nonzero(window.isnan()).le(
-                    validation_len * self.original_data.shape[1] * 0.5
-                ):
-                    val_mask = torch.zeros_like(self.original_data)
-                    val_mask[row_start : row_start + validation_len, :] = True
-                    val_mask[~self.mask] = False
-                    self.validation_mask = val_mask.bool()
-                    break
+    def split(self, validation_percent: float, cols: List = [], time_blocks: int = 5):
+        """
+        Split the data into training and validation sets using random blocks.
+
+        Args:
+            validation_percent: Percentage of non-missing values
+        """
+        if len(cols) > 0:
+            mask_cols = torch.zeros(self.original_data.shape[1], dtype=torch.bool)
+            mask_cols[cols] = True
+            working_mask = self.mask & mask_cols.unsqueeze(0).expand_as(self.mask)
+        else:
+            working_mask = self.mask
+
+        rows, _ = self.original_data.shape
+        val_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
+
+        total_valid_points = torch.sum(working_mask).item()
+        target_val_points = int(total_valid_points * validation_percent)
+
+        time_segments = torch.linspace(0, rows, time_blocks + 1).long()
+
+        current_val_points = 0
+        block_valid_counts = []
+
+        for block in range(time_blocks):
+            start_row = time_segments[block].item()
+            end_row = time_segments[block + 1].item()
+
+            segment_mask = working_mask[start_row:end_row]
+            valid_count = torch.sum(segment_mask).item()
+            block_valid_counts.append(valid_count)
+
+            # Calculate how many points to sample for this segment
+            # Proportional to the number of valid points in the segment
+            if total_valid_points > 0:
+                block_points = int(valid_count / total_valid_points * target_val_points)
+            else:
+                block_points = 0
+
+            # Get indices of valid points in the segment
+            valid_indices = torch.nonzero(segment_mask)
+            if len(valid_indices) == 0:
+                continue
+
+            # Sample points
+            sample_size = min(block_points, len(valid_indices))
+            if sample_size > 0:
+                perm = torch.randperm(len(valid_indices))
+                selected = valid_indices[perm[:sample_size]]
+
+                selected[:, 0] += start_row
+                val_mask[selected[:, 0], selected[:, 1]] = True
+
+                current_val_points += sample_size
+
+        # Second pass, adjust to the target
+        if current_val_points < target_val_points:
+            remaining_points = target_val_points - current_val_points
+
+            remaining_valid = working_mask & (~val_mask)
+            remaining_indices = torch.nonzero(remaining_valid)
+
+            if len(remaining_indices) > 0:
+                sample_size = min(remaining_points, len(remaining_indices))
+                perm = torch.randperm(len(remaining_indices))
+                selected = remaining_indices[perm[:sample_size]]
+                val_mask[selected[:, 0], selected[:, 1]] = True
+
+                current_val_points += sample_size
+
+        final_percentage = (
+            (current_val_points / total_valid_points) * 100
+            if total_valid_points > 0
+            else 0
+        )
+
+        print(
+            f"Target Val. Percentage: {validation_percent:.2f}, Achieved: {final_percentage:.2f}"
+        )
+
+        self.validation_mask = val_mask
 
     def get_adjacency(
         self,
@@ -129,9 +199,7 @@ class AirQualityLoader(GraphLoader):
         self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
-        self.split(
-            validation_len=self.original_data.shape[0] * 50 // 100, contiguous=True
-        )
+        self.split(validation_percent=0.3)
         # print(self.validation_mask)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
