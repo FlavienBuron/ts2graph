@@ -354,9 +354,10 @@ def run(args: Namespace) -> None:
     dataloader = dataset.get_dataloader(
         use_corrupted_data=False, shuffle=False, batch_size=128
     )
-    print(
-        f"NaN in validation data? {torch.isnan(dataset.original_data[~dataset.validation_mask])}"
+    assert torch.isnan(dataset.original_data[~dataset.validation_mask]).any(), (
+        "Missing values present under evaluation mask (run)"
     )
+
     graph_technique, param = args.graph_technique
     param = float(param)
     ts2net = Ts2Net()
