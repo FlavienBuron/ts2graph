@@ -205,11 +205,13 @@ class AirQualityLoader(GraphLoader):
         self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
+        print(f"{self.mask.sum()=}")
         self.split(validation_percent=0.3)
-        # print(self.validation_mask)
+        print(self.validation_mask.sum())
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
         self.mask = self.mask & ~self.validation_mask
+        print(f"{self.mask.sum()=}")
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
 
     def shape(self):

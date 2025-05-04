@@ -54,7 +54,7 @@ class STGI(nn.Module):
         x = torch.stack(gnn_output, dim=0)
         imputed_x = x
 
-        # Compute the batch MSE
+        # Compute the batch MSE only using non-missing data
         x_loss = torch.sum(mask * (imputed_x - ori_x) ** 2) / (torch.sum(mask) + 1e-8)
         x_final = torch.where(mask.bool(), ori_x, imputed_x)
         return x_final, x_loss
