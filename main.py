@@ -324,7 +324,7 @@ def evaluate(
     target_data: np.ndarray,
     evaluation_mask: np.ndarray,
 ):
-    evaluation_points = evaluation_mask.astype(bool)
+    evaluation_points = ~evaluation_mask.astype(bool)
     print("Target NaNs:", np.isnan(target_data[evaluation_points]).sum())
     print("Imputed NaNs:", np.isnan(imputed_data[evaluation_points]).sum())
     mae = mean_absolute_error(
@@ -354,7 +354,7 @@ def run(args: Namespace) -> None:
     dataloader = dataset.get_dataloader(
         use_corrupted_data=False, shuffle=False, batch_size=128
     )
-    assert torch.isnan(dataset.original_data[dataset.validation_mask]).any(), (
+    assert torch.isnan(dataset.original_data[~dataset.validation_mask]).any(), (
         "Missing values present under evaluation mask (run)"
     )
     print(
