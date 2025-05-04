@@ -358,7 +358,7 @@ def run(args: Namespace) -> None:
         "Missing values present under evaluation mask (run)"
     )
     print(
-        f"{torch.isnan(dataset.original_data).sum()} vs {torch.isnan(dataset.original_data[~dataset.validation_mask]).sum()}"
+        f"{torch.isnan(dataset.original_data).sum()} vs {torch.isnan(dataset.original_data[dataset.validation_mask]).sum()}"
     )
     graph_technique, param = args.graph_technique
     param = float(param)
