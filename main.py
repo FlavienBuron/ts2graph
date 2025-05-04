@@ -324,22 +324,22 @@ def evaluate(
     target_data: np.ndarray,
     evaluation_mask: np.ndarray,
 ):
-    evaluation_mask = ~evaluation_mask.astype(bool)
-    print("Target NaNs:", np.isnan(target_data[~evaluation_mask]).sum())
-    print("Imputed NaNs:", np.isnan(imputed_data[~evaluation_mask]).sum())
+    evaluation_points = ~evaluation_mask.astype(bool)
+    print("Target NaNs:", np.isnan(target_data[~evaluation_points]).sum())
+    print("Imputed NaNs:", np.isnan(imputed_data[~evaluation_points]).sum())
     mae = mean_absolute_error(
-        target_data[~evaluation_mask],
-        imputed_data[~evaluation_mask],
+        target_data[~evaluation_points],
+        imputed_data[~evaluation_points],
     )
 
     mse = mean_squared_error(
-        target_data[~evaluation_mask],
-        imputed_data[~evaluation_mask],
+        target_data[~evaluation_points],
+        imputed_data[~evaluation_points],
     )
 
     rmse = root_mean_squared_error(
-        target_data[~evaluation_mask],
-        imputed_data[~evaluation_mask],
+        target_data[~evaluation_points],
+        imputed_data[~evaluation_points],
     )
 
     print(f"Imputation MAE: {mae:.4e}, MSE: {mse:.4e}, RMSE: {rmse:.4e}")
