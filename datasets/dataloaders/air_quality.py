@@ -91,7 +91,6 @@ class AirQualityLoader(GraphLoader):
         time_segments = torch.linspace(0, rows, time_blocks + 1).long()
 
         current_val_points = 0
-        block_valid_counts = []
 
         for block in range(time_blocks):
             start_row = time_segments[block].item()
@@ -99,7 +98,6 @@ class AirQualityLoader(GraphLoader):
 
             segment_mask = working_mask[start_row:end_row]
             valid_count = torch.sum(segment_mask).item()
-            block_valid_counts.append(valid_count)
 
             # Calculate how many points to sample for this segment
             # Proportional to the number of valid points in the segment
@@ -123,7 +121,7 @@ class AirQualityLoader(GraphLoader):
                 val_mask[selected[:, 0], selected[:, 1]] = True
 
                 current_val_points += sample_size
-        assert torch.isnan(self.original_data[~val_mask]).any(), (
+        assert torch.isnan(self.original_data[val_mask]).any(), (
             "Missing values found under evaluation mask (first pass)"
         )
 
@@ -150,7 +148,7 @@ class AirQualityLoader(GraphLoader):
             f"Target Val. Percentage: {validation_percent:.2f}, Achieved: {final_percentage:.2f}"
         )
 
-        assert torch.isnan(self.original_data[~val_mask]).any(), (
+        assert torch.isnan(self.original_data[val_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
         )
 
