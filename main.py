@@ -357,7 +357,9 @@ def run(args: Namespace) -> None:
     assert torch.isnan(dataset.original_data[~dataset.validation_mask]).any(), (
         "Missing values present under evaluation mask (run)"
     )
-
+    print(
+        f"{torch.isnan(dataset.original_data).sum()} vs {torch.isnan(dataset.original_data[~dataset.validation_mask]).sum()}"
+    )
     graph_technique, param = args.graph_technique
     param = float(param)
     ts2net = Ts2Net()
