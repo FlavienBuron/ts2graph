@@ -249,6 +249,7 @@ def train_imputer(
         print(
             f"Average Masked Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
         )
+    return model
 
 
 def impute_missing_data(
@@ -393,8 +394,8 @@ def run(args: Namespace) -> None:
         )
 
         stgi.to(device)
-        geo_optim = Adam(stgi.parameters(), lr=5e-4)
-        train_imputer(
+        geo_optim = Adam(stgi.parameters(), lr=1e-2)
+        stgi = train_imputer(
             stgi,
             dataset,
             dataloader,
