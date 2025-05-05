@@ -201,6 +201,8 @@ def train_imputer(
                     imputed_batch = batch_data.clone()
                     imputed_data = imputed_data.detach().cpu()
                     mask_cpu = batch_mask.cpu()
+                    print(f"{imputed_batch[~mask_cpu]}")
+                    print(f"{imputed_data[~mask_cpu]}")
                     imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
                     iteration_imputed_data.append(imputed_batch)
 
