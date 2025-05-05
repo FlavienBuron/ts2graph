@@ -260,6 +260,7 @@ def impute_missing_data(
     num_iteration: int,
     device: str,
 ):
+    dataset.reset_current_data()
     model.eval()
     with torch.no_grad():
         sum_ls_before = 0.0
