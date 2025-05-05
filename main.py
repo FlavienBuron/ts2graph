@@ -298,7 +298,7 @@ def impute_missing_data(
                 imputed_data = imputed_data.squeeze(-1)
                 imputed_batch = batch_data.clone().detach().cpu()
                 mask_cpu = batch_mask.cpu()
-                imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
+                # imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
 
                 imputed_batches.append(imputed_batch)
 
@@ -309,7 +309,7 @@ def impute_missing_data(
                     imputed_batch, edge_index, edge_weight
                 )
             imputed_data = torch.cat(imputed_batches, dim=0)
-            dataset.update_data(imputed_data)
+            # dataset.update_data(imputed_data)
             del imputed_data
         print(
             f"\n\nAverage Imputation Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
