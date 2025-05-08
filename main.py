@@ -250,7 +250,7 @@ def train_imputer(
             dataset.update_data(iteration_imputed_data)
             del iteration_imputed_data, batch_losses, batch_references
         mean_loss = epoch_loss / (nb_batches * num_iteration)
-        dataset.reset_current_data()
+        # dataset.reset_current_data()
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
         print(
@@ -316,7 +316,7 @@ def impute_missing_data(
                 mask_cpu = batch_mask.cpu()
                 # print(f"{imputed_batch[~mask_cpu]}")
                 # print(f"{imputed_data[~mask_cpu]}")
-                # imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
+                imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
 
                 imputed_batches.append(imputed_batch)
 
