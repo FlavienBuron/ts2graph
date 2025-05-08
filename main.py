@@ -9,6 +9,7 @@ from sklearn.metrics import (
     mean_squared_error,
     root_mean_squared_error,
 )
+from torch.nn.functional import mse_loss
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
@@ -165,7 +166,7 @@ def train_imputer(
             # create a collection to hold batch data references temporatily
             batch_references = []
 
-            for i, (batch_data, batch_mask, batch_ori, batch_test_mask) in enumerate(
+            for i, (batch_data, batch_mask, batch_ori, batch_train_mask) in enumerate(
                 dataloader
             ):
                 batch_references.append((batch_data.clone(), batch_mask.clone()))
@@ -195,24 +196,28 @@ def train_imputer(
                         missing_mask=batch_mask.unsqueeze(2).to(device),
                     )
                     imputed_data = imputed_data.squeeze(-1)
-                    test_mask_cpu = batch_test_mask.cpu()
+                    train_mask_cpu = batch_train_mask.cpu()
                     # print(
                     #     f"{torch.isnan(imputed_data).any()=} {torch.isnan(batch_ori).any()}"
                     # )
-                    batch_loss = torch.sum(
-                        test_mask_cpu * (imputed_data - batch_ori) ** 2
-                    ) / (torch.sum(test_mask_cpu) + 1e-8)
+                    batch_loss = mse_loss(
+                        imputed_data[train_mask_cpu],
+                        batch_ori[train_mask_cpu],
+                        reduction="mean",
+                    )
                     batch_loss.backward()
                     optimizer.step()
 
                 with torch.no_grad():
                     # replace the missing data in the batch with the imputed data
                     imputed_batch = batch_data.clone()
-                    imputed_data = imputed_data.detach().cpu()
+                    imputed_data = imputed_data.cpu()
                     missing_mask_cpu = batch_mask.cpu()
+
                     # print(f"{imputed_batch[~missing_mask_cpu]}")
                     # print(f"{imputed_data[~missing_mask_cpu]}")
                     imputed_batch[~missing_mask_cpu] = imputed_data[~missing_mask_cpu]
+
                     iteration_imputed_data.append(imputed_batch)
 
                     # Get the Smoothess AFTER imputation
