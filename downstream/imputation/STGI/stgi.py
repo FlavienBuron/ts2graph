@@ -55,6 +55,9 @@ class STGI(nn.Module):
                 print(
                     f"Layer {i}, {name}: mean={param.mean().item()}, std={param.std().item()}"
                 )
+            for name, param in layer.named_parameters():
+                if torch.isnan(param).any():
+                    print(f"{name} contains NaNs")
 
         for t in range(time_steps):
             x_t = x[t]
