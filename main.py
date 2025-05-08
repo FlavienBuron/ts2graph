@@ -195,7 +195,7 @@ def train_imputer(
                         missing_mask=batch_mask.unsqueeze(2).to(device),
                     )
                     imputed_data = imputed_data.squeeze(-1)
-                    test_mask_cpu = dataset.train_mask.cpu()
+                    test_mask_cpu = batch_test_mask.cpu()
                     batch_loss = torch.sum(
                         test_mask_cpu * (imputed_data - batch_ori[test_mask_cpu]) ** 2
                     ) / (torch.sum(test_mask_cpu) + 1e-8)
