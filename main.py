@@ -314,8 +314,8 @@ def impute_missing_data(
                 imputed_data = imputed_data.squeeze(-1)
                 imputed_batch = batch_data.clone().detach().cpu()
                 mask_cpu = batch_mask.cpu().bool()
-                print(f"{imputed_batch[~mask_cpu]}")
-                print(f"{imputed_data[~mask_cpu]}")
+                # print(f"{imputed_batch[~mask_cpu]}")
+                # print(f"{imputed_data[~mask_cpu]}")
                 imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
 
                 imputed_batches.append(imputed_data)
@@ -327,7 +327,6 @@ def impute_missing_data(
                     imputed_batch, edge_index, edge_weight
                 )
             imputed_data = torch.cat(imputed_batches, dim=0)
-            print(f"{imputed_data.shape=}")
             dataset.update_data(imputed_data)
             del imputed_data
         print(
@@ -416,7 +415,7 @@ def run(args: Namespace) -> None:
         )
 
         stgi.to(device)
-        geo_optim = Adam(stgi.parameters(), lr=1e-3)
+        geo_optim = Adam(stgi.parameters(), lr=1e-2)
         stgi = train_imputer(
             stgi,
             dataset,
