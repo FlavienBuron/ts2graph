@@ -59,4 +59,4 @@ class STGI(nn.Module):
             torch.sum(missing_mask) + 1e-8
         )
         x_final = torch.where(missing_mask.bool(), ori_x, imputed_x)
-        return x_final, x_loss
+        return x, x_loss
