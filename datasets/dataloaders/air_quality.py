@@ -24,7 +24,9 @@ class AirQualityLoader(GraphLoader):
         nan_method="mean",
     ):
         self.dataset_path = dataset_path
-        self.original_data, self.missing_mask, self.distances = self.load(small=small)
+        self.original_data, self.missing_mask, self.distances = self.load(
+            small=small, normalization_type="min_max"
+        )
         self.missing_data = torch.empty_like(self.original_data)
         if replace_nan:
             self._replace_nan(nan_method)
