@@ -47,7 +47,7 @@ class STGI(nn.Module):
             for i, gnn in enumerate(self.gnn_layers):
                 x_t = gnn(x_t, edge_index, edge_weight)
                 if i < len(self.gnn_layers) - 1:
-                    x_t = F.gelu(x_t)
+                    x_t = F.relu(x_t)
             gnn_output.append(x_t)
 
         # Stack to shape (time, nodes, out_dim)
