@@ -193,7 +193,7 @@ def train_imputer(
                         x=batch_data.unsqueeze(2).to(device),
                         edge_index=edge_index.to(device),
                         edge_weight=edge_weight.to(device),
-                        missing_mask=batch_mask.unsqueeze(2).to(device),
+                        missing_mask=batch_mask.unsqueeze(2).to(device).bool(),
                     )
                     imputed_data = imputed_data.squeeze(-1)
                     train_mask_cpu = batch_train_mask.cpu().bool()

@@ -222,8 +222,8 @@ class AirQualityLoader(GraphLoader):
             "Train and validation masks overlap"
         )
 
-        self.validation_mask = val_mask
-        self.train_mask = train_mask
+        self.validation_mask = val_mask.bool()
+        self.train_mask = train_mask.bool()
 
     def get_adjacency(
         self,
