@@ -196,9 +196,9 @@ def train_imputer(
                     )
                     imputed_data = imputed_data.squeeze(-1)
                     test_mask_cpu = batch_test_mask.cpu()
-                    print(
-                        f"{torch.isnan(imputed_data).any()=} {torch.isnan(batch_ori).any()}"
-                    )
+                    # print(
+                    #     f"{torch.isnan(imputed_data).any()=} {torch.isnan(batch_ori).any()}"
+                    # )
                     batch_loss = torch.sum(
                         test_mask_cpu * (imputed_data - batch_ori) ** 2
                     ) / (torch.sum(test_mask_cpu) + 1e-8)
@@ -210,8 +210,8 @@ def train_imputer(
                     imputed_batch = batch_data.clone()
                     imputed_data = imputed_data.detach().cpu()
                     missing_mask_cpu = batch_mask.cpu()
-                    print(f"{imputed_batch[~missing_mask_cpu]}")
-                    print(f"{imputed_data[~missing_mask_cpu]}")
+                    # print(f"{imputed_batch[~missing_mask_cpu]}")
+                    # print(f"{imputed_data[~missing_mask_cpu]}")
                     imputed_batch[~missing_mask_cpu] = imputed_data[~missing_mask_cpu]
                     iteration_imputed_data.append(imputed_batch)
 
@@ -309,8 +309,8 @@ def impute_missing_data(
                 imputed_data = imputed_data.squeeze(-1)
                 imputed_batch = batch_data.clone().detach().cpu()
                 mask_cpu = batch_mask.cpu()
-                print(f"{imputed_batch[~mask_cpu]}")
-                print(f"{imputed_data[~mask_cpu]}")
+                # print(f"{imputed_batch[~mask_cpu]}")
+                # print(f"{imputed_data[~mask_cpu]}")
                 # imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
 
                 imputed_batches.append(imputed_batch)
