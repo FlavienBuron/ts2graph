@@ -318,7 +318,7 @@ def impute_missing_data(
                 print(f"{imputed_data[~mask_cpu]}")
                 imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
 
-                imputed_batches.append(imputed_batch)
+                imputed_batches.append(imputed_data)
 
                 sum_ls_after += compute_laplacian_smoothness(
                     imputed_batch, edge_index, edge_weight, mask=batch_mask
