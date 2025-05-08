@@ -161,11 +161,11 @@ class AirQualityLoader(GraphLoader):
                 val_mask[selected[:, 0], selected[:, 1]] = True
                 current_val_points += val_sample_size
 
-        assert torch.isnan(self.original_data[~val_mask]).any(), (
+        assert not torch.isnan(self.original_data[val_mask]).any(), (
             "Missing values found under evaluation mask (first pass)"
         )
 
-        assert torch.isnan(self.original_data[~val_mask]).any(), (
+        assert not torch.isnan(self.original_data[val_mask]).any(), (
             "Missing values found under evaluation mask (first pass)"
         )
 
@@ -212,10 +212,10 @@ class AirQualityLoader(GraphLoader):
             f"Target Val. Percentage: {train_percent:.2f}, Achieved: {train_final_percentage:.2f}"
         )
 
-        assert torch.isnan(self.original_data[val_mask]).any(), (
+        assert not torch.isnan(self.original_data[val_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
         )
-        assert torch.isnan(self.original_data[train_mask]).any(), (
+        assert not torch.isnan(self.original_data[train_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
         )
         assert not torch.logical_and(train_mask, val_mask).any(), (
