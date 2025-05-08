@@ -196,7 +196,7 @@ def train_imputer(
                         missing_mask=batch_mask.unsqueeze(2).to(device),
                     )
                     imputed_data = imputed_data.squeeze(-1)
-                    train_mask_cpu = batch_train_mask.cpu().astype(torch.bool)
+                    train_mask_cpu = batch_train_mask.cpu().bool()
                     # print(
                     #     f"{torch.isnan(imputed_data).any()=} {torch.isnan(batch_ori).any()}"
                     # )
@@ -212,7 +212,7 @@ def train_imputer(
                     # replace the missing data in the batch with the imputed data
                     imputed_batch = batch_data.clone()
                     imputed_data = imputed_data.cpu()
-                    missing_mask_cpu = batch_mask.cpu().astype(torch.bool)
+                    missing_mask_cpu = batch_mask.cpu().bool()
 
                     # print(f"{imputed_batch[~missing_mask_cpu]}")
                     # print(f"{imputed_data[~missing_mask_cpu]}")
@@ -313,7 +313,7 @@ def impute_missing_data(
                 )
                 imputed_data = imputed_data.squeeze(-1)
                 imputed_batch = batch_data.clone().detach().cpu()
-                mask_cpu = batch_mask.cpu().astype(torch.bool)
+                mask_cpu = batch_mask.cpu().bool()
                 # print(f"{imputed_batch[~mask_cpu]}")
                 # print(f"{imputed_data[~mask_cpu]}")
                 imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
