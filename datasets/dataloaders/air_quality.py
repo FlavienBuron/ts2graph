@@ -150,7 +150,7 @@ class AirQualityLoader(GraphLoader):
 
             remaining_segment_mask = segment_mask.clone()
             segment_train_mask = train_mask[start_row:end_row]
-            remaining_segment_mask[segment_mask] = False
+            remaining_segment_mask[segment_train_mask] = False
 
             remaining_indices = torch.nonzero(remaining_segment_mask)
             val_sample_size = min(val_block_points, len(remaining_indices))
