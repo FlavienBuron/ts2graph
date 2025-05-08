@@ -212,11 +212,14 @@ class AirQualityLoader(GraphLoader):
             f"Target Val. Percentage: {train_percent:.2f}, Achieved: {train_final_percentage:.2f}"
         )
 
-        assert torch.isnan(self.original_data[~val_mask]).any(), (
+        assert torch.isnan(self.original_data[val_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
         )
-        assert torch.isnan(self.original_data[~train_mask]).any(), (
+        assert torch.isnan(self.original_data[train_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
+        )
+        assert not torch.logical_and(train_mask, val_mask).any(), (
+            "Train and validation masks overlap"
         )
 
         self.validation_mask = val_mask
@@ -273,9 +276,7 @@ class AirQualityLoader(GraphLoader):
         self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
-        print(f"{self.missing_mask.sum()=}")
         self.split(validation_percent=0.3)
-        print(self.validation_mask.sum())
         self.missing_data = torch.where(self.train_mask, 0.0, self.missing_data)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
