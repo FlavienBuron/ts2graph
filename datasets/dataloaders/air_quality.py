@@ -51,7 +51,7 @@ class AirQualityLoader(GraphLoader):
             ori_data = self.original_data[index, :]
             missing_mask = self.missing_mask[index, :]
             test_mask = self.train_mask[index, :]
-        return missing_data, missing_mask, ori_data, test_mask
+        return missing_data, missing_mask, ori_data.nan_to_num_(0.0), test_mask
 
     def load_raw(self, small: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if small:
