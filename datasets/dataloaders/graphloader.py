@@ -13,7 +13,8 @@ class GraphLoader(Dataset, ABC):
         )  # The original data with/without missing values. Static
         self.missing_data: torch.Tensor  # The original data with the missing values
         self.current_data: torch.Tensor  # The working copy, used during training
-        self.mask: torch.Tensor
+        self.missing_mask: torch.Tensor
+        self.train_mask: torch.Tensor
         self.validation_mask: torch.Tensor
         self.distances = None
         self.corrupt_data: torch.Tensor = torch.empty(
@@ -40,7 +41,7 @@ class GraphLoader(Dataset, ABC):
             new_data = new_data.cpu()
 
         # Only update missing values
-        self.current_data[~self.mask] = new_data[~self.mask]
+        self.current_data[~self.missing_mask] = new_data[~self.missing_mask]
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

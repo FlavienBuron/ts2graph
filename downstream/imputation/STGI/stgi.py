@@ -30,7 +30,7 @@ class STGI(nn.Module):
                 self.gnn_layers.append(ModelClass(hidden_dim, hidden_dim, **kwargs))
             self.gnn_layers.append(ModelClass(hidden_dim, in_dim, **kwargs))
 
-    def forward(self, x, edge_index, edge_weight, mask):
+    def forward(self, x, edge_index, edge_weight, missing_mask):
         """
         x: (batch_size, time_steps, num_nodes, feature_dim)
         edge_index: Graph edges (from adjacency matrix)
@@ -55,6 +55,8 @@ class STGI(nn.Module):
         imputed_x = x
 
         # Compute the batch MSE only using non-missing data
-        x_loss = torch.sum(mask * (imputed_x - ori_x) ** 2) / (torch.sum(mask) + 1e-8)
-        x_final = torch.where(mask.bool(), ori_x, imputed_x)
+        x_loss = torch.sum(missing_mask * (imputed_x - ori_x) ** 2) / (
+            torch.sum(missing_mask) + 1e-8
+        )
+        x_final = torch.where(missing_mask.bool(), ori_x, imputed_x)
         return x_final, x_loss

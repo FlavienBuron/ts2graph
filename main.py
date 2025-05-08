@@ -193,6 +193,10 @@ def train_imputer(
                         mask=batch_mask.unsqueeze(2).to(device),
                     )
                     imputed_data = imputed_data.squeeze(-1)
+                    test_mask_cpu = dataset.train_mask.cpu()
+                    x_loss = torch.sum(
+                        test_mask_cpu * (imputed_data - dataset.original_data) ** 2
+                    ) / (torch.sum(test_mask_cpu) + 1e-8)
                     batch_loss.backward()
                     optimizer.step()
 
@@ -200,10 +204,10 @@ def train_imputer(
                     # replace the missing data in the batch with the imputed data
                     imputed_batch = batch_data.clone()
                     imputed_data = imputed_data.detach().cpu()
-                    mask_cpu = batch_mask.cpu()
-                    print(f"{imputed_batch[~mask_cpu]}")
-                    print(f"{imputed_data[~mask_cpu]}")
-                    imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
+                    missing_mask_cpu = batch_mask.cpu()
+                    print(f"{imputed_batch[~missing_mask_cpu]}")
+                    print(f"{imputed_data[~missing_mask_cpu]}")
+                    imputed_batch[~missing_mask_cpu] = imputed_data[~missing_mask_cpu]
                     iteration_imputed_data.append(imputed_batch)
 
                     # Get the Smoothess AFTER imputation
@@ -220,7 +224,7 @@ def train_imputer(
                         f"Batch {i}/{nb_batches} loss: {batch_loss.item():.4e}",
                         end="\r",
                     )
-                del batch_data, batch_mask, imputed_data, mask_cpu
+                del batch_data, batch_mask, imputed_data, missing_mask_cpu
 
             with torch.no_grad():
                 iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)

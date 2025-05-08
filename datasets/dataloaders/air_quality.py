@@ -24,7 +24,7 @@ class AirQualityLoader(GraphLoader):
         nan_method="mean",
     ):
         self.dataset_path = dataset_path
-        self.original_data, self.mask, self.distances = self.load(small=small)
+        self.original_data, self.missing_mask, self.distances = self.load(small=small)
         self.missing_data = torch.empty_like(self.original_data)
         if replace_nan:
             self._replace_nan(nan_method)
@@ -42,7 +42,7 @@ class AirQualityLoader(GraphLoader):
             mask = self.corrupt_mask[index, :]
         else:
             data = self.current_data[index, :]
-            mask = self.mask[index, :]
+            mask = self.missing_mask[index, :]
         return data, mask
 
     def load_raw(self, small: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -68,28 +68,40 @@ class AirQualityLoader(GraphLoader):
         data = self._normalize(data, mask, normalization_type)
         return data, mask, dist
 
-    def split(self, validation_percent: float, cols: List = [], time_blocks: int = 5):
+    def split(
+        self,
+        train_percent: float = 0.2,
+        validation_percent: float = 0.2,
+        cols: List = [],
+        time_blocks: int = 5,
+    ):
         """
         Split the data into training and validation sets using random blocks.
 
         Args:
-            validation_percent: Percentage of non-missing values
+            train_percent: Percentage of non-missing values held-out for training
+            validation_percent: Percentage of non-missing values held-out for validation/evaluation
         """
         if len(cols) > 0:
             mask_cols = torch.zeros(self.original_data.shape[1], dtype=torch.bool)
             mask_cols[cols] = True
-            working_mask = self.mask & mask_cols.unsqueeze(0).expand_as(self.mask)
+            working_mask = self.missing_mask & mask_cols.unsqueeze(0).expand_as(
+                self.missing_mask
+            )
         else:
-            working_mask = self.mask
+            working_mask = self.missing_mask
 
         rows, _ = self.original_data.shape
+        train_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
         val_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
 
         total_valid_points = torch.sum(working_mask).item()
+        target_train_points = int(total_valid_points * train_percent)
         target_val_points = int(total_valid_points * validation_percent)
 
         time_segments = torch.linspace(0, rows, time_blocks + 1).long()
 
+        current_train_points = 0
         current_val_points = 0
 
         for block in range(time_blocks):
@@ -102,9 +114,15 @@ class AirQualityLoader(GraphLoader):
             # Calculate how many points to sample for this segment
             # Proportional to the number of valid points in the segment
             if total_valid_points > 0:
-                block_points = int(valid_count / total_valid_points * target_val_points)
+                val_block_points = int(
+                    valid_count / total_valid_points * target_val_points
+                )
+                train_block_points = int(
+                    valid_count / total_valid_points * target_train_points
+                )
             else:
-                block_points = 0
+                val_block_points = 0
+                train_block_points = 0
 
             # Get indices of valid points in the segment
             valid_indices = torch.nonzero(segment_mask)
@@ -112,20 +130,52 @@ class AirQualityLoader(GraphLoader):
                 continue
 
             # Sample points
-            sample_size = min(block_points, len(valid_indices))
+            sample_size = min(train_block_points, len(valid_indices))
             if sample_size > 0:
                 perm = torch.randperm(len(valid_indices))
                 selected = valid_indices[perm[:sample_size]]
 
                 selected[:, 0] += start_row
-                val_mask[selected[:, 0], selected[:, 1]] = True
+                train_mask[selected[:, 0], selected[:, 1]] = True
 
-                current_val_points += sample_size
+                current_train_points += sample_size
+
+            remaining_segment_mask = segment_mask.clone()
+            segment_train_mask = train_mask[start_row:end_row]
+            remaining_segment_mask[segment_mask] = False
+
+            remaining_indices = torch.nonzero(remaining_segment_mask)
+            val_sample_size = min(val_block_points, len(remaining_indices))
+            if val_sample_size > 0:
+                perm = torch.randperm(len(remaining_indices))
+                selected = remaining_indices[perm[:val_sample_size]]
+                selected[:, 0] += start_row
+                val_mask[selected[:, 0], selected[:, 1]] = True
+                current_val_points += val_sample_size
+
+        assert torch.isnan(self.original_data[~val_mask]).any(), (
+            "Missing values found under evaluation mask (first pass)"
+        )
+
         assert torch.isnan(self.original_data[~val_mask]).any(), (
             "Missing values found under evaluation mask (first pass)"
         )
 
         # Second pass, adjust to the target
+        if current_train_points < target_train_points:
+            remaining_points = target_val_points - current_val_points
+
+            remaining_valid = working_mask & (~train_mask)
+            remaining_indices = torch.nonzero(remaining_valid)
+
+            if len(remaining_indices) > 0:
+                sample_size = min(remaining_points, len(remaining_indices))
+                perm = torch.randperm(len(remaining_indices))
+                selected = remaining_indices[perm[:sample_size]]
+                train_mask[selected[:, 0], selected[:, 1]] = True
+
+                current_train_points += sample_size
+
         if current_val_points < target_val_points:
             remaining_points = target_val_points - current_val_points
 
@@ -140,19 +190,29 @@ class AirQualityLoader(GraphLoader):
 
                 current_val_points += sample_size
 
-        final_percentage = (
+        val_final_percentage = (
             (current_val_points / total_valid_points) if total_valid_points > 0 else 0
+        )
+        train_final_percentage = (
+            (current_train_points / total_valid_points) if total_valid_points > 0 else 0
         )
 
         print(
-            f"Target Val. Percentage: {validation_percent:.2f}, Achieved: {final_percentage:.2f}"
+            f"Target Val. Percentage: {validation_percent:.2f}, Achieved: {val_final_percentage:.2f}"
+        )
+        print(
+            f"Target Val. Percentage: {train_percent:.2f}, Achieved: {train_final_percentage:.2f}"
         )
 
         assert torch.isnan(self.original_data[~val_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
         )
+        assert torch.isnan(self.original_data[~train_mask]).any(), (
+            "Missing values found under evaluation mask (second pass)"
+        )
 
         self.validation_mask = val_mask
+        self.train_mask = train_mask
 
     def get_adjacency(
         self,
@@ -184,7 +244,7 @@ class AirQualityLoader(GraphLoader):
             mask = self.corrupt_mask.T
         else:
             data = self.original_data.T
-            mask = self.mask.T
+            mask = self.missing_mask.T
         edge_index = from_knn(data=data, mask=mask, k=k, loop=loop, cosine=cosine)
         adj = to_dense_adj(edge_index).squeeze()
         return adj
@@ -205,13 +265,13 @@ class AirQualityLoader(GraphLoader):
         self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
-        print(f"{self.mask.sum()=}")
+        print(f"{self.missing_mask.sum()=}")
         self.split(validation_percent=0.3)
         print(self.validation_mask.sum())
+        self.missing_data = torch.where(self.train_mask, 0.0, self.missing_data)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
-        self.mask = self.mask & ~self.validation_mask
-        print(f"{self.mask.sum()=}")
+        self.missing_mask = self.missing_mask & ~self.validation_mask & ~self.train_mask
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
 
     def shape(self):
@@ -281,6 +341,8 @@ class AirQualityLoader(GraphLoader):
                 )
                 # print(f"NaNs in means?: {torch.isnan(means).any()}")
                 means = means.nan_to_num(0.0)
-                self.missing_data = torch.where(self.mask, self.original_data, means)
+                self.missing_data = torch.where(
+                    self.missing_mask, self.original_data, means
+                )
         elif method == "zero":
             self.missing_data = self.original_data.nan_to_num(nan=0.0)
