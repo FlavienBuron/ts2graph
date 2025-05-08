@@ -41,6 +41,20 @@ class STGI(nn.Module):
         # ori_x = x.detach().clone()
 
         gnn_output = []
+        # Check if edge_index and edge_weight have valid values
+        print(
+            f"Edge index shape: {edge_index.shape}, min: {edge_index.min()}, max: {edge_index.max()}"
+        )
+        print(
+            f"Edge weight shape: {edge_weight.shape}, min: {edge_weight.min()}, max: {edge_weight.max()}"
+        )
+
+        # Check if weights in GNN layers are being updated
+        for i, layer in enumerate(self.gnn_layers):
+            for name, param in layer.named_parameters():
+                print(
+                    f"Layer {i}, {name}: mean={param.mean().item()}, std={param.std().item()}"
+                )
 
         for t in range(time_steps):
             x_t = x[t]
