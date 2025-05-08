@@ -171,7 +171,7 @@ class AirQualityLoader(GraphLoader):
 
         # Second pass, adjust to the target
         if current_train_points < target_train_points:
-            remaining_points = target_val_points - current_val_points
+            remaining_points = target_train_points - current_train_points
 
             remaining_valid = working_mask & (~train_mask)
             remaining_indices = torch.nonzero(remaining_valid)
