@@ -173,7 +173,7 @@ class AirQualityLoader(GraphLoader):
         if current_train_points < target_train_points:
             remaining_points = target_train_points - current_train_points
 
-            remaining_valid = working_mask & (~train_mask)
+            remaining_valid = working_mask & (~train_mask) & (~val_mask)
             remaining_indices = torch.nonzero(remaining_valid)
 
             if len(remaining_indices) > 0:
@@ -187,7 +187,7 @@ class AirQualityLoader(GraphLoader):
         if current_val_points < target_val_points:
             remaining_points = target_val_points - current_val_points
 
-            remaining_valid = working_mask & (~val_mask)
+            remaining_valid = working_mask & (~train_mask) & (~val_mask)
             remaining_indices = torch.nonzero(remaining_valid)
 
             if len(remaining_indices) > 0:
