@@ -200,7 +200,7 @@ def train_imputer(
                         f"{imputed_data.shape=} {test_mask_cpu.shape=} {batch_ori.shape=} {imputed_data[test_mask_cpu].shape=} {batch_ori[batch_test_mask].shape=}"
                     )
                     batch_loss = torch.sum(
-                        test_mask_cpu * (imputed_data - batch_ori[test_mask_cpu]) ** 2
+                        test_mask_cpu * (imputed_data - batch_ori) ** 2
                     ) / (torch.sum(test_mask_cpu) + 1e-8)
                     batch_loss.backward()
                     optimizer.step()
