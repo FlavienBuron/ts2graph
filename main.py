@@ -335,6 +335,9 @@ def impute_missing_data(
         print(
             f"Average Imputation Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
         )
+        for param in model.parameters():
+            if param.grad is None:
+                print(f"Gradient is None for param: {param}")
 
     return dataset.current_data
 
@@ -412,7 +415,7 @@ def run(args: Namespace) -> None:
         )
 
         stgi.to(device)
-        geo_optim = Adam(stgi.parameters(), lr=1e-4)
+        geo_optim = Adam(stgi.parameters(), lr=1e-2)
         stgi = train_imputer(
             stgi,
             dataset,
