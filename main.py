@@ -165,7 +165,9 @@ def train_imputer(
             # create a collection to hold batch data references temporatily
             batch_references = []
 
-            for i, (batch_data, batch_mask) in enumerate(dataloader):
+            for i, (batch_data, batch_mask, batch_ori, batch_test_mask) in enumerate(
+                dataloader
+            ):
                 batch_references.append((batch_data.clone(), batch_mask.clone()))
 
                 optimizer.zero_grad()
@@ -195,7 +197,7 @@ def train_imputer(
                     imputed_data = imputed_data.squeeze(-1)
                     test_mask_cpu = dataset.train_mask.cpu()
                     batch_loss = torch.sum(
-                        test_mask_cpu * (imputed_data - dataset.original_data) ** 2
+                        test_mask_cpu * (imputed_data - batch_ori[test_mask_cpu]) ** 2
                     ) / (torch.sum(test_mask_cpu) + 1e-8)
                     batch_loss.backward()
                     optimizer.step()
@@ -280,7 +282,7 @@ def impute_missing_data(
         nb_batches = len(dataloader)
         for _ in range(num_iteration):
             imputed_batches = []
-            for batch_data, batch_mask in dataloader:
+            for batch_data, batch_mask, _, _ in dataloader:
                 sum_ls_before += compute_laplacian_smoothness(
                     batch_data, edge_index, edge_weight
                 )

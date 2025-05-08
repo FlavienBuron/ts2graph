@@ -36,14 +36,20 @@ class AirQualityLoader(GraphLoader):
     def __len__(self) -> int:
         return self.original_data.shape[0]
 
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(
+        self, index: int
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         if self.use_corrupted_data:
-            data = self.corrupt_data[index, :]
-            mask = self.corrupt_mask[index, :]
+            missing_data = self.corrupt_data[index, :]
+            ori_data = self.original_data[index, :]
+            missing_mask = self.corrupt_mask[index, :]
+            test_mask = self.train_mask[index, :]
         else:
-            data = self.current_data[index, :]
-            mask = self.missing_mask[index, :]
-        return data, mask
+            missing_data = self.current_data[index, :]
+            ori_data = self.original_data[index, :]
+            missing_mask = self.missing_mask[index, :]
+            test_mask = self.train_mask[index, :]
+        return missing_data, missing_mask, ori_data, test_mask
 
     def load_raw(self, small: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if small:
