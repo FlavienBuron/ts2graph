@@ -53,6 +53,10 @@ class STGI(nn.Module):
         # Stack to shape (time, nodes, out_dim)
         x = torch.stack(gnn_output, dim=0)
         imputed_x = x
+        if torch.isnan(imputed_x).any():
+            print("NaNs detected in imputed_x")
+            print("Stats:", imputed_x.min(), imputed_x.max(), imputed_x.mean())
+            raise ValueError("NaNs in model output")
 
         # Compute the batch MSE only using non-missing data
         x_loss = torch.sum(missing_mask * (imputed_x - ori_x) ** 2) / (
