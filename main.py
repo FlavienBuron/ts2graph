@@ -415,7 +415,7 @@ def run(args: Namespace) -> None:
         )
 
         stgi.to(device)
-        geo_optim = Adam(stgi.parameters(), lr=1e-2)
+        geo_optim = Adam(stgi.parameters(), lr=1e-0)
         stgi = train_imputer(
             stgi,
             dataset,
