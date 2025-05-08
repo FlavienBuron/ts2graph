@@ -52,7 +52,7 @@ class STGI(nn.Module):
 
         # Stack to shape (time, nodes, out_dim)
         x = torch.stack(gnn_output, dim=0)
-        imputed_x = x
+        imputed_x = torch.tanh(x)
         if torch.isnan(imputed_x).any():
             print("NaNs detected in imputed_x")
             print("Stats:", imputed_x.min(), imputed_x.max(), imputed_x.mean())
