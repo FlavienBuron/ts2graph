@@ -276,7 +276,7 @@ class AirQualityLoader(GraphLoader):
         self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
-        self.split(train_percent=0.2, validation_percent=0.0)
+        self.split(train_percent=0.2, validation_percent=0.2)
         self.missing_data = torch.where(self.train_mask, 0.0, self.missing_data)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
