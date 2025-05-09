@@ -104,7 +104,7 @@ class AirQualityLoader(GraphLoader):
         else:
             working_mask = self.missing_mask
 
-        rows, _ = self.original_data.shape
+        rows, _, _ = self.original_data.shape
         train_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
         val_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
 
