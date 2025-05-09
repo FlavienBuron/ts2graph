@@ -23,12 +23,20 @@ class STGI(nn.Module):
         self.gnn_layers = nn.ModuleList()
 
         if num_layers == 1:
-            self.gnn_layers.append(ModelClass(in_dim, in_dim, **kwargs))
+            self.gnn_layers.append(
+                ModelClass(in_dim, in_dim, add_self_loops=False, **kwargs)
+            )
         else:
-            self.gnn_layers.append(ModelClass(in_dim, hidden_dim, **kwargs))
+            self.gnn_layers.append(
+                ModelClass(in_dim, hidden_dim, add_self_loops=False, **kwargs)
+            )
             for _ in range(num_layers - 2):
-                self.gnn_layers.append(ModelClass(hidden_dim, hidden_dim, **kwargs))
-            self.gnn_layers.append(ModelClass(hidden_dim, in_dim, **kwargs))
+                self.gnn_layers.append(
+                    ModelClass(hidden_dim, hidden_dim, add_self_loops=False, **kwargs)
+                )
+            self.gnn_layers.append(
+                ModelClass(hidden_dim, in_dim, add_self_loops=False, **kwargs)
+            )
 
     def forward(self, x, edge_index, edge_weight, missing_mask):
         """
