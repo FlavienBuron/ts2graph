@@ -149,7 +149,7 @@ class AirQualityLoader(GraphLoader):
                 selected = valid_indices[perm[:sample_size]]
 
                 selected[:, 0] += start_row
-                train_mask[selected[:, 0], selected[:, 1], :] = True
+                train_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
 
                 current_train_points += sample_size
 
@@ -163,7 +163,7 @@ class AirQualityLoader(GraphLoader):
                 perm = torch.randperm(len(remaining_indices))
                 selected = remaining_indices[perm[:val_sample_size]]
                 selected[:, 0] += start_row
-                val_mask[selected[:, 0], selected[:, 1], :] = True
+                val_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
                 current_val_points += val_sample_size
 
         assert not torch.isnan(self.original_data[val_mask]).any(), (
@@ -185,7 +185,7 @@ class AirQualityLoader(GraphLoader):
                 sample_size = min(remaining_points, len(remaining_indices))
                 perm = torch.randperm(len(remaining_indices))
                 selected = remaining_indices[perm[:sample_size]]
-                train_mask[selected[:, 0], selected[:, 1], :] = True
+                train_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
 
                 current_train_points += sample_size
 
@@ -199,7 +199,7 @@ class AirQualityLoader(GraphLoader):
                 sample_size = min(remaining_points, len(remaining_indices))
                 perm = torch.randperm(len(remaining_indices))
                 selected = remaining_indices[perm[:sample_size]]
-                val_mask[selected[:, 0], selected[:, 1], :] = True
+                val_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
 
                 current_val_points += sample_size
 
