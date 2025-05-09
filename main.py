@@ -414,7 +414,7 @@ def run(args: Namespace) -> None:
         edge_index, edge_weight = dense_to_sparse(adj_matrix)
 
         stgi = STGI(
-            in_dim=1,
+            in_dim=2,
             hidden_dim=args.hidden_dim,
             num_layers=args.layer_num,
             model_type=args.layer_type,
