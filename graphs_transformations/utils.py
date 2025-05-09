@@ -10,7 +10,7 @@ from torch_geometric.utils import get_laplacian, to_dense_adj
 def compute_laplacian_smoothness(
     x, edge_index, edge_weight=None, mask=None, normalize=True, debug=False
 ):
-    batch_size, nodes = x.shape
+    batch_size, nodes, features = x.shape
     lap_edge_index, lap_edge_weight = get_laplacian(
         edge_index, edge_weight, normalization="sym"
     )
@@ -41,14 +41,18 @@ def compute_laplacian_smoothness(
             print(f"Error computing eigenvalues: {e}")
 
     if mask is not None:
-        x *= mask.float()
+        x = x.masked_fill(~mask, 0.0)
 
     # x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
 
-    x_reshaped = x.unsqueeze(1)
-    laplacian_expanded = laplacian.unsqueeze(0).expand(batch_size, -1, -1)
+    x_flat = (
+        x.permute(0, 2, 1).reshape(batch_size * features, nodes).unsqueeze(1)
+    )  # [B*F, 1, N]
+    laplacian_expanded = laplacian.unsqueeze(0).expand(
+        batch_size * features, -1, -1
+    )  # [B*F, N, N]
     smoothness = torch.bmm(
-        torch.bmm(x_reshaped, laplacian_expanded), x_reshaped.transpose(1, 2)
+        torch.bmm(x_flat, laplacian_expanded), x_flat.transpose(1, 2)
     ).squeeze()
 
     smoothness_total = smoothness.sum()
@@ -63,37 +67,30 @@ def compute_laplacian_smoothness(
 def compute_edge_difference_smoothness(
     x, edge_index, edge_weight=None, mask=None, normalize=True
 ):
-    edge_mask = torch.ones_like(edge_index)
-    row, col = edge_index
-    x_row = x[:, row]
-    x_col = x[:, col]
-    diff = x_row - x_col
-    sq_diff = diff**2
+    B, N, F = x.shape
+    row, col = edge_index  # [E]
+
+    x_i = x[:, row, :]  # [B, E, F]
+    x_j = x[:, col, :]
+    diff = x_i - x_j
+    sq_diff = diff**2  # [B, E, F]
 
     if mask is not None:
-        # Create edge mask based on node masks
-        mask_row = mask[:, row]
-        mask_col = mask[:, col]
-        edge_mask = (
-            mask_row & mask_col
-        )  # Only consider edges where both endpoints are observed
+        m_i = mask[:, row, :]
+        m_j = mask[:, col, :]
+        edge_mask = m_i & m_j  # [B, E, F]
+        sq_diff = sq_diff * edge_mask.float()
+
     if edge_weight is not None:
-        edge_weight_expanded = edge_weight.unsqueeze(0)
-        if mask is not None:
-            weighted_sq_diff = sq_diff * edge_weight_expanded * edge_mask.float()
-        else:
-            weighted_sq_diff = sq_diff * edge_weight_expanded
-        smoothness = weighted_sq_diff.sum(dim=1)
-    else:
-        smoothness = sq_diff.sum(dim=1)
-    smoothness = smoothness.sum().item()
+        w = edge_weight.view(1, -1, 1)  # [1, E, 1]
+        sq_diff = sq_diff * w  # weighted squared diff
+
+    smoothness = sq_diff.sum()
 
     if normalize:
-        energy = (x**2).sum(dim=1) + 1e-8  # [B]
-        norm_smoothness = smoothness / energy
-        return norm_smoothness.sum().item()
-    else:
-        return smoothness.sum().item()
+        energy = (x**2).sum() + 1e-8
+        return (smoothness / energy).item()
+    return smoothness.item()
 
 
 def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -> None:
