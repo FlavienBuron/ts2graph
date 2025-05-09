@@ -414,7 +414,6 @@ def run(args: Namespace) -> None:
             hidden_dim=args.hidden_dim,
             num_layers=args.layer_num,
             model_type=args.layer_type,
-            add_self_loops=False,
         )
 
         stgi.to(device)
