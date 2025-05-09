@@ -389,6 +389,8 @@ def run(args: Namespace) -> None:
     elif "zero" in graph_technique:
         adj_matrix = dataset.get_adjacency(threshold=param)
         adj_matrix = torch.zeros_like(adj_matrix)
+        if args.self_loop:
+            adj_matrix.fill_diagonal_(1.0)
     elif "one" in graph_technique:
         adj_matrix = dataset.get_adjacency(threshold=param)
         adj_matrix = torch.ones_like(adj_matrix)
