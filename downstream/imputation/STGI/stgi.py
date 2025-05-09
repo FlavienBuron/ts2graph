@@ -46,7 +46,7 @@ class STGI(nn.Module):
         mask: Binary mask (1 = observed, 0 = missing)
         """
         time_steps, nodes, _ = x.shape
-        ori_x = x.detach().clone()
+        # ori_x = x.detach().clone()
 
         gnn_output = []
 
@@ -68,8 +68,8 @@ class STGI(nn.Module):
             raise ValueError("NaNs in model output")
 
         # Compute the batch MSE only using non-missing data
-        x_loss = torch.sum(missing_mask * (imputed_x - ori_x) ** 2) / (
-            torch.sum(missing_mask) + 1e-8
-        )
-        x_final = torch.where(missing_mask.bool(), ori_x, imputed_x)
+        # x_loss = torch.sum(missing_mask * (imputed_x - ori_x) ** 2) / (
+        #     torch.sum(missing_mask) + 1e-8
+        # )
+        # x_final = torch.where(missing_mask.bool(), ori_x, imputed_x)
         return imputed_x, 0

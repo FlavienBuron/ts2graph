@@ -74,6 +74,7 @@ class AirQualityLoader(GraphLoader):
             "non-missing values found under missing values mask"
         )
         data = self._normalize(data, mask, normalization_type)
+        print(f"{data.shape=}")
         return data, mask, dist
 
     def split(
