@@ -190,12 +190,14 @@ def train_imputer(
 
                     # Imputation step
                     imputed_data, batch_loss = model(
-                        x=batch_data.unsqueeze(2).to(device),
+                        # x=batch_data.unsqueeze(2).to(device),
+                        x=batch_data.to(device),
                         edge_index=edge_index.to(device),
                         edge_weight=edge_weight.to(device),
-                        missing_mask=batch_mask.unsqueeze(2).to(device).bool(),
+                        # missing_mask=batch_mask.unsqueeze(2).to(device).bool(),
+                        missing_mask=batch_mask.to(device).bool(),
                     )
-                    imputed_data = imputed_data.squeeze(-1)
+                    # imputed_data = imputed_data.squeeze(-1)
                     train_mask_cpu = batch_train_mask.cpu().bool()
                     # print(
                     #     f"{torch.isnan(imputed_data).any()=} {torch.isnan(batch_ori).any()}"
@@ -306,12 +308,14 @@ def impute_missing_data(
                 )
 
                 imputed_data, _ = model(
+                    # batch_data.unsqueeze(2).to(device),
                     batch_data.unsqueeze(2).to(device),
                     edge_index.to(device),
                     edge_weight.to(device),
+                    # batch_mask.unsqueeze(2).to(device),
                     batch_mask.unsqueeze(2).to(device),
                 )
-                imputed_data = imputed_data.squeeze(-1)
+                # imputed_data = imputed_data.squeeze(-1)
                 imputed_batch = batch_data.clone().detach().cpu()
                 mask_cpu = batch_mask.cpu().bool()
                 # print(f"{imputed_batch[~mask_cpu]}")

@@ -69,12 +69,16 @@ class AirQualityLoader(GraphLoader):
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
         data = torch.from_numpy(data.to_numpy()).float()
+        data = data.unsqueeze(-1)
+        n_steps = data.shape[0]
+        time_indices = torch.arange(n_steps, dtype=data.dtype).view(n_steps, 1, 1)
+        time_indices = time_indices / (n_steps - 1)
+        data = torch.cat([data, time_indices.expand(-1, data.shape[1], -1)], dim=-1)
         mask = torch.where(data.isnan(), False, True)
         assert torch.isnan(data[~mask]).all(), (
             "non-missing values found under missing values mask"
         )
         data = self._normalize(data, mask, normalization_type)
-        print(f"{data.shape=}")
         return data, mask, dist
 
     def split(
