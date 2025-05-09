@@ -309,11 +309,11 @@ def impute_missing_data(
 
                 imputed_data, _ = model(
                     # batch_data.unsqueeze(2).to(device),
-                    batch_data.unsqueeze(2).to(device),
+                    batch_data.to(device),
                     edge_index.to(device),
                     edge_weight.to(device),
                     # batch_mask.unsqueeze(2).to(device),
-                    batch_mask.unsqueeze(2).to(device),
+                    batch_mask.to(device),
                 )
                 # imputed_data = imputed_data.squeeze(-1)
                 imputed_batch = batch_data.clone().detach().cpu()
