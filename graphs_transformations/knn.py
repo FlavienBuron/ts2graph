@@ -13,7 +13,7 @@ def from_knn(
     # print(f"{data.var(dim=1)=} {torch.min(data.var(dim=1))=}")
     if torch.isnan(data).any():
         # data.nan_to_num_(nan=0.0)
-        means = data.nanmean(dim=1)
+        means = data.nanmean(dim=1, keepdim=True)
         # means.nan_to_num_(0.0)
         data = torch.where(mask, data, means)
     # data = (data - data.mean()) / (data.std() + 1e-8)
