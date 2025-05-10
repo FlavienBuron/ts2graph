@@ -256,11 +256,19 @@ class AirQualityLoader(GraphLoader):
         cosine: bool = False,
     ) -> torch.Tensor:
         if use_corrupted_data:
-            data = self.corrupt_data.mT
-            mask = self.corrupt_mask.mT
+            data = self.corrupt_data.permute(1, 0, 2).reshape(
+                self.original_data.shape[1], -1
+            )
+            mask = self.corrupt_mask.permute(1, 0, 2).reshape(
+                self.original_data.shape[1], -1
+            )
         else:
-            data = self.original_data.mT
-            mask = self.missing_mask.mT
+            data = self.original_data.permute(1, 0, 2).reshape(
+                self.original_data.shape[1], -1
+            )
+            mask = self.missing_mask.permute(1, 0, 2).reshape(
+                self.original_data.shape[1], -1
+            )
         edge_index = from_knn(data=data, mask=mask, k=k, loop=loop, cosine=cosine)
         adj = to_dense_adj(edge_index).squeeze()
         return adj
