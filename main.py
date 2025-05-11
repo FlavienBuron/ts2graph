@@ -86,7 +86,7 @@ def parse_args() -> Namespace:
     )
     parser.add_argument(
         "--iter_num",
-        "-i",
+        "-it",
         type=int,
         help="The number of iteration from the model pass",
         default=1,
