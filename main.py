@@ -78,6 +78,13 @@ def parse_args() -> Namespace:
         default="",
     )
     parser.add_argument(
+        "--learning_rate",
+        "-lr",
+        type=float,
+        help="The learning rate of the optimizer",
+        default=1e-3,
+    )
+    parser.add_argument(
         "--iter_num",
         "-i",
         type=int,
@@ -421,7 +428,7 @@ def run(args: Namespace) -> None:
         )
 
         stgi.to(device)
-        geo_optim = Adam(stgi.parameters(), lr=1e-2)
+        geo_optim = Adam(stgi.parameters(), lr=args.learning_rate)
         stgi = train_imputer(
             stgi,
             dataset,
