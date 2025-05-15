@@ -1,5 +1,3 @@
-#!/bin/bash
-
 . .venv/bin/activate
 
 # Accept custom list of epochs from command line, or use defaults
