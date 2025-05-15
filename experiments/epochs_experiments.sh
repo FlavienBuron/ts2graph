@@ -14,7 +14,7 @@ LOGFILE="./experiments/results/${DATE}-e-experiments.txt"
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
 # List of grouping methods and their values
-declare -A GROUPS=(
+declare -A TECHNIQUES=(
     ["zero"]=0
     ["one"]=1
     ["loc"]=0.5
@@ -23,8 +23,8 @@ declare -A GROUPS=(
 
 # Loop through epochs and groups
 for E in "${EPOCHS[@]}"; do
-    for G in "${!GROUPS[@]}"; do
-        V=${GROUPS[$G]}
+    for G in "${!TECHNIQUES[@]}"; do
+        V=${TECHNIQUES[$G]}
         echo "Running: -g $G $V -e $E" | tee -a "$LOGFILE"
         python -u main.py -d air -g "$G" "$V" -e "$E" -hd 32 -ln 1 -v 0 | tee -a "$LOGFILE"
     done
