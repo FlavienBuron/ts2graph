@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source .venv/bin/activate
+. .venv/bin/activate
 
 # Accept custom list of epochs from command line, or use defaults
 EPOCHS=("$@")
