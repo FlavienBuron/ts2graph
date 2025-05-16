@@ -27,7 +27,7 @@ declare -A TECHNIQUES=(
     ["knn"]=50
 )
 
-USE_MLP = ""
+USE_MLP=""
 if [ "$USE_MLP_OUTPUT" -eq 1 ]; then
     USE_MLP="-mo -ms $MLP_SIZE"
 fi
