@@ -18,7 +18,6 @@ from torch_geometric.utils import dense_to_sparse
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.STGI import STGI
-from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
     compute_laplacian_smoothness,
@@ -117,6 +116,19 @@ def parse_args() -> Namespace:
         "-hd",
         type=int,
         help="The size of the hidden dimension of the GNN",
+        default=32,
+    )
+    parser.add_argument(
+        "--mlp_output",
+        "-mo",
+        action="store_true",
+        help="whether to use an MLP on the output of the GNN",
+    )
+    parser.add_argument(
+        "--mlp_size",
+        "-ms",
+        type=int,
+        help="The size of the MLP layer of the GNN, if used",
         default=32,
     )
     parser.add_argument(
@@ -262,18 +274,18 @@ def train_imputer(
         # dataset.reset_current_data()
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
-        print(
-            f"\n\nAverage Masked Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
-        )
-        print(
-            f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
-        )
-        print(
-            f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
-        )
-        print(
-            f"Average Masked Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
-        )
+            print(
+                f"\n\nAverage Masked Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
+            )
+            print(
+                f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
+            )
+            print(
+                f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
+            )
+            print(
+                f"Average Masked Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
+            )
     return model
 
 
@@ -381,6 +393,7 @@ def evaluate(
 
 def run(args: Namespace) -> None:
     # test = np.random.rand(10, 100)
+    print("#" * 100)
     print(args)
     device = args.device
     dataset = get_dataset(args.dataset)
@@ -394,22 +407,24 @@ def run(args: Namespace) -> None:
     print(f"{dataset.validation_mask.sum()}")
     graph_technique, param = args.graph_technique
     param = float(param)
-    ts2net = Ts2Net()
+    # ts2net = Ts2Net()
     if "loc" in graph_technique:
-        adj_matrix = dataset.get_adjacency(threshold=param, include_self=args.self_loop)
+        adj_matrix = dataset.get_geolocation_graph(
+            threshold=param, include_self=args.self_loop
+        )
     elif "zero" in graph_technique:
-        adj_matrix = dataset.get_adjacency(threshold=param)
+        adj_matrix = dataset.get_geolocation_graph(threshold=param)
         adj_matrix = torch.zeros_like(adj_matrix)
         if args.self_loop:
             adj_matrix.fill_diagonal_(1.0)
     elif "one" in graph_technique:
-        adj_matrix = dataset.get_adjacency(threshold=param)
+        adj_matrix = dataset.get_geolocation_graph(threshold=param)
         adj_matrix = torch.ones_like(adj_matrix)
         if not bool(args.self_loop):
             adj_matrix.fill_diagonal_(0.0)
     else:
         param = int(param)
-        adj_matrix = dataset.get_similarity_knn(
+        adj_matrix = dataset.get_knn_graph(
             k=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
         )
     if args.graph_stats:
@@ -425,6 +440,8 @@ def run(args: Namespace) -> None:
             hidden_dim=args.hidden_dim,
             num_layers=args.layer_num,
             model_type=args.layer_type,
+            use_mlp_output=args.mlp_output,
+            mlp_size=args.mlp_size,
         )
 
         stgi.to(device)

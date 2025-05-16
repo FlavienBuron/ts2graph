@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from torch_geometric.utils import to_dense_adj
 
 from datasets.dataloaders.graphloader import GraphLoader
-from graphs_transformations.knn import from_knn
+from graphs_transformations.proximity_graphs import from_knn, from_radius
 
 EARTH_RADIUS = 6371.0088
 
@@ -230,7 +230,7 @@ class AirQualityLoader(GraphLoader):
         self.validation_mask = val_mask.bool()
         self.train_mask = train_mask.bool()
 
-    def get_adjacency(
+    def get_geolocation_graph(
         self,
         threshold: float = 0.1,
         threshold_on_input: bool = False,
@@ -248,7 +248,7 @@ class AirQualityLoader(GraphLoader):
             adj = torch.from_numpy(np.maximum.reduce([adj.numpy(), adj.T.numpy()]))
         return adj
 
-    def get_similarity_knn(
+    def get_knn_graph(
         self,
         k: int,
         use_corrupted_data: bool = False,
@@ -270,6 +270,33 @@ class AirQualityLoader(GraphLoader):
                 self.original_data.shape[1], -1
             )
         edge_index = from_knn(data=data, mask=mask, k=k, loop=loop, cosine=cosine)
+        adj = to_dense_adj(edge_index).squeeze()
+        return adj
+
+    def get_radius_graph(
+        self,
+        radius: int,
+        use_corrupted_data: bool = False,
+        loop: bool = False,
+        cosine: bool = False,
+    ) -> torch.Tensor:
+        if use_corrupted_data:
+            data = self.corrupt_data.permute(1, 0, 2).reshape(
+                self.original_data.shape[1], -1
+            )
+            mask = self.corrupt_mask.permute(1, 0, 2).reshape(
+                self.original_data.shape[1], -1
+            )
+        else:
+            data = self.original_data.permute(1, 0, 2).reshape(
+                self.original_data.shape[1], -1
+            )
+            mask = self.missing_mask.permute(1, 0, 2).reshape(
+                self.original_data.shape[1], -1
+            )
+        edge_index = from_radius(
+            data=data, mask=mask, radius=radius, loop=loop, cosine=cosine
+        )
         adj = to_dense_adj(edge_index).squeeze()
         return adj
 

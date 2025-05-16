@@ -11,6 +11,8 @@ class STGI(nn.Module):
         hidden_dim,
         num_layers,
         model_type: str = "GCNConv",
+        use_mlp_output=False,
+        mlp_size=32,
         **kwargs,
     ):
         super(STGI, self).__init__()
@@ -19,12 +21,18 @@ class STGI(nn.Module):
             raise ValueError(f"Model type '{model_type}' not found in torch_geometric")
 
         ModelClass = getattr(pyg_nn, model_type)
+        self.use_mlp_output = use_mlp_output
 
         self.gnn_layers = nn.ModuleList()
 
+        if not use_mlp_output:
+            out_dim = in_dim
+        else:
+            out_dim = mlp_size
+
         if num_layers == 1:
             self.gnn_layers.append(
-                ModelClass(in_dim, in_dim, add_self_loops=False, **kwargs)
+                ModelClass(in_dim, out_dim, add_self_loops=False, **kwargs)
             )
         else:
             self.gnn_layers.append(
@@ -35,8 +43,11 @@ class STGI(nn.Module):
                     ModelClass(hidden_dim, hidden_dim, add_self_loops=False, **kwargs)
                 )
             self.gnn_layers.append(
-                ModelClass(hidden_dim, in_dim, add_self_loops=False, **kwargs)
+                ModelClass(hidden_dim, out_dim, add_self_loops=False, **kwargs)
             )
+
+        if use_mlp_output:
+            self.output_layer = nn.Linear(out_dim, in_dim)
 
     def forward(self, x, edge_index, edge_weight, missing_mask):
         """
@@ -60,6 +71,9 @@ class STGI(nn.Module):
 
         # Stack to shape (time, nodes, out_dim)
         x = torch.stack(gnn_output, dim=0)
+
+        if self.use_mlp_output:
+            x = self.output_layer(x)
         imputed_x = torch.tanh(x)
 
         if torch.isnan(imputed_x).any():

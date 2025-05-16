@@ -1,32 +1,45 @@
-    . .venv/bin/activate
+#!/bin/bash
 
-    # Get current date in YYMMDD format
-    DATE=$(date +%y%m%d)
-    LOGFILE="./experiments/results/${DATE}-simple-experiments.txt"
-    COMMIT_MSG=$(git log -1 --pretty=%B)
+. .venv/bin/activate
 
-    echo "Running experiments on $DATE" >> "$LOGFILE"
-    echo "Last commit: $COMMIT_MSG" >> "$LOGFILE"
+# Accept custom list of depth from command line, or use defaults
+DEPTHS=("$@")
+if [ ${#DEPTHS[@]} -eq 0 ]; then
+    DEPTHS=(1 2 3)
+fi
 
-    # Test the impact of hidden layer size
+EPOCH=50
+HIDDEN_DIM=32
+SELF_LOOP=0
+USE_MLP_OUTPUT=0
+MLP_SIZE=32
 
-    # 1. Defaults 
-    echo "Depth 1"
-    python -u main.py -d air -g zero 0 -e 10 -hd 32 -ln 1 -v 0 | tee -a "$LOGFILE"
-    python -u main.py -d air -g one 1 -e 10 -hd 32 -ln 1 -v 0 | tee -a "$LOGFILE"
-    python -u main.py -d air -g loc 0.5 -e 10 -hd 32 -ln 1 -v 0 | tee -a "$LOGFILE"
-    python -u main.py -d air -g knn 50 -e 10 -hd 32 -ln 1 -v 0 | tee -a "$LOGFILE"
+DATE=$(date +%y%m%d)
+LOGFILE="./experiments/results/${DATE}-simple-experiments.txt"
 
-    echo "Depth 2"
-    python -u main.py -d air -g zero 0 -e 10 -hd 32 -ln 2 -v 0 | tee -a "$LOGFILE"
-    python -u main.py -d air -g one 1 -e 10 -hd 32 -ln 2 -v 0 | tee -a "$LOGFILE"
-    python -u main.py -d air -g loc 0.5 -e 10 -hd 32 -ln 2 -v 0 | tee -a "$LOGFILE"
-    python -u main.py -d air -g knn 50 -e 10 -hd 32 -ln 2 -v 0 | tee -a "$LOGFILE"
+echo "Running experiments on $DATE" >> "$LOGFILE"
 
-    echo "Depth 3"
-    python -u main.py -d air -g zero 0 -e 10 -hd 32 -ln 3 -v 0 | tee -a "$LOGFILE"
-    python -u main.py -d air -g one 1 -e 10 -hd 32 -ln 3 -v 0 | tee -a "$LOGFILE"
-    python -u main.py -d air -g loc 0.5 -e 10 -hd 32 -ln 3 -v 0 | tee -a "$LOGFILE"
-    python -u main.py -d air -g knn 50 -e 10 -hd 32 -ln 3 -v 0 | tee -a "$LOGFILE"
+# List of grouping methods and their values
+declare -A TECHNIQUES=(
+    ["zero"]=0
+    ["one"]=1
+    ["loc"]=0.5
+    ["knn"]=50
+)
+
+USE_MLP = ""
+if [ "$USE_MLP_OUTPUT" -eq 1 ]; then
+    USE_MLP="-mo -ms $MLP_SIZE"
+fi
+
+# Loop through epochs and groups
+for D in "${DEPTHS[@]}"; do
+    for T in "${!TECHNIQUES[@]}"; do
+        V=${TECHNIQUES[$T]}
+        echo "Running: -g $T $V -ln $D" | tee -a "$LOGFILE"
+        python -u main.py -d air -g "$T" "$V" -e $EPOCH -hd $HIDDEN_DIM -ln $D $USE_MLP -v 0 | tee -a "$LOGFILE"
+    done
+done
+
 
 

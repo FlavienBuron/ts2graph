@@ -55,11 +55,15 @@ class GraphLoader(Dataset, ABC):
         pass
 
     @abstractmethod
-    def get_similarity_knn(self, k: int, *args, **kwargs) -> Any:
+    def get_knn_graph(self, k: int, *args, **kwargs) -> Any:
         pass
 
     @abstractmethod
-    def get_adjacency(self, *args, **kwargs) -> Any:
+    def get_radius_graph(self, k: int, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
+    def get_geolocation_graph(self, *args, **kwargs) -> Any:
         pass
 
     @abstractmethod
