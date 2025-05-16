@@ -274,18 +274,18 @@ def train_imputer(
         # dataset.reset_current_data()
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
-            print(
-                f"\n\nAverage Masked Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
-            )
-            print(
-                f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
-            )
-            print(
-                f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
-            )
-            print(
-                f"Average Masked Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
-            )
+            # print(
+            #     f"\n\nAverage Masked Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
+            # )
+            # print(
+            #     f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
+            # )
+            # print(
+            #     f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
+            # )
+            # print(
+            #     f"Average Masked Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
+            # )
     return model
 
 
