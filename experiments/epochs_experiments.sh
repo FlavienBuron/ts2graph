@@ -24,9 +24,9 @@ KNN_VAL=50
 [ "$DATASET" == "airq_small" ] && KNN_VAL=3
 
 declare -A TECHNIQUES=(
-    ["zero"]=0
-    ["one"]=1
-    ["loc"]=0.5
+    # ["zero"]=0
+    # ["one"]=1
+    # ["loc"]=0.5
     ["knn"]=$KNN_VAL
 )
 
