@@ -20,12 +20,14 @@ LOGFILE="./experiments/results/${DATE}-e-experiments.txt"
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
-# List of grouping methods and their values
+KNN_VAL=50
+[ "$DATASET" == "airq_small" ] && KNN_VAL=3
+
 declare -A TECHNIQUES=(
     ["zero"]=0
     ["one"]=1
     ["loc"]=0.5
-    ["knn"]=50
+    ["knn"]=$KNN_VAL
 )
 
 USE_MLP=""
