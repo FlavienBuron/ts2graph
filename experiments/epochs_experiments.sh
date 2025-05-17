@@ -9,10 +9,11 @@ if [ ${#EPOCHS[@]} -eq 0 ]; then
 fi
 
 HIDDEN_DIM=32
-LAYER_NUMBER=2
+LAYER_NUMBER=1
 SELF_LOOP=0
 USE_MLP_OUTPUT=0
 MLP_SIZE=32
+DATASET="airq_small"
 
 DATE=$(date +%y%m%d)
 LOGFILE="./experiments/results/${DATE}-e-experiments.txt"
@@ -37,7 +38,7 @@ for E in "${EPOCHS[@]}"; do
     for G in "${!TECHNIQUES[@]}"; do
         V=${TECHNIQUES[$G]}
         echo "Running: -g $G $V -e $E" | tee -a "$LOGFILE"
-        python -u main.py -d air -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER $USE_MLP -v 0 | tee -a "$LOGFILE"
+        python -u main.py -d $DATASET -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER $USE_MLP -v 0 | tee -a "$LOGFILE"
     done
 done
 
