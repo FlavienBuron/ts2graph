@@ -17,7 +17,7 @@ DATASET="airq_small"
 TOTAL=36
 
 for F in "${FRAC[@]}"; do
-    K=$(awk "BEGIN { printf \"%d\", ($F) / 100 }")
+    K=$(echo "scale=2; $F / 100" | bc)
     echo "Running: loc $K for $DATASET"
     python -u main.py -d $DATASET -g knn "$K" -e 1 -hd $HIDDEN_DIM -ln $LAYER_NUMBER -gs -dt -v 0
 done
