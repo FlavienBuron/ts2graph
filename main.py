@@ -429,7 +429,9 @@ def run(args: Namespace) -> None:
         )
     if args.graph_stats:
         save_stats_path = "./experiments/results/graphs_stats/"
-        save_path = os.path.join(save_stats_path, f"{graph_technique}_{param}")
+        save_path = os.path.join(
+            save_stats_path, f"{args.dataset}_{graph_technique}_{param}"
+        )
         save_graph_characteristics(adj_matrix, save_path)
 
     if args.downstream_task:
