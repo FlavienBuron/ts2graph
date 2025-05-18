@@ -2,18 +2,49 @@
 
 . .venv/bin/activate
 
-# Accept custom list of epochs from command line, or use defaults
-EPOCHS=("$@")
-if [ ${#EPOCHS[@]} -eq 0 ]; then
-    EPOCHS=(5 10 15 20)
-fi
-
+EPOCHS=()
 HIDDEN_DIM=32
-LAYER_NUMBER=2
+LAYER_NUMBER=1
 SELF_LOOP=0
 USE_MLP_OUTPUT=0
 MLP_SIZE=32
 DATASET="airq_small"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --epochs)
+            IFS=',' read -r -a EPOCHS <<< "$2"
+            shift 2
+            ;;
+        --dataset)
+            DATASET="$2"
+            shift 2
+            ;;
+        --hidden_dim)
+            HIDDEN_DIM="$2"
+            shift 2
+            ;;
+        --layers)
+            LAYER_NUMBER="$2"
+            shift 2
+            ;;
+        --mlp)
+            USE_MLP_OUTPUT=1
+            MLP_SIZE="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Accept custom list of epochs from command line, or use defaults
+if [ ${#EPOCHS[@]} -eq 0 ]; then
+    EPOCHS=(5 10 15 20)
+fi
+
 
 DATE=$(date +%y%m%d)
 LOGFILE="./experiments/results/${DATE}-e-experiments.txt"
