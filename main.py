@@ -285,7 +285,7 @@ def train_imputer(
             dataset.update_data(iteration_imputed_data)
             del iteration_imputed_data, batch_losses, batch_references
         mean_loss = epoch_loss / (nb_batches * num_iteration)
-        dataset.reset_current_data()
+        # dataset.reset_current_data()
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
             # print(
