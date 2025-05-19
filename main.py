@@ -1,3 +1,5 @@
+import json
+import os
 import random
 from argparse import ArgumentParser, Namespace
 
@@ -27,7 +29,6 @@ from graphs_transformations.utils import (
 random.seed(42)
 np.random.seed(42)
 torch.manual_seed(42)
-import os
 
 os.environ["PYTHONHASHSEED"] = str(42)
 
@@ -154,6 +155,18 @@ def parse_args() -> Namespace:
     return args
 
 
+def log_results(metrics: dict, filename: str, mode: str = "a"):
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+            existing = json.load(f)
+    else:
+        existing = []
+    existing.append(metrics)
+    with open(filename, "w") as f:
+        json.dump(existing, f, indent=2)
+
+
 def train_imputer(
     model: nn.Module,
     dataset: GraphLoader,
@@ -161,6 +174,7 @@ def train_imputer(
     edge_index: torch.Tensor,
     edge_weight: torch.Tensor,
     optimizer: Optimizer,
+    metrics: dict,
     epochs: int = 5,
     num_iteration: int = 100,
     device: str = "cpu",
@@ -271,7 +285,7 @@ def train_imputer(
             dataset.update_data(iteration_imputed_data)
             del iteration_imputed_data, batch_losses, batch_references
         mean_loss = epoch_loss / (nb_batches * num_iteration)
-        # dataset.reset_current_data()
+        dataset.reset_current_data()
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
             # print(
@@ -295,6 +309,7 @@ def impute_missing_data(
     dataloader: DataLoader,
     edge_index: torch.Tensor,
     edge_weight: torch.Tensor,
+    metrics: dict,
     num_iteration: int,
     device: str,
 ):
@@ -369,6 +384,7 @@ def evaluate(
     imputed_data: np.ndarray,
     target_data: np.ndarray,
     evaluation_mask: np.ndarray,
+    metrics: dict,
 ):
     evaluation_points = evaluation_mask.astype(bool)
     print("Target NaNs:", np.isnan(target_data[evaluation_points]).sum())
@@ -404,10 +420,11 @@ def run(args: Namespace) -> None:
     assert not torch.isnan(dataset.original_data[dataset.validation_mask]).any(), (
         "Missing values present under evaluation mask (run)"
     )
-    print(f"{dataset.validation_mask.sum()}")
     graph_technique, param = args.graph_technique
     param = float(param)
     # ts2net = Ts2Net()
+    metrics = {}
+    metrics.update(vars(args))
     if "loc" in graph_technique:
         adj_matrix = dataset.get_geolocation_graph(
             threshold=param, include_self=args.self_loop
@@ -455,6 +472,7 @@ def run(args: Namespace) -> None:
             edge_index,
             edge_weight,
             geo_optim,
+            metrics,
             args.epochs,
             args.iter_num,
             device=device,
@@ -466,6 +484,7 @@ def run(args: Namespace) -> None:
             dataloader,
             edge_index,
             edge_weight,
+            metrics,
             args.iter_num,
             device,
         )
@@ -473,6 +492,7 @@ def run(args: Namespace) -> None:
             imputed_data.numpy(),
             dataset.original_data.numpy(),
             dataset.validation_mask.numpy(),
+            metrics,
         )
 
 
@@ -482,5 +502,3 @@ if __name__ == "__main__":
 
     # TODO: Transform dataset into standardized format
     # TODO: Check for the presence of adjacency data, positional data etc, or have the user use arg
-    # TODO: Add adjacency based method from GRIN
-    # TODO: Add KNN base
