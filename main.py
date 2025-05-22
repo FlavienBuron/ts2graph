@@ -444,22 +444,24 @@ def impute_missing_data(
         for param in model.parameters():
             if param.grad is None:
                 print(f"Gradient is None for param: {param}")
-        impute_metrics = {
-            "phase": "impute",
-            "epoch": None,
-            "imputed_lap_smooth_before": sum_imputed_ls_before,
-            "imputed_lap_smooth_after": sum_imputed_ls_after,
-            "imputed_eds_before": sum_imputed_eds_before,
-            "imputed_eds_after": sum_imputed_eds_after,
-            "lap_smooth_before": sum_ls_before,
-            "lap_smooth_after": sum_ls_after,
-            "eds_before": sum_eds_before,
-            "eds_after": sum_eds_after,
-            "masked_lap_smooth_before": sum_ls_before_masked,
-            "masked_lap_smooth_after": sum_ls_after_masked,
-            "masked_eds_before": sum_eds_before_masked,
-            "masked_eds_after": sum_eds_after_masked,
-        }
+        metrics.update(
+            {
+                "phase": "impute",
+                "epoch": None,
+                "imputed_lap_smooth_before": sum_imputed_ls_before,
+                "imputed_lap_smooth_after": sum_imputed_ls_after,
+                "imputed_eds_before": sum_imputed_eds_before,
+                "imputed_eds_after": sum_imputed_eds_after,
+                "lap_smooth_before": sum_ls_before,
+                "lap_smooth_after": sum_ls_after,
+                "eds_before": sum_eds_before,
+                "eds_after": sum_eds_after,
+                "masked_lap_smooth_before": sum_ls_before_masked,
+                "masked_lap_smooth_after": sum_ls_after_masked,
+                "masked_eds_before": sum_eds_before_masked,
+                "masked_eds_after": sum_eds_after_masked,
+            }
+        )
     return dataset.current_data
 
 
