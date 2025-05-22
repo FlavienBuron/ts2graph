@@ -11,8 +11,7 @@ class STGI(nn.Module):
         hidden_dim,
         num_layers,
         model_type: str = "GCNConv",
-        use_mlp_output=False,
-        mlp_size=32,
+        use_temporal=False,
         **kwargs,
     ):
         super(STGI, self).__init__()
@@ -21,14 +20,11 @@ class STGI(nn.Module):
             raise ValueError(f"Model type '{model_type}' not found in torch_geometric")
 
         ModelClass = getattr(pyg_nn, model_type)
-        self.use_mlp_output = use_mlp_output
+        self.use_mlp_output = use_temporal
 
         self.gnn_layers = nn.ModuleList()
 
-        if not use_mlp_output:
-            out_dim = in_dim
-        else:
-            out_dim = mlp_size
+        out_dim = in_dim
 
         if num_layers == 1:
             self.gnn_layers.append(
@@ -46,8 +42,25 @@ class STGI(nn.Module):
                 ModelClass(hidden_dim, out_dim, add_self_loops=False, **kwargs)
             )
 
-        if use_mlp_output:
-            self.output_layer = nn.Linear(out_dim, in_dim)
+        if use_temporal:
+            self.temp_gnn_layers = nn.ModuleList()
+            if num_layers == 1:
+                self.temp_gnn_layers.append(
+                    ModelClass(in_dim, out_dim, add_self_loops=False, **kwargs)
+                )
+            else:
+                self.temp_gnn_layers.append(
+                    ModelClass(in_dim, hidden_dim, add_self_loops=False, **kwargs)
+                )
+                for _ in range(num_layers - 2):
+                    self.temp_gnn_layers.append(
+                        ModelClass(
+                            hidden_dim, hidden_dim, add_self_loops=False, **kwargs
+                        )
+                    )
+                self.temp_gnn_layers.append(
+                    ModelClass(hidden_dim, out_dim, add_self_loops=False, **kwargs)
+                )
 
     def forward(self, x, edge_index, edge_weight, missing_mask):
         """
@@ -56,12 +69,12 @@ class STGI(nn.Module):
         edge_weight: Graph edges weights (from adjacency matrix)
         mask: Binary mask (1 = observed, 0 = missing)
         """
-        time_steps, nodes, _ = x.shape
+        time, nodes, features = x.shape
         # ori_x = x.detach().clone()
 
         gnn_output = []
 
-        for t in range(time_steps):
+        for t in range(time):
             x_t = x[t]
             for i, gnn in enumerate(self.gnn_layers):
                 x_t = gnn(x_t, edge_index, edge_weight)
@@ -72,13 +85,40 @@ class STGI(nn.Module):
         # Stack to shape (time, nodes, out_dim)
         x = torch.stack(gnn_output, dim=0)
 
-        if self.use_mlp_output:
-            x = self.output_layer(x)
-        imputed_x = torch.tanh(x)
+        # === Temporal GNN ===
+        if self.use_temporal:
+            # Flatten nodes over time into a single batch dimension
+            x = x.reshape(time * nodes, features)
 
-        if torch.isnan(imputed_x).any():
+            # Temporal edges: connect node i at t to itself at t+1
+            temporal_edge_index = []
+            for t in range(time - 1):
+                src = torch.arange(nodes) + t * nodes
+                dst = torch.arange(nodes) + (t + 1) * nodes
+                temporal_edge_index.append(torch.stack([src, dst], dim=0))
+
+            temporal_edge_index = torch.cat(temporal_edge_index, dim=1)  # shape [2, E]
+            temporal_edge_index = torch.cat(
+                [temporal_edge_index, temporal_edge_index[[1, 0]]], dim=1
+            )  # Make bidirectional
+
+            # Use uniform weights or learnable later
+            temporal_edge_weight = torch.ones(
+                temporal_edge_index.shape[1], device=x.device
+            )
+
+            for i, gnn in enumerate(self.temp_gnn_layers):
+                x = gnn(x, temporal_edge_index, temporal_edge_weight)
+                if i < len(self.temp_gnn_layers) - 1:
+                    x = F.relu(x)
+
+            x = x.reshape(time, nodes, -1)
+
+        x = torch.tanh(x)
+
+        if torch.isnan(x).any():
             print("NaNs detected in imputed_x")
-            print("Stats:", imputed_x.min(), imputed_x.max(), imputed_x.mean())
+            print("Stats:", x.min(), x.max(), x.mean())
             raise ValueError("NaNs in model output")
 
         # Compute the batch MSE only using non-missing data
@@ -86,4 +126,4 @@ class STGI(nn.Module):
         #     torch.sum(missing_mask) + 1e-8
         # )
         # x_final = torch.where(missing_mask.bool(), ori_x, imputed_x)
-        return imputed_x, 0
+        return x, 0

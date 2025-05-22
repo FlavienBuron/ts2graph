@@ -127,17 +127,10 @@ def parse_args() -> Namespace:
         default=32,
     )
     parser.add_argument(
-        "--mlp_output",
-        "-mo",
+        "--use_temporal",
+        "-ut",
         action="store_true",
-        help="whether to use an MLP on the output of the GNN",
-    )
-    parser.add_argument(
-        "--mlp_size",
-        "-ms",
-        type=int,
-        help="The size of the MLP layer of the GNN, if used",
-        default=32,
+        help="whether the GNN should include a temporal block",
     )
     parser.add_argument(
         "--verbose",
@@ -442,12 +435,12 @@ def impute_missing_data(
             imputed_data = torch.cat(imputed_batches, dim=0)
             dataset.update_data(imputed_data)
             del imputed_data
-        print(
-            f"\n\nAverage Imputation Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after_masked / (batch_size * nb_batches):.4e}"
-        )
-        print(
-            f"Average Imputation Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after_masked / (batch_size * nb_batches):.4e}"
-        )
+        # print(
+        #     f"\n\nAverage Imputation Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after_masked / (batch_size * nb_batches):.4e}"
+        # )
+        # print(
+        #     f"Average Imputation Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after_masked / (batch_size * nb_batches):.4e}"
+        # )
         for param in model.parameters():
             if param.grad is None:
                 print(f"Gradient is None for param: {param}")
@@ -560,8 +553,7 @@ def run(args: Namespace) -> None:
             hidden_dim=args.hidden_dim,
             num_layers=args.layer_num,
             model_type=args.layer_type,
-            use_mlp_output=args.mlp_output,
-            mlp_size=args.mlp_size,
+            use_temporal=args.use_temporal,
         )
 
         stgi.to(device)

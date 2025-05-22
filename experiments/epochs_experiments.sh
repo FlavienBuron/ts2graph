@@ -6,7 +6,7 @@ EPOCHS=()
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
-USE_MLP_OUTPUT=0
+USE_TEMPORAL=0
 MLP_SIZE=32
 DATASET="airq_small"
 
@@ -29,8 +29,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --mlp)
-            USE_MLP_OUTPUT=1
-            MLP_SIZE="$2"
+            USE_TEMPORAL=1
             shift 2
             ;;
         *)
@@ -64,9 +63,9 @@ declare -A TECHNIQUES=(
     ["knn"]=$KNN_VAL
 )
 
-USE_MLP=""
-if [ "$USE_MLP_OUTPUT" -eq 1 ]; then
-    USE_MLP="-mo -ms $MLP_SIZE"
+USE_TEMP=""
+if [ "$USE_TEMPORAL" -eq 1 ]; then
+    USE_TEMP="-ut"
 fi
 
 # Loop through epochs and groups
@@ -76,7 +75,7 @@ for E in "${EPOCHS[@]}"; do
         echo "Running: -g $G $V -e $E" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
         FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${G}_${V}_${E}.json"
-        python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER $USE_MLP | tee -a "$LOGFILE"
+        python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER $USE_TEMP -v 0 | tee -a "$LOGFILE"
     done
 done
 
