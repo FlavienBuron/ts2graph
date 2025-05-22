@@ -42,6 +42,13 @@ def parse_args() -> Namespace:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument(
+        "--save_path",
+        "-sp",
+        type=str,
+        help="The path to save the metrics to",
+        required=True,
+    )
+    parser.add_argument(
         "--dataset",
         "-d",
         type=str,
@@ -588,7 +595,8 @@ def run(args: Namespace) -> None:
         #     dataset.validation_mask.numpy(),
         #     metrics,
         # )
-        print(flatten_metrics(metrics))
+        with open(args.save_path, "w") as f:
+            json.dump(metrics, f, indent=2)
 
 
 if __name__ == "__main__":

@@ -47,7 +47,10 @@ fi
 
 
 DATE=$(date +%y%m%d)
-LOGFILE="./experiments/results/${DATE}-e-experiments.txt"
+EXP_DIR="./experiments/results/epochs/"
+LOGFILE="${EXP_DIR}${DATE}-e-experiments.txt"
+
+mkdir -p "$EXP_DIR"
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
@@ -71,7 +74,9 @@ for E in "${EPOCHS[@]}"; do
     for G in "${!TECHNIQUES[@]}"; do
         V=${TECHNIQUES[$G]}
         echo "Running: -g $G $V -e $E" | tee -a "$LOGFILE"
-        python -u main.py -d $DATASET -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER $USE_MLP -v 0 | tee -a "$LOGFILE"
+        TIMESTAMP=$(date +%y%m%d_%H%M%S)
+        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${E}.json"
+        python -u main.py -d $DATASET -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER $USE_MLP --sp $FILENAME | tee -a "$LOGFILE"
     done
 done
 
