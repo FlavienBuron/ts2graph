@@ -323,7 +323,7 @@ def train_imputer(
             # print(
             #     f"Average Masked Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
             # )
-        imput_metrics = {}
+        imput_metrics = {"epoch": epoch + 1}
         imputed_data = impute_missing_data(
             model,
             dataset,
@@ -447,7 +447,6 @@ def impute_missing_data(
         metrics.update(
             {
                 "phase": "impute",
-                "epoch": None,
                 "imputed_lap_smooth_before": sum_imputed_ls_before,
                 "imputed_lap_smooth_after": sum_imputed_ls_after,
                 "imputed_eds_before": sum_imputed_eds_before,
@@ -493,6 +492,13 @@ def evaluate(
     print(f"Imputation MAE: {mae:.4e}, MSE: {mse:.4e}, RMSE: {rmse:.4e}")
 
     return metrics
+
+
+def flatten_metrics(metrics: dict) -> list[dict]:
+    run_config = {k: v for k, v in metrics.items() if k != "train_metrics"}
+    return [
+        {**run_config, **phase_metrics} for phase_metrics in metrics["train_metrics"]
+    ]
 
 
 def run(args: Namespace) -> None:
@@ -582,7 +588,7 @@ def run(args: Namespace) -> None:
         #     dataset.validation_mask.numpy(),
         #     metrics,
         # )
-        print(metrics)
+        print(flatten_metrics(metrics))
 
 
 if __name__ == "__main__":
