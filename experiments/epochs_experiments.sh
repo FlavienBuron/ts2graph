@@ -75,7 +75,7 @@ for E in "${EPOCHS[@]}"; do
         V=${TECHNIQUES[$G]}
         echo "Running: -g $G $V -e $E" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
-        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${E}.json"
+        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${G}_${V}_${E}.json"
         python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER $USE_MLP | tee -a "$LOGFILE"
     done
 done
