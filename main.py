@@ -183,6 +183,7 @@ def train_imputer(
     nb_batches = len(dataloader)
     batch_size = dataloader.batch_size if dataloader.batch_size else 1
     model.train()
+    train_metrics = []
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -191,7 +192,9 @@ def train_imputer(
         sum_eds_before = 0.0
         sum_eds_after = 0.0
         sum_ls_before_masked = 0.0
+        sum_ls_after_masked = 0.0
         sum_eds_before_masked = 0.0
+        sum_eds_after_masked = 0.0
         for iter in range(num_iteration):
             iteration_imputed_data = []
             batch_losses = []
@@ -262,6 +265,12 @@ def train_imputer(
                     sum_eds_after += compute_edge_difference_smoothness(
                         imputed_data.detach(), edge_index, edge_weight
                     )
+                    sum_ls_after_masked += compute_laplacian_smoothness(
+                        imputed_data.detach(), edge_index, edge_weight, mask=batch_mask
+                    )
+                    sum_eds_after_masked += compute_edge_difference_smoothness(
+                        imputed_data.detach(), edge_index, edge_weight, mask=batch_mask
+                    )
 
                     batch_losses.append(batch_loss.item())
                 if verbose:
@@ -286,6 +295,20 @@ def train_imputer(
             del iteration_imputed_data, batch_losses, batch_references
         mean_loss = epoch_loss / (nb_batches * num_iteration)
         dataset.reset_current_data()
+        train_metrics.append(
+            {
+                "phase": "train",
+                "epoch": epoch + 1,
+                "lap_smooth_before": sum_ls_before,
+                "lap_smooth_after": sum_ls_after,
+                "eds_before": sum_eds_before,
+                "eds_after": sum_eds_after,
+                "masked_lap_smooth_before": sum_ls_before_masked,
+                "masked_lap_smooth_after": sum_ls_after_masked,
+                "masked_eds_before": sum_eds_before_masked,
+                "masked_eds_after": sum_eds_after_masked,
+            }
+        )
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
             # print(
@@ -300,6 +323,26 @@ def train_imputer(
             # print(
             #     f"Average Masked Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
             # )
+        imput_metrics = {}
+        imputed_data = impute_missing_data(
+            model,
+            dataset,
+            dataloader,
+            edge_index,
+            edge_weight,
+            imput_metrics,
+            num_iteration,
+            device,
+        )
+        train_metrics.append(imput_metrics)
+        eval_metrics = evaluate(
+            imputed_data.numpy(),
+            dataset.original_data.numpy(),
+            dataset.validation_mask.numpy(),
+        )
+        eval_metrics.update({"phase": "eval", "epoch": epoch + 1})
+        train_metrics.append(eval_metrics)
+        metrics["train_metrics"] = train_metrics
     return model
 
 
@@ -318,10 +361,16 @@ def impute_missing_data(
     with torch.no_grad():
         sum_ls_before = 0.0
         sum_ls_after = 0.0
+        sum_ls_after_masked = 0.0
         sum_eds_before = 0.0
         sum_eds_after = 0.0
         sum_ls_before_masked = 0.0
         sum_eds_before_masked = 0.0
+        sum_eds_after_masked = 0.0
+        sum_imputed_ls_before = 0.0
+        sum_imputed_ls_after = 0.0
+        sum_imputed_eds_before = 0.0
+        sum_imputed_eds_after = 0.0
         batch_size = dataloader.batch_size if dataloader.batch_size else 1
         nb_batches = len(dataloader)
         for _ in range(num_iteration):
@@ -339,6 +388,12 @@ def impute_missing_data(
                 )
                 sum_eds_before_masked += compute_edge_difference_smoothness(
                     batch_data.detach(), edge_index, edge_weight, mask=batch_mask
+                )
+                sum_imputed_ls_before += compute_laplacian_smoothness(
+                    batch_data.detach(), edge_index, edge_weight, mask=~batch_mask
+                )
+                sum_imputed_eds_before += compute_edge_difference_smoothness(
+                    batch_data.detach(), edge_index, edge_weight, mask=~batch_mask
                 )
 
                 imputed_data, _ = model(
@@ -358,25 +413,53 @@ def impute_missing_data(
 
                 imputed_batches.append(imputed_data)
 
-                sum_ls_after += compute_laplacian_smoothness(
+                sum_ls_after_masked += compute_laplacian_smoothness(
                     imputed_batch, edge_index, edge_weight, mask=batch_mask
+                )
+                sum_ls_after += compute_laplacian_smoothness(
+                    imputed_batch, edge_index, edge_weight
                 )
                 sum_eds_after += compute_edge_difference_smoothness(
                     imputed_batch, edge_index, edge_weight
                 )
+                sum_eds_after_masked += compute_edge_difference_smoothness(
+                    imputed_batch, edge_index, edge_weight, mask=batch_mask
+                )
+                sum_imputed_ls_after += compute_laplacian_smoothness(
+                    imputed_batch, edge_index, edge_weight, mask=~batch_mask
+                )
+                sum_imputed_eds_after += compute_laplacian_smoothness(
+                    imputed_batch, edge_index, edge_weight, mask=~batch_mask
+                )
+
             imputed_data = torch.cat(imputed_batches, dim=0)
             dataset.update_data(imputed_data)
             del imputed_data
         print(
-            f"\n\nAverage Imputation Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
+            f"\n\nAverage Imputation Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after_masked / (batch_size * nb_batches):.4e}"
         )
         print(
-            f"Average Imputation Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
+            f"Average Imputation Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after_masked / (batch_size * nb_batches):.4e}"
         )
         for param in model.parameters():
             if param.grad is None:
                 print(f"Gradient is None for param: {param}")
-
+        impute_metrics = {
+            "phase": "impute",
+            "epoch": None,
+            "imputed_lap_smooth_before": sum_imputed_ls_before,
+            "imputed_lap_smooth_after": sum_imputed_ls_after,
+            "imputed_eds_before": sum_imputed_eds_before,
+            "imputed_eds_after": sum_imputed_eds_after,
+            "lap_smooth_before": sum_ls_before,
+            "lap_smooth_after": sum_ls_after,
+            "eds_before": sum_eds_before,
+            "eds_after": sum_eds_after,
+            "masked_lap_smooth_before": sum_ls_before_masked,
+            "masked_lap_smooth_after": sum_ls_after_masked,
+            "masked_eds_before": sum_eds_before_masked,
+            "masked_eds_after": sum_eds_after_masked,
+        }
     return dataset.current_data
 
 
@@ -384,8 +467,7 @@ def evaluate(
     imputed_data: np.ndarray,
     target_data: np.ndarray,
     evaluation_mask: np.ndarray,
-    metrics: dict,
-):
+) -> dict:
     evaluation_points = evaluation_mask.astype(bool)
     print("Target NaNs:", np.isnan(target_data[evaluation_points]).sum())
     print("Imputed NaNs:", np.isnan(imputed_data[evaluation_points]).sum())
@@ -404,7 +486,11 @@ def evaluate(
         imputed_data[evaluation_points],
     )
 
+    metrics = {"mae": mae, "mse": mse, "rmse": rmse}
+
     print(f"Imputation MAE: {mae:.4e}, MSE: {mse:.4e}, RMSE: {rmse:.4e}")
+
+    return metrics
 
 
 def run(args: Namespace) -> None:
@@ -478,22 +564,23 @@ def run(args: Namespace) -> None:
             device=device,
             verbose=args.verbose,
         )
-        imputed_data = impute_missing_data(
-            stgi,
-            dataset,
-            dataloader,
-            edge_index,
-            edge_weight,
-            metrics,
-            args.iter_num,
-            device,
-        )
-        evaluate(
-            imputed_data.numpy(),
-            dataset.original_data.numpy(),
-            dataset.validation_mask.numpy(),
-            metrics,
-        )
+        # imputed_data = impute_missing_data(
+        #     stgi,
+        #     dataset,
+        #     dataloader,
+        #     edge_index,
+        #     edge_weight,
+        #     metrics,
+        #     args.iter_num,
+        #     device,
+        # )
+        # evaluate(
+        #     imputed_data.numpy(),
+        #     dataset.original_data.numpy(),
+        #     dataset.validation_mask.numpy(),
+        #     metrics,
+        # )
+        print(metrics)
 
 
 if __name__ == "__main__":
