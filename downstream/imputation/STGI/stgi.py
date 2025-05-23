@@ -43,6 +43,7 @@ class STGI(nn.Module):
             )
 
         if use_temporal:
+            print("Building Temporal Block in STGI")
             self.temp_gnn_layers = nn.ModuleList()
             if num_layers == 1:
                 self.temp_gnn_layers.append(
