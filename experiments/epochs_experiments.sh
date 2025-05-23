@@ -28,9 +28,9 @@ while [[ $# -gt 0 ]]; do
             LAYER_NUMBER="$2"
             shift 2
             ;;
-        --mlp)
+        --temporal)
             USE_TEMPORAL=1
-            shift 2
+            shift
             ;;
         *)
             echo "Unknown option: $1"
