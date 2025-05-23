@@ -20,7 +20,7 @@ class STGI(nn.Module):
             raise ValueError(f"Model type '{model_type}' not found in torch_geometric")
 
         ModelClass = getattr(pyg_nn, model_type)
-        self.use_mlp_output = use_temporal
+        self.use_temporal = use_temporal
 
         self.gnn_layers = nn.ModuleList()
 
