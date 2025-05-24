@@ -14,7 +14,6 @@ class STGI(nn.Module):
         num_layers,
         model_type: str = "GCNConv",
         use_temporal: bool = False,
-        dropout: float = 0.0,
         **kwargs,
     ):
         super(STGI, self).__init__()
@@ -24,7 +23,6 @@ class STGI(nn.Module):
 
         ModelClass = getattr(pyg_nn, model_type)
         self.use_temporal = use_temporal
-        self.dropout = dropout
 
         out_dim = in_dim
 
@@ -37,8 +35,6 @@ class STGI(nn.Module):
             self.temp_gnn_layers = self._build_gnn_layers(
                 ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
             )
-
-        self.layer_norm = nn.LayerNorm(out_dim)
 
     def _build_gnn_layers(
         self,
@@ -110,8 +106,6 @@ class STGI(nn.Module):
                 x_t = gnn_layer(x_t, edge_index, edge_weight)
                 if i < len(self.gnn_layers) - 1:
                     x_t = F.relu(x_t)
-                    if self.dropout > 0.0:
-                        x_t = F.dropout(x_t, p=self.dropout, training=self.training)
             spatial_outputs.append(x_t)
 
         # Stack to shape (time, nodes, out_dim)
@@ -134,8 +128,6 @@ class STGI(nn.Module):
                 # Apply activation and dropout (except for last layer)
                 if i < len(self.temp_gnn_layers) - 1:
                     x = F.relu(x)
-                    if self.dropout > 0:
-                        x = F.dropout(x, p=self.dropout, training=self.training)
 
         # x = self.layer_norm(x)
         x = torch.tanh(x)
