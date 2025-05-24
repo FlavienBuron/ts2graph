@@ -48,6 +48,12 @@ if [ ${#EPOCHS[@]} -eq 0 ]; then
     EPOCHS=(5 10 15 20)
 fi
 
+if [[ -z "$LR" || "$LR" == "0" ]]; then
+    if [[ "$LAYER_NUMBER" -eq 1 ]]; then
+        LR=0.005
+    fi
+fi
+
 
 DATE=$(date +%y%m%d)
 EXP_DIR="./experiments/results/epochs/"
