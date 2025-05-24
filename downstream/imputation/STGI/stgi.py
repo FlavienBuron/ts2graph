@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,7 +13,8 @@ class STGI(nn.Module):
         hidden_dim,
         num_layers,
         model_type: str = "GCNConv",
-        use_temporal=False,
+        use_temporal: bool = False,
+        dropout: float = 0.0,
         **kwargs,
     ):
         super(STGI, self).__init__()
@@ -21,100 +24,120 @@ class STGI(nn.Module):
 
         ModelClass = getattr(pyg_nn, model_type)
         self.use_temporal = use_temporal
-
-        self.gnn_layers = nn.ModuleList()
+        self.dropout = dropout
 
         out_dim = in_dim
 
-        if num_layers == 1:
-            self.gnn_layers.append(
-                ModelClass(in_dim, out_dim, add_self_loops=False, **kwargs)
-            )
-        else:
-            self.gnn_layers.append(
-                ModelClass(in_dim, hidden_dim, add_self_loops=False, **kwargs)
-            )
-            for _ in range(num_layers - 2):
-                self.gnn_layers.append(
-                    ModelClass(hidden_dim, hidden_dim, add_self_loops=False, **kwargs)
-                )
-            self.gnn_layers.append(
-                ModelClass(hidden_dim, out_dim, add_self_loops=False, **kwargs)
-            )
+        self.gnn_layers = self._build_gnn_layers(
+            ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
+        )
 
         if use_temporal:
             print("Building Temporal Block in STGI")
-            self.temp_gnn_layers = nn.ModuleList()
-            if num_layers == 1:
-                self.temp_gnn_layers.append(
-                    ModelClass(in_dim, out_dim, add_self_loops=False, **kwargs)
-                )
-            else:
-                self.temp_gnn_layers.append(
-                    ModelClass(in_dim, hidden_dim, add_self_loops=False, **kwargs)
-                )
-                for _ in range(num_layers - 2):
-                    self.temp_gnn_layers.append(
-                        ModelClass(
-                            hidden_dim, hidden_dim, add_self_loops=False, **kwargs
-                        )
-                    )
-                self.temp_gnn_layers.append(
-                    ModelClass(hidden_dim, out_dim, add_self_loops=False, **kwargs)
-                )
+            self.temp_gnn_layers = self._build_gnn_layers(
+                ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
+            )
 
-    def forward(self, x, edge_index, edge_weight, missing_mask):
+        self.layer_norm = nn.LayerNorm(out_dim)
+
+    def _build_gnn_layers(
+        self,
+        ModelClass,
+        in_dim: int,
+        hidden_dim: int,
+        out_dim: int,
+        num_layers: int,
+        **kwargs,
+    ) -> nn.ModuleList:
+        """Helper method to build GNN layers"""
+
+        layers = nn.ModuleList()
+
+        if num_layers == 1:
+            layers.append(ModelClass(in_dim, out_dim, add_self_loops=False, **kwargs))
+        else:
+            layers.append(
+                ModelClass(in_dim, hidden_dim, add_self_loops=False, **kwargs)
+            )
+            for _ in range(num_layers - 2):
+                layers.append(
+                    ModelClass(hidden_dim, hidden_dim, add_self_loops=False, **kwargs)
+                )
+            layers.append(
+                ModelClass(hidden_dim, out_dim, add_self_loops=False, **kwargs)
+            )
+
+        return layers
+
+    def _create_temporal_edges(
+        self, time_steps: int, num_nodes: int, device: torch.device
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Create temporal edges connecting nodes across consecutive time steps"""
+        temporal_edges = []
+
+        for t in range(time_steps - 1):
+            src = torch.arange(num_nodes, device=device) + t * num_nodes
+            dst = torch.arange(num_nodes, device=device) + (t + 1) * num_nodes
+            temporal_edges.append(torch.stack([src, dst], dim=0))
+
+        temporal_edge_index = torch.cat(temporal_edges, dim=1)
+
+        # Make bidirectional connections
+        temporal_edge_index = torch.cat(
+            [temporal_edge_index, temporal_edge_index.flip(0)], dim=1
+        )
+
+        # Uniform edge weights (could be made learnable)
+        temporal_edge_weight = torch.ones(temporal_edge_index.shape[1], device=device)
+
+        return temporal_edge_index, temporal_edge_weight
+
+    def forward(self, x, edge_index, edge_weight):
         """
         x: (batch_size, time_steps, num_nodes, feature_dim)
         edge_index: Graph edges (from adjacency matrix)
         edge_weight: Graph edges weights (from adjacency matrix)
-        mask: Binary mask (1 = observed, 0 = missing)
         """
-        time, nodes, features = x.shape
+        time_steps, num_nodes, features = x.shape
+        device = x.device
         # ori_x = x.detach().clone()
 
-        gnn_output = []
+        spatial_outputs = []
 
-        for t in range(time):
+        for t in range(time_steps):
             x_t = x[t]
-            for i, gnn in enumerate(self.gnn_layers):
-                x_t = gnn(x_t, edge_index, edge_weight)
+            for i, gnn_layer in enumerate(self.gnn_layers):
+                x_t = gnn_layer(x_t, edge_index, edge_weight)
                 if i < len(self.gnn_layers) - 1:
                     x_t = F.relu(x_t)
-            gnn_output.append(x_t)
+                    if self.dropout > 0.0:
+                        x_t = F.dropout(x_t, p=self.dropout, training=self.training)
+            spatial_outputs.append(x_t)
 
         # Stack to shape (time, nodes, out_dim)
-        x = torch.stack(gnn_output, dim=0)
+        x = torch.stack(spatial_outputs, dim=0)
 
         # === Temporal GNN ===
         if self.use_temporal:
             # Flatten nodes over time into a single batch dimension
-            x = x.reshape(time * nodes, features)
+            x = x.reshape(time_steps * num_nodes, features)
 
-            # Temporal edges: connect node i at t to itself at t+1
-            temporal_edge_index = []
-            for t in range(time - 1):
-                src = torch.arange(nodes) + t * nodes
-                dst = torch.arange(nodes) + (t + 1) * nodes
-                temporal_edge_index.append(torch.stack([src, dst], dim=0))
-
-            temporal_edge_index = torch.cat(temporal_edge_index, dim=1)  # shape [2, E]
-            temporal_edge_index = torch.cat(
-                [temporal_edge_index, temporal_edge_index[[1, 0]]], dim=1
-            )  # Make bidirectional
-
-            # Use uniform weights or learnable later
-            temporal_edge_weight = torch.ones(
-                temporal_edge_index.shape[1], device=x.device
+            # Create temporal connections
+            temporal_edge_index, temporal_edge_weight = self._create_temporal_edges(
+                time_steps, num_nodes, device
             )
 
-            for i, gnn in enumerate(self.temp_gnn_layers):
-                x = gnn(x, temporal_edge_index, temporal_edge_weight)
+            # Apply temporal GNN layers
+            for i, temp_gnn_layer in enumerate(self.temp_gnn_layers):
+                x = temp_gnn_layer(x, temporal_edge_index, temporal_edge_weight)
+
+                # Apply activation and dropout (except for last layer)
                 if i < len(self.temp_gnn_layers) - 1:
                     x = F.relu(x)
+                    if self.dropout > 0:
+                        x = F.dropout(x, p=self.dropout, training=self.training)
 
-            x = x.reshape(time, nodes, -1)
-
+        # x = self.layer_norm(x)
         x = torch.tanh(x)
 
         if torch.isnan(x).any():
@@ -122,9 +145,4 @@ class STGI(nn.Module):
             print("Stats:", x.min(), x.max(), x.mean())
             raise ValueError("NaNs in model output")
 
-        # Compute the batch MSE only using non-missing data
-        # x_loss = torch.sum(missing_mask * (imputed_x - ori_x) ** 2) / (
-        #     torch.sum(missing_mask) + 1e-8
-        # )
-        # x_final = torch.where(missing_mask.bool(), ori_x, imputed_x)
-        return x, 0
+        return x
