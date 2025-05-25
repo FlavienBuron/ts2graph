@@ -225,7 +225,7 @@ def train_imputer(
                     )
 
                     # Imputation step
-                    imputed_data, batch_loss = model(
+                    imputed_data = model(
                         # x=batch_data.unsqueeze(2).to(device),
                         x=batch_data.to(device),
                         edge_index=edge_index.to(device),
@@ -394,7 +394,7 @@ def impute_missing_data(
                     batch_data.detach(), edge_index, edge_weight, mask=~batch_mask
                 )
 
-                imputed_data, _ = model(
+                imputed_data = model(
                     # batch_data.unsqueeze(2).to(device),
                     batch_data.to(device),
                     edge_index.to(device),
