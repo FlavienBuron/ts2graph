@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ "$DATASET" == "airq" ]];; then
+if [[ "$DATASET" == "airq" ]]; then
     NUM_NODES=437
 
 if [[ -z "$LR" || "$LR" == "0" ]]; then
