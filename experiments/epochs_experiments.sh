@@ -70,7 +70,9 @@ KNN_VAL=50
 
 declare -A TECHNIQUES=(
     ["zero"]=0
+    ["zero"]=1
     ["one"]=1
+    ["one"]=0
     ["loc"]=0.5
     ["knn"]=$KNN_VAL
 )
@@ -84,10 +86,11 @@ fi
 for E in "${EPOCHS[@]}"; do
     for G in "${!TECHNIQUES[@]}"; do
         V=${TECHNIQUES[$G]}
+        if [[ "$G" == "zero" ]] || [[ "$G" == "one" ]]:
+            SELF_LOOP="$V"
         echo "Running: -g $G $V -e $E" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
         FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${G}_${V}_${E}.json"
-        python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -v 0 | tee -a "$LOGFILE"
+        python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
     done
 done
-
