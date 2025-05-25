@@ -47,6 +47,7 @@ done
 
 if [[ "$DATASET" == "airq" ]]; then
     NUM_NODES=437
+fi
 
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
