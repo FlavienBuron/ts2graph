@@ -86,8 +86,9 @@ fi
 for E in "${EPOCHS[@]}"; do
     for G in "${!TECHNIQUES[@]}"; do
         V=${TECHNIQUES[$G]}
-        if [[ "$G" == "zero" ]] || [[ "$G" == "one" ]]:
+        if [[ "$G" == "zero" ]] || [[ "$G" == "one" ]]; then
             SELF_LOOP="$V"
+        fi
         echo "Running: -g $G $V -e $E" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
         FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${G}_${V}_${E}.json"
