@@ -59,8 +59,8 @@ fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/epochs/"
-LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
+EXP_DIR="./experiments/results/loc/"
+LOGFILE="${EXP_DIR}${DATE}-loc-experiments.txt"
 
 mkdir -p "$EXP_DIR"
 
@@ -70,9 +70,10 @@ KNN_VAL=50
 [ "$DATASET" == "airq_small" ] && KNN_VAL=3
 
 declare -A TECHNIQUES=(
-    ["zero"]=0
-    ["one"]=1
-    ["loc"]=0.5
+    ["zero_0"]=0
+    ["zero_1"]=1
+    ["one_1"]=1
+    ["one_0"]=0
     ["knn"]=$KNN_VAL
 )
 
@@ -84,10 +85,23 @@ fi
 # Loop through fixed graphs techniques
 for G in "${!TECHNIQUES[@]}"; do
     V=${TECHNIQUES[$G]}
+        # Reset default self-loop
+        SELF_LOOP=0
+        BASE_G=$G
+
+        # Check if technique is a variant of zero or one
+        if [[ "$G" == zero_* ]]; then
+            BASE_G="zero"
+            SELF_LOOP=${G#zero_}
+        elif [[ "$G" == one_* ]]; then
+            BASE_G="one"
+            SELF_LOOP=${G#one_}
+        fi
+
     echo "Running: -g $G $V -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${G}_${V}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -v 0 | tee -a "$LOGFILE"
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
+    python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
 
 
@@ -96,7 +110,7 @@ for LOC in $(seq 0.0 $FRACTION 1.0); do
     printf -v LOC_FMT "%.2f" "$LOC"
     echo "Running: -g loc $LOC_FMT -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_loc_${LOC_FMT}_${EPOCHS}.json"
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_loc_${LOC_FMT}_sl${SELF_LOOP}_${EPOCHS}.json"
     python -u main.py -d $DATASET -sp $FILENAME -g loc $LOC_FMT -e $EPOCHS \
-           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -v 0 | tee -a "$LOGFILE"
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
