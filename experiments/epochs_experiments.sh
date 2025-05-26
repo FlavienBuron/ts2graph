@@ -69,10 +69,10 @@ KNN_VAL=50
 [ "$DATASET" == "airq_small" ] && KNN_VAL=3
 
 declare -A TECHNIQUES=(
-    ["zero"]=0
-    ["zero"]=1
-    ["one"]=1
-    ["one"]=0
+    ["zero_0"]=0
+    ["zero_1"]=1
+    ["one_1"]=1
+    ["one_0"]=0
     ["loc"]=0.5
     ["knn"]=$KNN_VAL
 )
@@ -86,12 +86,23 @@ fi
 for E in "${EPOCHS[@]}"; do
     for G in "${!TECHNIQUES[@]}"; do
         V=${TECHNIQUES[$G]}
-        if [[ "$G" == "zero" ]] || [[ "$G" == "one" ]]; then
-            SELF_LOOP="$V"
+
+        # Reset default self-loop
+        SELF_LOOP=0
+        BASE_G=$G
+
+        # Check if technique is a variant of zero or one
+        if [[ "$G" == zero_* ]]; then
+            BASE_G="zero"
+            SELF_LOOP=${G#zero_}
+        elif [[ "$G" == one_* ]]; then
+            BASE_G="one"
+            SELF_LOOP=${G#one_}
         fi
-        echo "Running: -g $G $V -e $E" | tee -a "$LOGFILE"
+
+        echo "Running: -g $BASE_G $V -e $E" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
-        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${G}_${V}_${E}.json"
-        python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
+        python -u main.py -d $DATASET -sp $FILENAME -g "$BASE_G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
     done
 done
