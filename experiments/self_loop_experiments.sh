@@ -2,18 +2,18 @@
 
 . .venv/bin/activate
 
-EPOCHS=()
+EPOCHS=35
 HIDDEN_DIM=32
 LAYER_NUMBER=1
-SELF_LOOP=1
+SELF_LOOP=0
 USE_TEMPORAL=0
 MLP_SIZE=32
 DATASET="airq_small"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --epochs)
-            IFS=',' read -r -a EPOCHS <<< "$2"
+        --self-loop)
+            SELF_LOOP=1
             shift 2
             ;;
         --dataset)
@@ -43,11 +43,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Accept custom list of epochs from command line, or use defaults
-if [ ${#EPOCHS[@]} -eq 0 ]; then
-    EPOCHS=(5 10 15 20)
-fi
-
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
         LR=0.005
@@ -69,10 +64,8 @@ KNN_VAL=50
 [ "$DATASET" == "airq_small" ] && KNN_VAL=3
 
 declare -A TECHNIQUES=(
-    ["zero_0"]=0
-    ["zero_1"]=1
-    ["one_1"]=1
-    ["one_0"]=0
+    ["zero"]=0
+    ["one"]=1
     ["loc"]=0.5
     ["knn"]=$KNN_VAL
 )
@@ -83,26 +76,12 @@ if [ "$USE_TEMPORAL" -eq 1 ]; then
 fi
 
 # Loop through epochs and groups
-for E in "${EPOCHS[@]}"; do
+for SELF_LOOP in 0 1; do
     for G in "${!TECHNIQUES[@]}"; do
         V=${TECHNIQUES[$G]}
-
-        # Reset default self-loop
-        SELF_LOOP=1
-        BASE_G=$G
-
-        # Check if technique is a variant of zero or one
-        if [[ "$G" == zero_* ]]; then
-            BASE_G="zero"
-            SELF_LOOP=${G#zero_}
-        elif [[ "$G" == one_* ]]; then
-            BASE_G="one"
-            SELF_LOOP=${G#one_}
-        fi
-
-        echo "Running: -g $BASE_G $V -e $E" | tee -a "$LOGFILE"
+        echo "Running: -g $G $V -e $EPOCHS" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
-        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
-        python -u main.py -d $DATASET -sp $FILENAME -g "$BASE_G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
+        python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e $EPOCHS -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
     done
-done.py -d air -g knn 50 -e 10 -hd 32 -sl 1 -ln 1 -v 0 | tee -a "$LOGFILE"    
+done
