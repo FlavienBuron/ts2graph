@@ -22,6 +22,10 @@ while [[ $# -gt 0 ]]; do
             DATASET="$2"
             shift 2
             ;;
+        --self-loop)
+            SELF_LOOP=1
+            shift
+            ;;
         --hidden_dim)
             HIDDEN_DIM="$2"
             shift 2
@@ -82,11 +86,13 @@ if [ "$USE_TEMPORAL" -eq 1 ]; then
     USE_TEMP="-ut"
 fi
 
+ORIGINAL=$SELF_LOOP
+
 # Loop through fixed graphs techniques
 for G in "${!TECHNIQUES[@]}"; do
     V=${TECHNIQUES[$G]}
         # Reset default self-loop
-        SELF_LOOP=0
+        SELF_LOOP=$ORIGINAL
         BASE_G=$G
 
         # Check if technique is a variant of zero or one
@@ -104,6 +110,7 @@ for G in "${!TECHNIQUES[@]}"; do
     python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
 
+SELF_LOOP=$ORIGINAL
 
 # Sweep knn values from 1 to KNN_MAX
 for LOC in $(seq 0.0 $FRACTION 1.0); do
