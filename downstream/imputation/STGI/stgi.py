@@ -130,6 +130,7 @@ class STGI(nn.Module):
                     x = F.relu(x)
 
         # x = self.layer_norm(x)
+        print(f"{x.shape=}")
         x = torch.tanh(x)
 
         if torch.isnan(x).any():
