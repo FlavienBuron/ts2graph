@@ -129,8 +129,9 @@ class STGI(nn.Module):
                 if i < len(self.temp_gnn_layers) - 1:
                     x = F.relu(x)
 
+            x = x.reshape(time_steps, num_nodes, -1)
+
         # x = self.layer_norm(x)
-        print(f"{x.shape=}")
         x = torch.tanh(x)
 
         if torch.isnan(x).any():
