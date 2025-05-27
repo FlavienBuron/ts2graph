@@ -2,22 +2,80 @@
 
 . .venv/bin/activate
 
-# Accept custom list of epochs from command line, or use defaults
-FRAC=("$@")
-if [ ${#FRAC[@]} -eq 0 ]; then
-    FRAC=({1..100})
-fi
-
+EPOCHS=1
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
-USE_MLP_OUTPUT=0
+USE_TEMPORAL=0
 MLP_SIZE=32
 DATASET="airq_small"
-TOTAL=36
+NUM_NODES=36
+FRACTION=0.05
 
-for F in "${FRAC[@]}"; do
-    K=$(awk "BEGIN { print $F / 100 }")
-    echo "Running: loc $K for $DATASET"
-    python -u main.py -d $DATASET -g loc "$K" -e 1 -hd $HIDDEN_DIM -ln $LAYER_NUMBER -gs -dt -v 0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --fraction)
+            FRACTION="$2"
+            shift 2
+            ;;
+        --epochs)
+            EPOCHS="$2"
+            shift 2
+            ;;
+        --dataset)
+            DATASET="$2"
+            shift 2
+            ;;
+        --self-loop)
+            SELF_LOOP=1
+            shift
+            ;;
+        --hidden_dim)
+            HIDDEN_DIM="$2"
+            shift 2
+            ;;
+        --layers)
+            LAYER_NUMBER="$2"
+            shift 2
+            ;;
+        --temporal)
+            USE_TEMPORAL=1
+            shift
+            ;;
+        --lr)
+            LR="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ "$DATASET" == "airq" ]]; then
+    NUM_NODES=437
+fi
+
+if [[ -z "$LR" || "$LR" == "0" ]]; then
+    if [[ "$LAYER_NUMBER" -eq 1 ]]; then
+        LR=0.005
+    else
+        LR=0.0005
+    fi
+fi
+
+
+DATE=$(date +%y%m%d)
+EXP_DIR="./experiments/results/graphs/"
+mkdir -p "$EXP_DIR"
+
+# Sweep knn values from 1 to KNN_MAX
+for LOC in $(seq 0.0 $FRACTION 1.0); do
+    printf -v LOC_FMT "%.2f" "$LOC"
+    echo "Running: -g loc $LOC_FMT -e $EPOCHS"
+    TIMESTAMP=$(date +%y%m%d_%H%M%S)
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_loc_${LOC_FMT}_sl${SELF_LOOP}.json"
+    python -u main.py -d $DATASET -sp $FILENAME -g loc $LOC_FMT -e $EPOCHS \
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -gs -dt -v 0 | tee -a "$LOGFILE"
 done

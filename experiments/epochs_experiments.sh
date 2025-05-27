@@ -95,9 +95,11 @@ for E in "${EPOCHS[@]}"; do
         if [[ "$G" == zero_* ]]; then
             BASE_G="zero"
             SELF_LOOP=${G#zero_}
+            V=$SELF_LOOP
         elif [[ "$G" == one_* ]]; then
             BASE_G="one"
             SELF_LOOP=${G#one_}
+            V=$SELF_LOOP
         fi
 
         echo "Running: -g $BASE_G $V -e $E" | tee -a "$LOGFILE"
