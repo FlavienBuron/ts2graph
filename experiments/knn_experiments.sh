@@ -104,14 +104,24 @@ for G in "${!TECHNIQUES[@]}"; do
 
     echo "Running: -g $G $V -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
+    python -u main.py -d $DATASET -sp $FILENAME -g "$BASE_G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
 
 SELF_LOOP=$ORIGINAL
 # Sweep knn values from 1 to KNN_MAX
-KNN_MAX=$(awk -v n=$NUM_NODES -v f=$FRACTION 'BEGIN { printf "%d", (n * f + 0.5) }')
-for ((K=1; K<=KNN_MAX; K++)); do
+
+KNN_STEP=$(awk -v n=$NUM_NODES -v f=$FRACTION 'BEGIN { print n * f }')
+
+# Generate the list of K values
+K_VALUES=$(awk -v max=$NUM_NODES -v step=$KNN_STEP '
+    BEGIN {
+        for (k = 1; k <= max; k += step) {
+            printf "%.0f\n", k
+        }
+    }' | sort -n | uniq)
+
+for K in $K_VALUES; do
     echo "Running: -g knn $K -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_knn_${K}_sl${SELF_LOOP}_${EPOCHS}.json"
