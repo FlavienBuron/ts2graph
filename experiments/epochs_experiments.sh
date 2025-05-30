@@ -6,7 +6,7 @@ EPOCHS=()
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
-USE_TEMPORAL=0
+STGI_MODE='s'
 MLP_SIZE=32
 DATASET="airq_small"
 
@@ -28,9 +28,9 @@ while [[ $# -gt 0 ]]; do
             LAYER_NUMBER="$2"
             shift 2
             ;;
-        --temporal)
-            USE_TEMPORAL=1
-            shift
+        --mode)
+            STGI_MODE="$2"
+            shift 2
             ;;
         --lr)
             LR="$2"
@@ -77,11 +77,6 @@ declare -A TECHNIQUES=(
     ["knn"]=$KNN_VAL
 )
 
-USE_TEMP=""
-if [ "$USE_TEMPORAL" -eq 1 ]; then
-    USE_TEMP="-ut"
-fi
-
 # Loop through epochs and groups
 for E in "${EPOCHS[@]}"; do
     for G in "${!TECHNIQUES[@]}"; do
@@ -104,7 +99,7 @@ for E in "${EPOCHS[@]}"; do
 
         echo "Running: -g $BASE_G $V -e $E" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
-        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
-        python -u main.py -d $DATASET -sp $FILENAME -g "$BASE_G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_{$STGI_MODE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
+        python -u main.py -d $DATASET -sp $FILENAME -g "$BASE_G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
     done
 done

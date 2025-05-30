@@ -42,6 +42,14 @@ def parse_args() -> Namespace:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument(
+        "--mode",
+        "-m",
+        type=str,
+        help="Which mode should STGI use e.g. s=spatial, t=temporal, st=spatio-temporal",
+        choices=["s", "t", "st"],
+        default="s",
+    )
+    parser.add_argument(
         "--save_path",
         "-sp",
         type=str,
@@ -125,12 +133,6 @@ def parse_args() -> Namespace:
         type=int,
         help="The size of the hidden dimension of the GNN",
         default=32,
-    )
-    parser.add_argument(
-        "--use_temporal",
-        "-ut",
-        action="store_true",
-        help="whether the GNN should include a temporal block",
     )
     parser.add_argument(
         "--verbose",
@@ -502,6 +504,17 @@ def run(args: Namespace) -> None:
     print("#" * 100)
     print(args)
     device = args.device
+    stgi_mode = args.mode
+    if stgi_mode.lower() in ["st"]:
+        use_spatial = True
+        use_temporal = True
+    elif stgi_mode.lower() in ["t"]:
+        use_spatial = False
+        use_temporal = True
+    else:
+        use_spatial = True
+        use_temporal = False
+
     dataset = get_dataset(args.dataset)
     # dataset.corrupt(missing_type="perc", missing_size=50)
     dataloader = dataset.get_dataloader(
@@ -549,7 +562,8 @@ def run(args: Namespace) -> None:
             hidden_dim=args.hidden_dim,
             num_layers=args.layer_num,
             model_type=args.layer_type,
-            use_temporal=args.use_temporal,
+            use_spatial=use_spatial,
+            use_temporal=use_temporal,
         )
 
         stgi.to(device)

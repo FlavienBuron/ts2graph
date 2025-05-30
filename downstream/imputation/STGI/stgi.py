@@ -13,6 +13,7 @@ class STGI(nn.Module):
         hidden_dim,
         num_layers,
         model_type: str = "GCNConv",
+        use_spatial: bool = True,
         use_temporal: bool = False,
         **kwargs,
     ):
@@ -22,13 +23,22 @@ class STGI(nn.Module):
             raise ValueError(f"Model type '{model_type}' not found in torch_geometric")
 
         ModelClass = getattr(pyg_nn, model_type)
+        self.use_spatial = use_spatial
         self.use_temporal = use_temporal
+
+        if not use_spatial and not use_temporal:
+            print(
+                "WARNING: neither spatial not temporal aspects are set to be used. Defaulting to using spatial only"
+            )
+            use_spatial = True
 
         out_dim = in_dim
 
-        self.gnn_layers = self._build_gnn_layers(
-            ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
-        )
+        if use_temporal:
+            print("Building Spatial Block in STGI")
+            self.gnn_layers = self._build_gnn_layers(
+                ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
+            )
 
         if use_temporal:
             print("Building Temporal Block in STGI")
@@ -98,18 +108,20 @@ class STGI(nn.Module):
         device = x.device
         # ori_x = x.detach().clone()
 
-        spatial_outputs = []
+        # === Spatial GNN ===
+        if self.use_spatial:
+            spatial_outputs = []
 
-        for t in range(time_steps):
-            x_t = x[t]
-            for i, gnn_layer in enumerate(self.gnn_layers):
-                x_t = gnn_layer(x_t, edge_index, edge_weight)
-                if i < len(self.gnn_layers) - 1:
-                    x_t = F.relu(x_t)
-            spatial_outputs.append(x_t)
+            for t in range(time_steps):
+                x_t = x[t]
+                for i, gnn_layer in enumerate(self.gnn_layers):
+                    x_t = gnn_layer(x_t, edge_index, edge_weight)
+                    if i < len(self.gnn_layers) - 1:
+                        x_t = F.relu(x_t)
+                spatial_outputs.append(x_t)
 
-        # Stack to shape (time, nodes, out_dim)
-        x = torch.stack(spatial_outputs, dim=0)
+            # Stack to shape (time, nodes, out_dim)
+            x = torch.stack(spatial_outputs, dim=0)
 
         # === Temporal GNN ===
         if self.use_temporal:

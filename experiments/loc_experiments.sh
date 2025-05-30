@@ -6,7 +6,7 @@ EPOCHS=50
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
-USE_TEMPORAL=0
+STGI_MODE='s'
 MLP_SIZE=32
 DATASET="airq_small"
 NUM_NODES=36
@@ -34,9 +34,9 @@ while [[ $# -gt 0 ]]; do
             LAYER_NUMBER="$2"
             shift 2
             ;;
-        --temporal)
-            USE_TEMPORAL=1
-            shift
+        --mode)
+            STGI_MODE="$2"
+            shift 2
             ;;
         --lr)
             LR="$2"
@@ -106,8 +106,8 @@ for G in "${!TECHNIQUES[@]}"; do
 
     echo "Running: -g $G $V -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_{$STGI_MODE}_ln${LAYER_NUMBER}_${G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
+    python -u main.py -d $DATASET -sp $FILENAME -g "$G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
 
 SELF_LOOP=$ORIGINAL
@@ -119,5 +119,5 @@ for LOC in $(seq 0.0 $FRACTION 1.0); do
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_loc_${LOC_FMT}_sl${SELF_LOOP}_${EPOCHS}.json"
     python -u main.py -d $DATASET -sp $FILENAME -g loc $LOC_FMT -e $EPOCHS \
-           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done

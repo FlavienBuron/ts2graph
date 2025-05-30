@@ -6,7 +6,7 @@ EPOCHS=50
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
-USE_TEMPORAL=0
+STGI_MODE='s'
 MLP_SIZE=32
 DATASET="airq_small"
 NUM_NODES=36
@@ -34,9 +34,9 @@ while [[ $# -gt 0 ]]; do
             LAYER_NUMBER="$2"
             shift 2
             ;;
-        --temporal)
-            USE_TEMPORAL=1
-            shift
+        --mode)
+            STGI_MODE="$2"
+            shift 2
             ;;
         --lr)
             LR="$2"
@@ -78,11 +78,6 @@ declare -A TECHNIQUES=(
     ["loc"]=0.5
 )
 
-USE_TEMP=""
-if [ "$USE_TEMPORAL" -eq 1 ]; then
-    USE_TEMP="-ut"
-fi
-
 ORIGINAL=$SELF_LOOP
 
 # Loop through fixed graphs techniques
@@ -105,7 +100,7 @@ for G in "${!TECHNIQUES[@]}"; do
     echo "Running: -g $G $V -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g "$BASE_G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+    python -u main.py -d $DATASET -sp $FILENAME -g "$BASE_G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
 
 SELF_LOOP=$ORIGINAL
@@ -126,5 +121,5 @@ for K in $K_VALUES; do
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_knn_${K}_sl${SELF_LOOP}_${EPOCHS}.json"
     python -u main.py -d $DATASET -sp $FILENAME -g knn $K -e $EPOCHS \
-           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
