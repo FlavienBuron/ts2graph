@@ -569,7 +569,7 @@ def get_temporal_graph(
         parameter = int(parameter)
         adj_matrix = dataset.get_naive_temporal_graph(k=parameter)
         return adj_matrix
-    return torch.tensor([])
+    return torch.tensor([[]])
 
 
 def run(args: Namespace) -> None:
@@ -609,14 +609,14 @@ def run(args: Namespace) -> None:
             spatial_graph_technique, spatial_graph_param, dataset, args
         )
     else:
-        spatial_adj_matrix = torch.tensor([])
+        spatial_adj_matrix = torch.tensor([[]])
 
     if use_temporal:
         temporal_adj_matrix = get_temporal_graph(
             temporal_graph_technique, temporal_graph_param, dataset, args
         )
     else:
-        temporal_adj_matrix = torch.tensor([])
+        temporal_adj_matrix = torch.tensor([[]])
 
     if args.graph_stats:
         save_stats_path = "./experiments/results/graphs/"
