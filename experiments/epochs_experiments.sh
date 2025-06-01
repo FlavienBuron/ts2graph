@@ -104,7 +104,7 @@ for E in "${EPOCHS[@]}"; do
 
         echo "Running: -m $STGI_MODE -g $BASE_G $V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
-        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs{$BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
+        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
         python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
     done
 done
