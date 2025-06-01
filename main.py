@@ -571,6 +571,7 @@ def get_temporal_graph(
         print("Using Naive Temporal Graph")
         parameter = int(parameter)
         adj_matrix = dataset.get_naive_temporal_graph(k=parameter)
+        print(f"{adj_matrix.shape=}")
         return adj_matrix
     return torch.tensor([[]])
 
