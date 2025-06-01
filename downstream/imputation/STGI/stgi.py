@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -12,19 +12,21 @@ class STGI(nn.Module):
         in_dim,
         hidden_dim,
         num_layers,
-        model_type: str = "GCNConv",
+        layer_type: str = "GCNConv",
         use_spatial: bool = True,
         use_temporal: bool = False,
+        temporal_graph_fn: Callable = None,
         **kwargs,
     ):
         super(STGI, self).__init__()
 
-        if not hasattr(pyg_nn, model_type):
-            raise ValueError(f"Model type '{model_type}' not found in torch_geometric")
+        if not hasattr(pyg_nn, layer_type):
+            raise ValueError(f"Model type '{layer_type}' not found in torch_geometric")
 
-        ModelClass = getattr(pyg_nn, model_type)
+        ModelClass = getattr(pyg_nn, layer_type)
         self.use_spatial = use_spatial
         self.use_temporal = use_temporal
+        self.temporal_graph_fn = temporal_graph_fn
 
         if not use_spatial and not use_temporal:
             print(
@@ -75,37 +77,13 @@ class STGI(nn.Module):
 
         return layers
 
-    def _create_temporal_edges(
-        self, time_steps: int, num_nodes: int, device: torch.device
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Create temporal edges connecting nodes across consecutive time steps"""
-        temporal_edges = []
-
-        for t in range(time_steps - 1):
-            src = torch.arange(num_nodes, device=device) + t * num_nodes
-            dst = torch.arange(num_nodes, device=device) + (t + 1) * num_nodes
-            temporal_edges.append(torch.stack([src, dst], dim=0))
-
-        temporal_edge_index = torch.cat(temporal_edges, dim=1)
-
-        # Make bidirectional connections
-        temporal_edge_index = torch.cat(
-            [temporal_edge_index, temporal_edge_index.flip(0)], dim=1
-        )
-
-        # Uniform edge weights (could be made learnable)
-        temporal_edge_weight = torch.ones(temporal_edge_index.shape[1], device=device)
-
-        return temporal_edge_index, temporal_edge_weight
-
     def forward(
         self,
         x,
         mask,
         spatial_edge_index,
         spatial_edge_weight,
-        temporal_edge_index,
-        temporal_edge_weight,
+        **kwargs,
     ):
         """
         x: (batch_size, time_steps, num_nodes, feature_dim)
@@ -140,6 +118,10 @@ class STGI(nn.Module):
             for node_idx in range(num_nodes):
                 # Get the time series for this node: shape (T, F)
                 x_node = x[:, node_idx, :]
+
+                temporal_edge_index, temporal_edge_weight = self.temporal_graph_fn(
+                    time_steps=time_steps, num_nodes=1
+                )
 
                 # Apply temporal GNN layers
                 for i, temp_gnn_layers in enumerate(self.temp_gnn_layers):

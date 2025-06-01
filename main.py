@@ -2,6 +2,8 @@ import json
 import os
 import random
 from argparse import ArgumentParser, Namespace
+from functools import partial
+from typing import Callable
 
 import numpy as np
 import torch
@@ -20,6 +22,7 @@ from torch_geometric.utils import dense_to_sparse
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.STGI import STGI
+from graphs_transformations.temporal_graphs import k_hop_graph
 from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
     compute_laplacian_smoothness,
@@ -182,8 +185,6 @@ def train_imputer(
     dataloader: DataLoader,
     spatial_edge_index: torch.Tensor,
     spatial_edge_weight: torch.Tensor,
-    temporal_edge_index: torch.Tensor,
-    temporal_edge_weight: torch.Tensor,
     optimizer: Optimizer,
     metrics: dict,
     epochs: int = 5,
@@ -248,8 +249,6 @@ def train_imputer(
                         mask=batch_mask.to(device),
                         spatial_edge_index=spatial_edge_index.to(device),
                         spatial_edge_weight=spatial_edge_weight.to(device),
-                        temporal_edge_index=temporal_edge_index.to(device),
-                        temporal_edge_weight=temporal_edge_weight.to(device),
                     )
                     # imputed_data = imputed_data.squeeze(-1)
                     train_mask_cpu = batch_train_mask.cpu().bool()
@@ -342,8 +341,6 @@ def train_imputer(
             dataloader,
             spatial_edge_index,
             spatial_edge_weight,
-            temporal_edge_index,
-            temporal_edge_weight,
             imput_metrics,
             num_iteration,
             device,
@@ -366,8 +363,6 @@ def impute_missing_data(
     dataloader: DataLoader,
     spatial_edge_index: torch.Tensor,
     spatial_edge_weight: torch.Tensor,
-    temporal_edge_index: torch.Tensor,
-    temporal_edge_weight: torch.Tensor,
     metrics: dict,
     num_iteration: int,
     device: str,
@@ -430,8 +425,6 @@ def impute_missing_data(
                     mask=batch_mask.to(device),
                     spatial_edge_index=spatial_edge_index.to(device),
                     spatial_edge_weight=spatial_edge_weight.to(device),
-                    temporal_edge_index=temporal_edge_index.to(device),
-                    temporal_edge_weight=temporal_edge_weight.to(device),
                 )
                 # imputed_data = imputed_data.squeeze(-1)
                 imputed_batch = batch_data.clone().detach().cpu()
@@ -564,16 +557,18 @@ def get_spatial_graph(
     return adj_matrix
 
 
-def get_temporal_graph(
-    technique: str, parameter: float, dataset: GraphLoader, args: Namespace
-) -> torch.Tensor:
+def get_temporal_graph_function(technique: str, parameter: float) -> Callable:
     if "naive" in technique:
         print("Using Naive Temporal Graph")
         parameter = int(parameter)
-        adj_matrix = dataset.get_naive_temporal_graph(k=parameter)
-        print(f"{adj_matrix.shape=}")
-        return adj_matrix
-    return torch.tensor([[]])
+        return partial(k_hop_graph, k=parameter)
+
+    def empty_temporal_graph():
+        return torch.empty((2, 0), dtype=torch.long), torch.empty(
+            (0,), dtype=torch.float
+        )
+
+    return empty_temporal_graph
 
 
 def run(args: Namespace) -> None:
@@ -618,11 +613,15 @@ def run(args: Namespace) -> None:
         spatial_adj_matrix = torch.tensor([[]])
 
     if use_temporal:
-        temporal_adj_matrix = get_temporal_graph(
-            temporal_graph_technique, temporal_graph_param, dataset, args
+        temporal_graph_fn = get_temporal_graph_function(
+            temporal_graph_technique,
+            temporal_graph_param,
         )
     else:
-        temporal_adj_matrix = torch.tensor([[]])
+        temporal_graph_fn = get_temporal_graph_function(
+            "",
+            temporal_graph_param,
+        )
 
     if args.graph_stats:
         save_stats_path = "./experiments/results/graphs/"
@@ -633,24 +632,17 @@ def run(args: Namespace) -> None:
             )
             save_graph_characteristics(spatial_adj_matrix, save_path)
 
-        if use_temporal:
-            save_path = os.path.join(
-                save_stats_path,
-                f"{args.dataset}_{temporal_graph_technique}_{temporal_graph_param}",
-            )
-            save_graph_characteristics(temporal_adj_matrix, save_path)
-
     if args.downstream_task:
         spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
-        temporal_edge_index, temporal_edge_weight = dense_to_sparse(temporal_adj_matrix)
 
         stgi = STGI(
             in_dim=2,
             hidden_dim=args.hidden_dim,
             num_layers=args.layer_num,
-            model_type=args.layer_type,
+            layer_type=args.layer_type,
             use_spatial=use_spatial,
             use_temporal=use_temporal,
+            temporal_graph_fn=temporal_graph_fn,
         )
 
         stgi.to(device)
@@ -661,8 +653,6 @@ def run(args: Namespace) -> None:
             dataloader,
             spatial_edge_index,
             spatial_edge_weight,
-            temporal_edge_index,
-            temporal_edge_weight,
             geo_optim,
             metrics,
             args.epochs,

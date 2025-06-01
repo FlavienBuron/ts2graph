@@ -6,7 +6,7 @@ def k_hop_graph(
     num_nodes: int,
     k: int = 1,
     bidirectional: bool = True,
-) -> torch.Tensor:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Construct a k-hop temporal graph: t -> {t+1, ..., t+k} over a dataset of shape [T, N, F],
     where each of the N nodes is a time series of length T
     """
@@ -28,5 +28,6 @@ def k_hop_graph(
                 edge_list.append(torch.stack([dst, src], dim=0))
 
     edge_index = torch.cat(edge_list, dim=1)
+    edge_weight = torch.ones(edge_index.shape[1])
 
-    return edge_index
+    return edge_index, edge_weight
