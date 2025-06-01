@@ -597,6 +597,10 @@ def run(args: Namespace) -> None:
     print(f"{use_spatial=} {use_temporal=}")
 
     dataset = get_dataset(args.dataset)
+
+    if args.batch_size == 0:
+        args.batch_size = dataset.original_data.shape[0]
+
     # dataset.corrupt(missing_type="perc", missing_size=50)
     dataloader = dataset.get_dataloader(
         use_corrupted_data=False, shuffle=False, batch_size=args.batch_size
