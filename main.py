@@ -568,6 +568,7 @@ def get_temporal_graph(
     technique: str, parameter: float, dataset: GraphLoader, args: Namespace
 ) -> torch.Tensor:
     if "naive" in technique:
+        print("Using Naive Temporal Graph")
         parameter = int(parameter)
         adj_matrix = dataset.get_naive_temporal_graph(k=parameter)
         return adj_matrix
