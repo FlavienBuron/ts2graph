@@ -316,6 +316,8 @@ class AirQualityLoader(GraphLoader):
             k=k,
             bidirectional=bidirectional,
         )
+        adj = to_dense_adj(edge_index)
+        return adj
 
     def _geographical_distance(
         self, coords: pd.DataFrame, to_rad: bool = True
