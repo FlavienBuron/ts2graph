@@ -3,6 +3,7 @@
 . .venv/bin/activate
 
 EPOCHS=()
+BATCH_SIZE=128
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
@@ -18,6 +19,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dataset)
             DATASET="$2"
+            shift 2
+            ;;
+        --batch_size)
+            BATCH_SIZE="$2"
             shift 2
             ;;
         --hidden_dim)
@@ -97,9 +102,9 @@ for E in "${EPOCHS[@]}"; do
             V=$SELF_LOOP
         fi
 
-        echo "Running: -g $BASE_G $V -e $E" | tee -a "$LOGFILE"
+        echo "Running: -m $STGI_MODE -g $BASE_G $V -e $E -bs BATCH_SIZE" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
-        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_{$STGI_MODE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
-        python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$E" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs{$BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
+        python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
     done
 done
