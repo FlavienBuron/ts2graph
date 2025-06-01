@@ -341,6 +341,8 @@ def train_imputer(
             dataloader,
             spatial_edge_index,
             spatial_edge_weight,
+            temporal_edge_index,
+            temporal_edge_weight,
             imput_metrics,
             num_iteration,
             device,
