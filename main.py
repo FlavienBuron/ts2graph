@@ -245,6 +245,7 @@ def train_imputer(
                     imputed_data = model(
                         # x=batch_data.unsqueeze(2).to(device),
                         x=batch_data.to(device),
+                        mask=batch_mask.to(device),
                         spatial_edge_index=spatial_edge_index.to(device),
                         spatial_edge_weight=spatial_edge_weight.to(device),
                         temporal_edge_index=temporal_edge_index.to(device),
@@ -425,7 +426,8 @@ def impute_missing_data(
 
                 imputed_data = model(
                     # batch_data.unsqueeze(2).to(device),
-                    batch_data.to(device),
+                    x=batch_data.to(device),
+                    mask=batch_mask.to(device),
                     spatial_edge_index=spatial_edge_index.to(device),
                     spatial_edge_weight=spatial_edge_weight.to(device),
                     temporal_edge_index=temporal_edge_index.to(device),
