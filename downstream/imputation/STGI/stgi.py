@@ -98,7 +98,15 @@ class STGI(nn.Module):
 
         return temporal_edge_index, temporal_edge_weight
 
-    def forward(self, x, edge_index, edge_weight):
+    def forward(
+        self,
+        x,
+        mask,
+        spatial_edge_index,
+        spatial_edge_weight,
+        temporal_edge_index,
+        temporal_edge_weight,
+    ):
         """
         x: (batch_size, time_steps, num_nodes, feature_dim)
         edge_index: Graph edges (from adjacency matrix)
@@ -106,7 +114,7 @@ class STGI(nn.Module):
         """
         time_steps, num_nodes, features = x.shape
         device = x.device
-        # ori_x = x.detach().clone()
+        ori_x = x.detach().clone()
 
         # === Spatial GNN ===
         if self.use_spatial:
@@ -115,7 +123,7 @@ class STGI(nn.Module):
             for t in range(time_steps):
                 x_t = x[t]
                 for i, gnn_layer in enumerate(self.gnn_layers):
-                    x_t = gnn_layer(x_t, edge_index, edge_weight)
+                    x_t = gnn_layer(x_t, spatial_edge_index, spatial_edge_weight)
                     if i < len(self.gnn_layers) - 1:
                         x_t = F.relu(x_t)
                 spatial_outputs.append(x_t)
@@ -123,25 +131,27 @@ class STGI(nn.Module):
             # Stack to shape (time, nodes, out_dim)
             x = torch.stack(spatial_outputs, dim=0)
 
+        x[mask] = ori_x[mask]
+
         # === Temporal GNN ===
         if self.use_temporal:
-            # Flatten nodes over time into a single batch dimension
-            x = x.reshape(time_steps * num_nodes, features)
+            temporal_outputs = []
 
-            # Create temporal connections
-            temporal_edge_index, temporal_edge_weight = self._create_temporal_edges(
-                time_steps, num_nodes, device
-            )
+            for node_idx in range(num_nodes):
+                # Get the time series for this node: shape (T, F)
+                x_node = x[:, node_idx, :]
 
-            # Apply temporal GNN layers
-            for i, temp_gnn_layer in enumerate(self.temp_gnn_layers):
-                x = temp_gnn_layer(x, temporal_edge_index, temporal_edge_weight)
+                # Apply temporal GNN layers
+                for i, temp_gnn_layers in enumerate(self.temp_gnn_layers):
+                    x_node = temp_gnn_layers(
+                        x_node, temporal_edge_index, temporal_edge_weight
+                    )
+                    if i < len(self.temp_gnn_layers) - 1:
+                        x_node = F.relu(x_node)
+                    temporal_outputs.append(x_node)
 
-                # Apply activation and dropout (except for last layer)
-                if i < len(self.temp_gnn_layers) - 1:
-                    x = F.relu(x)
-
-            x = x.reshape(time_steps, num_nodes, -1)
+            # Stack to shape (time, nodes, out_dim)
+            x = torch.stack(temporal_outputs, dim=1)
 
         # x = self.layer_norm(x)
         x = torch.tanh(x)

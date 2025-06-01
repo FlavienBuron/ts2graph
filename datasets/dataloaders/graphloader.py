@@ -63,6 +63,10 @@ class GraphLoader(Dataset, ABC):
         pass
 
     @abstractmethod
+    def get_naive_temporal_graph(self, k: int, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
     def get_geolocation_graph(self, *args, **kwargs) -> Any:
         pass
 

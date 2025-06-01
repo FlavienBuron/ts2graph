@@ -1,11 +1,10 @@
 import torch
-from torch import Tensor
 from torch.nn.functional import normalize
 from torch_geometric.nn import knn_graph, radius_graph
 
 
 def from_knn(
-    data: Tensor,
+    data: torch.Tensor,
     mask: torch.Tensor,
     k: int,
     loop=False,
@@ -31,7 +30,7 @@ def from_knn(
 
 
 def from_radius(
-    data: Tensor,
+    data: torch.Tensor,
     mask: torch.Tensor,
     radius: float,
     loop=False,

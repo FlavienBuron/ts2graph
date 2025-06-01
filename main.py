@@ -42,14 +42,6 @@ def parse_args() -> Namespace:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument(
-        "--mode",
-        "-m",
-        type=str,
-        help="Which mode should STGI use e.g. s=spatial, t=temporal, st=spatio-temporal",
-        choices=["s", "t", "st"],
-        default="s",
-    )
-    parser.add_argument(
         "--save_path",
         "-sp",
         type=str,
@@ -68,15 +60,30 @@ def parse_args() -> Namespace:
         "-n",
         type=str,
         help="How should the data be normalized",
-        default=None,
+        default="min_max",
         choices=[None, "min_max", "std"],
     )
     parser.add_argument(
-        "--graph_technique",
-        "-g",
+        "--mode",
+        "-m",
+        type=str,
+        help="Which mode should STGI use e.g. s=spatial, t=temporal, st=spatio-temporal",
+        choices=["s", "t", "st"],
+        default="s",
+    )
+    parser.add_argument(
+        "--spatial_graph_technique",
+        "-sg",
         nargs=2,
-        help="which algorithm to use for graph completion e.g. 'KNN'",
+        help="which algorithm to use for spatial graph completion, if used, e.g. 'knn 3'",
         default=["knn", 3],
+    )
+    parser.add_argument(
+        "--temporal_graph_technique",
+        "-tg",
+        nargs=2,
+        help="which algorithm to use for temporal graph completion, if used, e.g. 'naive 1'",
+        default=["naive", 1],
     )
     parser.add_argument(
         "--self_loop",
@@ -173,8 +180,10 @@ def train_imputer(
     model: nn.Module,
     dataset: GraphLoader,
     dataloader: DataLoader,
-    edge_index: torch.Tensor,
-    edge_weight: torch.Tensor,
+    spatial_edge_index: torch.Tensor,
+    spatial_edge_weight: torch.Tensor,
+    temporal_edge_index: torch.Tensor,
+    temporal_edge_weight: torch.Tensor,
     optimizer: Optimizer,
     metrics: dict,
     epochs: int = 5,
@@ -213,25 +222,33 @@ def train_imputer(
                 with torch.set_grad_enabled(True):
                     # Get the Smoothess values before imputation
                     sum_ls_before += compute_laplacian_smoothness(
-                        batch_data.detach(), edge_index, edge_weight
+                        batch_data.detach(), spatial_edge_index, spatial_edge_weight
                     )
                     sum_eds_before += compute_edge_difference_smoothness(
-                        batch_data.detach(), edge_index, edge_weight
+                        batch_data.detach(), spatial_edge_index, spatial_edge_weight
                     )
                     # Mask, to compare
                     sum_ls_before_masked += compute_laplacian_smoothness(
-                        batch_data.detach(), edge_index, edge_weight, mask=batch_mask
+                        batch_data.detach(),
+                        spatial_edge_index,
+                        spatial_edge_weight,
+                        mask=batch_mask,
                     )
                     sum_eds_before_masked += compute_edge_difference_smoothness(
-                        batch_data.detach(), edge_index, edge_weight, mask=batch_mask
+                        batch_data.detach(),
+                        spatial_edge_index,
+                        spatial_edge_weight,
+                        mask=batch_mask,
                     )
 
                     # Imputation step
                     imputed_data = model(
                         # x=batch_data.unsqueeze(2).to(device),
                         x=batch_data.to(device),
-                        edge_index=edge_index.to(device),
-                        edge_weight=edge_weight.to(device),
+                        spatial_edge_index=spatial_edge_index.to(device),
+                        spatial_edge_weight=spatial_edge_weight.to(device),
+                        temporal_edge_index=temporal_edge_index.to(device),
+                        temporal_edge_weight=temporal_edge_weight.to(device),
                     )
                     # imputed_data = imputed_data.squeeze(-1)
                     train_mask_cpu = batch_train_mask.cpu().bool()
@@ -260,16 +277,22 @@ def train_imputer(
 
                     # Get the Smoothess AFTER imputation
                     sum_ls_after += compute_laplacian_smoothness(
-                        imputed_data.detach(), edge_index, edge_weight
+                        imputed_data.detach(), spatial_edge_index, spatial_edge_weight
                     )
                     sum_eds_after += compute_edge_difference_smoothness(
-                        imputed_data.detach(), edge_index, edge_weight
+                        imputed_data.detach(), spatial_edge_index, spatial_edge_weight
                     )
                     sum_ls_after_masked += compute_laplacian_smoothness(
-                        imputed_data.detach(), edge_index, edge_weight, mask=batch_mask
+                        imputed_data.detach(),
+                        spatial_edge_index,
+                        spatial_edge_weight,
+                        mask=batch_mask,
                     )
                     sum_eds_after_masked += compute_edge_difference_smoothness(
-                        imputed_data.detach(), edge_index, edge_weight, mask=batch_mask
+                        imputed_data.detach(),
+                        spatial_edge_index,
+                        spatial_edge_weight,
+                        mask=batch_mask,
                     )
 
                     batch_losses.append(batch_loss.item())
@@ -311,25 +334,13 @@ def train_imputer(
         )
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
-            # print(
-            #     f"\n\nAverage Masked Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
-            # )
-            # print(
-            #     f"Average Laplacian Smoothess: before {sum_ls_before / (batch_size * nb_batches):.4e}, after {sum_ls_after / (batch_size * nb_batches):.4e}"
-            # )
-            # print(
-            #     f"Average Edge Distance Smoothess: before {sum_eds_before / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
-            # )
-            # print(
-            #     f"Average Masked Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after / (batch_size * nb_batches):.4e}"
-            # )
         imput_metrics = {"epoch": epoch + 1}
         imputed_data = impute_missing_data(
             model,
             dataset,
             dataloader,
-            edge_index,
-            edge_weight,
+            spatial_edge_index,
+            spatial_edge_weight,
             imput_metrics,
             num_iteration,
             device,
@@ -350,8 +361,10 @@ def impute_missing_data(
     model: nn.Module,
     dataset: GraphLoader,
     dataloader: DataLoader,
-    edge_index: torch.Tensor,
-    edge_weight: torch.Tensor,
+    spatial_edge_index: torch.Tensor,
+    spatial_edge_weight: torch.Tensor,
+    temporal_edge_index: torch.Tensor,
+    temporal_edge_weight: torch.Tensor,
     metrics: dict,
     num_iteration: int,
     device: str,
@@ -377,30 +390,44 @@ def impute_missing_data(
             imputed_batches = []
             for batch_data, batch_mask, _, _ in dataloader:
                 sum_ls_before += compute_laplacian_smoothness(
-                    batch_data, edge_index, edge_weight
+                    batch_data, spatial_edge_index, spatial_edge_weight
                 )
                 sum_eds_before += compute_edge_difference_smoothness(
-                    batch_data, edge_index, edge_weight
+                    batch_data, spatial_edge_index, spatial_edge_weight
                 )
                 # Mask, to compare
                 sum_ls_before_masked += compute_laplacian_smoothness(
-                    batch_data.detach(), edge_index, edge_weight, mask=batch_mask
+                    batch_data.detach(),
+                    spatial_edge_index,
+                    spatial_edge_weight,
+                    mask=batch_mask,
                 )
                 sum_eds_before_masked += compute_edge_difference_smoothness(
-                    batch_data.detach(), edge_index, edge_weight, mask=batch_mask
+                    batch_data.detach(),
+                    spatial_edge_index,
+                    spatial_edge_weight,
+                    mask=batch_mask,
                 )
                 sum_imputed_ls_before += compute_laplacian_smoothness(
-                    batch_data.detach(), edge_index, edge_weight, mask=~batch_mask
+                    batch_data.detach(),
+                    spatial_edge_index,
+                    spatial_edge_weight,
+                    mask=~batch_mask,
                 )
                 sum_imputed_eds_before += compute_edge_difference_smoothness(
-                    batch_data.detach(), edge_index, edge_weight, mask=~batch_mask
+                    batch_data.detach(),
+                    spatial_edge_index,
+                    spatial_edge_weight,
+                    mask=~batch_mask,
                 )
 
                 imputed_data = model(
                     # batch_data.unsqueeze(2).to(device),
                     batch_data.to(device),
-                    edge_index.to(device),
-                    edge_weight.to(device),
+                    spatial_edge_index=spatial_edge_index.to(device),
+                    spatial_edge_weight=spatial_edge_weight.to(device),
+                    temporal_edge_index=temporal_edge_index.to(device),
+                    temporal_edge_weight=temporal_edge_weight.to(device),
                 )
                 # imputed_data = imputed_data.squeeze(-1)
                 imputed_batch = batch_data.clone().detach().cpu()
@@ -412,33 +439,39 @@ def impute_missing_data(
                 imputed_batches.append(imputed_data)
 
                 sum_ls_after_masked += compute_laplacian_smoothness(
-                    imputed_batch, edge_index, edge_weight, mask=batch_mask
+                    imputed_batch,
+                    spatial_edge_index,
+                    spatial_edge_weight,
+                    mask=batch_mask,
                 )
                 sum_ls_after += compute_laplacian_smoothness(
-                    imputed_batch, edge_index, edge_weight
+                    imputed_batch, spatial_edge_index, spatial_edge_weight
                 )
                 sum_eds_after += compute_edge_difference_smoothness(
-                    imputed_batch, edge_index, edge_weight
+                    imputed_batch, spatial_edge_index, spatial_edge_weight
                 )
                 sum_eds_after_masked += compute_edge_difference_smoothness(
-                    imputed_batch, edge_index, edge_weight, mask=batch_mask
+                    imputed_batch,
+                    spatial_edge_index,
+                    spatial_edge_weight,
+                    mask=batch_mask,
                 )
                 sum_imputed_ls_after += compute_laplacian_smoothness(
-                    imputed_batch, edge_index, edge_weight, mask=~batch_mask
+                    imputed_batch,
+                    spatial_edge_index,
+                    spatial_edge_weight,
+                    mask=~batch_mask,
                 )
                 sum_imputed_eds_after += compute_laplacian_smoothness(
-                    imputed_batch, edge_index, edge_weight, mask=~batch_mask
+                    imputed_batch,
+                    spatial_edge_index,
+                    spatial_edge_weight,
+                    mask=~batch_mask,
                 )
 
             imputed_data = torch.cat(imputed_batches, dim=0)
             dataset.update_data(imputed_data)
             del imputed_data
-        # print(
-        #     f"\n\nAverage Imputation Laplacian Smoothess: before {sum_ls_before_masked / (batch_size * nb_batches):.4e}, after {sum_ls_after_masked / (batch_size * nb_batches):.4e}"
-        # )
-        # print(
-        #     f"Average Imputation Edge Distance Smoothess: before {sum_eds_before_masked / (batch_size * nb_batches):.4e}, after {sum_eds_after_masked / (batch_size * nb_batches):.4e}"
-        # )
         for param in model.parameters():
             if param.grad is None:
                 print(f"Gradient is None for param: {param}")
@@ -499,6 +532,44 @@ def flatten_metrics(metrics: dict) -> list[dict]:
     ]
 
 
+def get_spatial_graph(
+    technique: str, parameter: float, dataset: GraphLoader, args: Namespace
+) -> torch.Tensor:
+    if "loc" in technique:
+        adj_matrix = dataset.get_geolocation_graph(
+            threshold=parameter, include_self=args.self_loop
+        )
+    elif "zero" in technique:
+        adj_matrix = dataset.get_geolocation_graph(threshold=parameter)
+        adj_matrix = torch.zeros_like(adj_matrix)
+        if args.self_loop:
+            adj_matrix.fill_diagonal_(1.0)
+    elif "one" in technique:
+        adj_matrix = dataset.get_geolocation_graph(threshold=parameter)
+        adj_matrix = torch.ones_like(adj_matrix)
+        if not bool(args.self_loop):
+            adj_matrix.fill_diagonal_(0.0)
+    else:
+        param = int(parameter)
+        adj_matrix = dataset.get_knn_graph(
+            k=param,
+            loop=args.self_loop,
+            cosine=args.similarity_metric == "cosine",
+        )
+
+    return adj_matrix
+
+
+def get_temporal_graph(
+    technique: str, parameter: float, dataset: GraphLoader, args: Namespace
+) -> torch.Tensor:
+    if "naive" in technique:
+        parameter = int(parameter)
+        adj_matrix = dataset.get_naive_temporal_graph(k=parameter)
+        return adj_matrix
+    return torch.tensor([])
+
+
 def run(args: Namespace) -> None:
     # test = np.random.rand(10, 100)
     print("#" * 100)
@@ -523,39 +594,47 @@ def run(args: Namespace) -> None:
     assert not torch.isnan(dataset.original_data[dataset.validation_mask]).any(), (
         "Missing values present under evaluation mask (run)"
     )
-    graph_technique, param = args.graph_technique
-    param = float(param)
+    spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
+    temporal_graph_technique, temporal_graph_param = args.temporal_graph_technique
+    spatial_graph_param = float(spatial_graph_param)
+    temporal_graph_param = float(temporal_graph_param)
     # ts2net = Ts2Net()
     metrics = {}
     metrics.update(vars(args))
-    if "loc" in graph_technique:
-        adj_matrix = dataset.get_geolocation_graph(
-            threshold=param, include_self=args.self_loop
+
+    if use_spatial:
+        spatial_adj_matrix = get_spatial_graph(
+            spatial_graph_technique, spatial_graph_param, dataset, args
         )
-    elif "zero" in graph_technique:
-        adj_matrix = dataset.get_geolocation_graph(threshold=param)
-        adj_matrix = torch.zeros_like(adj_matrix)
-        if args.self_loop:
-            adj_matrix.fill_diagonal_(1.0)
-    elif "one" in graph_technique:
-        adj_matrix = dataset.get_geolocation_graph(threshold=param)
-        adj_matrix = torch.ones_like(adj_matrix)
-        if not bool(args.self_loop):
-            adj_matrix.fill_diagonal_(0.0)
     else:
-        param = int(param)
-        adj_matrix = dataset.get_knn_graph(
-            k=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
+        spatial_adj_matrix = torch.tensor([])
+
+    if use_temporal:
+        temporal_adj_matrix = get_temporal_graph(
+            temporal_graph_technique, temporal_graph_param, dataset, args
         )
+    else:
+        temporal_adj_matrix = torch.tensor([])
+
     if args.graph_stats:
         save_stats_path = "./experiments/results/graphs/"
-        save_path = os.path.join(
-            save_stats_path, f"{args.dataset}_{graph_technique}_{param}"
-        )
-        save_graph_characteristics(adj_matrix, save_path)
+        if use_spatial:
+            save_path = os.path.join(
+                save_stats_path,
+                f"{args.dataset}_{spatial_graph_technique}_{spatial_graph_param}",
+            )
+            save_graph_characteristics(spatial_adj_matrix, save_path)
+
+        if use_temporal:
+            save_path = os.path.join(
+                save_stats_path,
+                f"{args.dataset}_{temporal_graph_technique}_{temporal_graph_param}",
+            )
+            save_graph_characteristics(temporal_adj_matrix, save_path)
 
     if args.downstream_task:
-        edge_index, edge_weight = dense_to_sparse(adj_matrix)
+        spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
+        temporal_edge_index, temporal_edge_weight = dense_to_sparse(temporal_adj_matrix)
 
         stgi = STGI(
             in_dim=2,
@@ -572,8 +651,10 @@ def run(args: Namespace) -> None:
             stgi,
             dataset,
             dataloader,
-            edge_index,
-            edge_weight,
+            spatial_edge_index,
+            spatial_edge_weight,
+            temporal_edge_index,
+            temporal_edge_weight,
             geo_optim,
             metrics,
             args.epochs,

@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from torch_geometric.utils import to_dense_adj
 
 from datasets.dataloaders.graphloader import GraphLoader
+from graphs_transformations import temporal_graphs
 from graphs_transformations.proximity_graphs import from_knn, from_radius
 
 EARTH_RADIUS = 6371.0088
@@ -299,6 +300,22 @@ class AirQualityLoader(GraphLoader):
         )
         adj = to_dense_adj(edge_index).squeeze()
         return adj
+
+    def get_naive_temporal_graph(
+        self,
+        k: int = 1,
+        bidirectional: bool = True,
+    ):
+        data = self.original_data
+
+        time_steps, num_nodes, _ = data.shape
+
+        edge_index = temporal_graphs.k_hop_graph(
+            time_steps=time_steps,
+            num_nodes=num_nodes,
+            k=k,
+            bidirectional=bidirectional,
+        )
 
     def _geographical_distance(
         self, coords: pd.DataFrame, to_rad: bool = True
