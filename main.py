@@ -614,7 +614,7 @@ def run(args: Namespace) -> None:
     temporal_graph_param = float(temporal_graph_param)
     # ts2net = Ts2Net()
     metrics = {}
-    metrics.update({k: str(v) for k, v in vars(args)})
+    metrics.update({k: str(v) for k, v in vars(args).items()})
 
     if use_spatial:
         spatial_adj_matrix = get_spatial_graph(
