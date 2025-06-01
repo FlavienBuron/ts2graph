@@ -588,6 +588,8 @@ def run(args: Namespace) -> None:
         use_spatial = True
         use_temporal = False
 
+    print(f"{use_spatial=} {use_temporal=}")
+
     dataset = get_dataset(args.dataset)
     # dataset.corrupt(missing_type="perc", missing_size=50)
     dataloader = dataset.get_dataloader(

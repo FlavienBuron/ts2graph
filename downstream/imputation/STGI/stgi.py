@@ -34,7 +34,7 @@ class STGI(nn.Module):
 
         out_dim = in_dim
 
-        if use_temporal:
+        if use_spatial:
             print("Building Spatial Block in STGI")
             self.gnn_layers = self._build_gnn_layers(
                 ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
