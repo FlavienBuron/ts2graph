@@ -131,6 +131,13 @@ def parse_args() -> Namespace:
         default=1,
     )
     parser.add_argument(
+        "--batch_size",
+        "-bs",
+        type=int,
+        help="The batch size for the DataLoader",
+        default=128,
+    )
+    parser.add_argument(
         "--epochs",
         "-e",
         type=int,
@@ -592,7 +599,7 @@ def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
     # dataset.corrupt(missing_type="perc", missing_size=50)
     dataloader = dataset.get_dataloader(
-        use_corrupted_data=False, shuffle=False, batch_size=128
+        use_corrupted_data=False, shuffle=False, batch_size=args.batch_size
     )
     assert not torch.isnan(dataset.original_data[dataset.validation_mask]).any(), (
         "Missing values present under evaluation mask (run)"
@@ -660,22 +667,7 @@ def run(args: Namespace) -> None:
             device=device,
             verbose=args.verbose,
         )
-        # imputed_data = impute_missing_data(
-        #     stgi,
-        #     dataset,
-        #     dataloader,
-        #     edge_index,
-        #     edge_weight,
-        #     metrics,
-        #     args.iter_num,
-        #     device,
-        # )
-        # evaluate(
-        #     imputed_data.numpy(),
-        #     dataset.original_data.numpy(),
-        #     dataset.validation_mask.numpy(),
-        #     metrics,
-        # )
+
         with open(args.save_path, "w") as f:
             json.dump(metrics, f, indent=2)
 

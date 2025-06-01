@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
@@ -15,7 +15,7 @@ class STGI(nn.Module):
         layer_type: str = "GCNConv",
         use_spatial: bool = True,
         use_temporal: bool = False,
-        temporal_graph_fn: Callable = None,
+        temporal_graph_fn: Optional[Callable] = None,
         **kwargs,
     ):
         super(STGI, self).__init__()
@@ -119,9 +119,13 @@ class STGI(nn.Module):
                 # Get the time series for this node: shape (T, F)
                 x_node = x[:, node_idx, :]
 
-                temporal_edge_index, temporal_edge_weight = self.temporal_graph_fn(
-                    time_steps=time_steps, num_nodes=1
-                )
+                if self.temporal_graph_fn is not None:
+                    temporal_edge_index, temporal_edge_weight = self.temporal_graph_fn(
+                        time_steps=time_steps, num_nodes=1
+                    )
+                else:
+                    temporal_edge_index = torch.empty((2, 0), dtype=torch.long)
+                    temporal_edge_weight = torch.empty((0,), dtype=torch.float)
 
                 # Apply temporal GNN layers
                 for i, temp_gnn_layers in enumerate(self.temp_gnn_layers):
