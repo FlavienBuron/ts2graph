@@ -73,7 +73,7 @@ echo "Running experiments on $DATE" >> "$LOGFILE"
 KNN_VAL=50
 [ "$DATASET" == "airq_small" ] && KNN_VAL=3
 
-declare -A TECHNIQUES=(
+declare -A SPATIAL_TECH=(
     ["zero_0"]=0
     ["zero_1"]=1
     ["one_1"]=1
@@ -82,29 +82,80 @@ declare -A TECHNIQUES=(
     ["knn"]=$KNN_VAL
 )
 
+declare -A TEMPO_TECH=(
+    ["naive_0"]=0
+    ["naive_1"]=1
+    ["naive_2"]=2
+)
+
 # Loop through epochs and groups
-for E in "${EPOCHS[@]}"; do
-    for G in "${!TECHNIQUES[@]}"; do
-        V=${TECHNIQUES[$G]}
+if [[ "$STGI_MODE" == 's' ]]; then
+    for E in "${EPOCHS[@]}"; do
+        for G in "${!SPATIAL_TECH[@]}"; do
+            V=${SPATIAL_TECH[$G]}
 
-        # Reset default self-loop
-        SELF_LOOP=0
-        BASE_G=$G
+            # Reset default self-loop
+            SELF_LOOP=0
+            BASE_G=$G
 
-        # Check if technique is a variant of zero or one
-        if [[ "$G" == zero_* ]]; then
-            BASE_G="zero"
-            SELF_LOOP=${G#zero_}
-            V=$SELF_LOOP
-        elif [[ "$G" == one_* ]]; then
-            BASE_G="one"
-            SELF_LOOP=${G#one_}
-            V=$SELF_LOOP
-        fi
+            # Check if technique is a variant of zero or one
+            if [[ "$G" == zero_* ]]; then
+                BASE_G="zero"
+                SELF_LOOP=${G#zero_}
+                V=$SELF_LOOP
+            elif [[ "$G" == one_* ]]; then
+                BASE_G="one"
+                SELF_LOOP=${G#one_}
+                V=$SELF_LOOP
+            fi
 
-        echo "Running: -m $STGI_MODE -g $BASE_G $V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
-        TIMESTAMP=$(date +%y%m%d_%H%M%S)
-        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
-        python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+            echo "Running: -m $STGI_MODE -g $BASE_G $V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
+            TIMESTAMP=$(date +%y%m%d_%H%M%S)
+            FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
+            python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+        done
     done
-done
+elif [[ "$STGI_MODE" == 't' ]]; then
+    for E in "${EPOCHS[@]}"; do
+        for G in "${!TEMPO_TECH[@]}"; do
+            V=${TEMPO_TECH[$G]}
+            G="${G%%_*}"
+
+            echo "Running: -m $STGI_MODE -g $G $V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
+            TIMESTAMP=$(date +%y%m%d_%H%M%S)
+            FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${G}_${V}_${E}.json"
+            python -u main.py -d $DATASET -sp $FILENAME -tg "$G" "$V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+        done
+    done
+else
+    for E in "${EPOCHS[@]}"; do
+        for G in "${!SPATIAL_TECH[@]}"; do
+            V=${SPATIAL_TECH[$G]}
+
+            # Reset default self-loop
+            SELF_LOOP=0
+            BASE_G=$G
+
+            # Check if technique is a variant of zero or one
+            if [[ "$G" == zero_* ]]; then
+                BASE_G="zero"
+                SELF_LOOP=${G#zero_}
+                V=$SELF_LOOP
+            elif [[ "$G" == one_* ]]; then
+                BASE_G="one"
+                SELF_LOOP=${G#one_}
+                V=$SELF_LOOP
+            fi
+
+            for TG in "${!TEMPO_TECH[@]}"; do
+                TG_V=${TEMPO_TECH[$TG]}
+                TG="${TG%%_*}"
+
+                echo "Running: -m $STGI_MODE -sg $BASE_G $V -tg $TG $TG_V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
+                TIMESTAMP=$(date +%y%m%d_%H%M%S)
+                FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${E}.json"
+                python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -sp "$TG" "$TG_V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+        done
+    done
+
+fi

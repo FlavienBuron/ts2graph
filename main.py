@@ -79,14 +79,14 @@ def parse_args() -> Namespace:
         "-sg",
         nargs=2,
         help="which algorithm to use for spatial graph completion, if used, e.g. 'knn 3'",
-        default=["knn", 3],
+        default=["knn", "3"],
     )
     parser.add_argument(
         "--temporal_graph_technique",
         "-tg",
         nargs=2,
         help="which algorithm to use for temporal graph completion, if used, e.g. 'naive 1'",
-        default=["naive", 1],
+        default=["naive", "1"],
     )
     parser.add_argument(
         "--self_loop",
@@ -614,7 +614,7 @@ def run(args: Namespace) -> None:
     temporal_graph_param = float(temporal_graph_param)
     # ts2net = Ts2Net()
     metrics = {}
-    metrics.update({k: str(v) for k, v in vars(args).items()})
+    metrics.update(vars(args))
 
     if use_spatial:
         spatial_adj_matrix = get_spatial_graph(
