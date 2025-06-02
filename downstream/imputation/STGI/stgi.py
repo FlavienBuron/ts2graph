@@ -109,10 +109,9 @@ class STGI(nn.Module):
             # Stack to shape (time, nodes, out_dim)
             x = torch.stack(spatial_outputs, dim=0)
 
-        x[mask] = ori_x[mask]
-
         # === Temporal GNN ===
         if self.use_temporal:
+            x[mask] = ori_x[mask]
             temporal_outputs = []
 
             for node_idx in range(num_nodes):

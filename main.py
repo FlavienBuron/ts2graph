@@ -272,15 +272,17 @@ def train_imputer(
 
                 with torch.no_grad():
                     # replace the missing data in the batch with the imputed data
-                    imputed_batch = batch_data.clone()
+                    # imputed_batch = batch_data.clone()
                     imputed_data = imputed_data.cpu()
                     missing_mask_cpu = batch_mask.cpu().bool()
 
                     # print(f"{imputed_batch[~missing_mask_cpu]}")
                     # print(f"{imputed_data[~missing_mask_cpu]}")
-                    imputed_batch[~missing_mask_cpu] = imputed_data[~missing_mask_cpu]
+                    imputed_data[missing_mask_cpu] = (
+                        batch_data[missing_mask_cpu].detach().clone()
+                    )
 
-                    iteration_imputed_data.append(imputed_batch)
+                    iteration_imputed_data.append(imputed_data)
 
                     # Get the Smoothess AFTER imputation
                     sum_ls_after += compute_laplacian_smoothness(
@@ -434,40 +436,41 @@ def impute_missing_data(
                     spatial_edge_weight=spatial_edge_weight.to(device),
                 )
                 # imputed_data = imputed_data.squeeze(-1)
-                imputed_batch = batch_data.clone().detach().cpu()
+                # imputed_batch = batch_data.clone().detach().cpu()
                 mask_cpu = batch_mask.cpu().bool()
                 # print(f"{imputed_batch[~mask_cpu]}")
                 # print(f"{imputed_data[~mask_cpu]}")
-                imputed_batch[~mask_cpu] = imputed_data[~mask_cpu]
+
+                imputed_data[mask_cpu] = batch_data[mask_cpu].detach().clone()
 
                 imputed_batches.append(imputed_data)
 
                 sum_ls_after_masked += compute_laplacian_smoothness(
-                    imputed_batch,
+                    imputed_data,
                     spatial_edge_index,
                     spatial_edge_weight,
                     mask=batch_mask,
                 )
                 sum_ls_after += compute_laplacian_smoothness(
-                    imputed_batch, spatial_edge_index, spatial_edge_weight
+                    imputed_data, spatial_edge_index, spatial_edge_weight
                 )
                 sum_eds_after += compute_edge_difference_smoothness(
-                    imputed_batch, spatial_edge_index, spatial_edge_weight
+                    imputed_data, spatial_edge_index, spatial_edge_weight
                 )
                 sum_eds_after_masked += compute_edge_difference_smoothness(
-                    imputed_batch,
+                    imputed_data,
                     spatial_edge_index,
                     spatial_edge_weight,
                     mask=batch_mask,
                 )
                 sum_imputed_ls_after += compute_laplacian_smoothness(
-                    imputed_batch,
+                    imputed_data,
                     spatial_edge_index,
                     spatial_edge_weight,
                     mask=~batch_mask,
                 )
                 sum_imputed_eds_after += compute_laplacian_smoothness(
-                    imputed_batch,
+                    imputed_data,
                     spatial_edge_index,
                     spatial_edge_weight,
                     mask=~batch_mask,
