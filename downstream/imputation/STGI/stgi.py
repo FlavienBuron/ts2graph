@@ -133,7 +133,7 @@ class STGI(nn.Module):
                     )
                     if i < len(self.temp_gnn_layers) - 1:
                         x_node = F.relu(x_node)
-                    temporal_outputs.append(x_node)
+                temporal_outputs.append(x_node)
 
             # Stack to shape (time, nodes, out_dim)
             x = torch.stack(temporal_outputs, dim=1)
