@@ -100,7 +100,7 @@ class Ts2Net:
         net = self.r_ts2net.tsnet_vg(
             r_data, method, directed, limit, num_cores=num_cores
         )
-        print(f"{net.shape=}")
+        print(f"{len(net)=}")
         edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
         return edge_index, edge_weight
 
