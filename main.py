@@ -656,7 +656,7 @@ def run(args: Namespace) -> None:
         spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
 
         stgi = STGI(
-            in_dim=2,
+            in_dim=1,
             hidden_dim=args.hidden_dim,
             num_layers=args.layer_num,
             layer_type=args.layer_type,
