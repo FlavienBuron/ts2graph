@@ -3,9 +3,11 @@ from typing import Optional
 
 import numpy as np
 import rpy2.robjects as robjects
+import torch
 from rpy2.rinterface import RRuntimeWarning
 from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import importr, isinstalled
+from torch_geometric.utils import dense_to_sparse
 
 warnings.filterwarnings("ignore", category=RRuntimeWarning)
 
@@ -83,7 +85,8 @@ class Ts2Net:
         x: np.ndarray,
         method: str = "nvg",
         directed: bool = False,
-        sparse: bool = False,
+        sparse: bool = True,
+        weighted: bool = False,
         limit: Optional[int | object] = None,
         num_cores: int = 1,
     ):
@@ -97,7 +100,8 @@ class Ts2Net:
         net = self.r_ts2net.tsnet_vg(
             r_data, method, directed, limit, num_cores=num_cores
         )
-        adj_matrix = self._get_adjacency_matrix(net, sparse)
+        adj_matrix = self._get_adjacency_matrix(net, sparse, weighted)
+        edge_index, edge_weight
         return adj_matrix
 
     def tsnet_rn(
@@ -143,20 +147,23 @@ class Ts2Net:
         """Run an R command with warnings suppressed."""
         return robjects.r(f"suppressWarnings({expr})")
 
-    def _get_adjacency_matrix(self, graph, sparse=False):
+    def _get_adjacency_matrix(self, graph, sparse=False, weighted=False):
         """Retrieve the adjacency matrix from an igraph object."""
         # Extract adjacency matrix from R as dense matrix
         robjects.r("""
-            get_adj_matrix <- function(graph, sparse) {
+            get_adj_matrix <- function(graph, sparse, attr) {
                 if (sparse) {
-                    as.matrix(as_adjacency_matrix(graph, sparse = TRUE))
+                    as.matrix(as_adjacency_matrix(graph, sparse = TRUE, attr = attr))
                 } else {
-                    as.matrix(as_adjacency_matrix(graph, sparse = FALSE))
+                    as.matrix(as_adjacency_matrix(graph, sparse = FALSE, attr = attr))
                 }
             }
         """)
-        adj_matrix = robjects.r("get_adj_matrix")(graph, sparse)
-        return np.array(adj_matrix)
+        attr = "weight" if weighted else "NULL"
+        adj_matrix = robjects.r("get_adj_matrix")(graph, sparse, attr)
+        adj_matrix_tensor = torch.tensor(np.asarray(adj_matrix), dtype=torch.float32)
+
+        return dense_to_sparse(adj_matrix_tensor)
 
 
 # Example usage

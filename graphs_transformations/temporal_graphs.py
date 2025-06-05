@@ -2,7 +2,7 @@ import torch
 
 
 def k_hop_graph(
-    time_steps: int,
+    x: torch.Tensor,
     num_nodes: int,
     k: int = 1,
     bidirectional: bool = True,
@@ -10,7 +10,7 @@ def k_hop_graph(
     """Construct a k-hop temporal graph: t -> {t+1, ..., t+k} over a dataset of shape [T, N, F],
     where each of the N nodes is a time series of length T
     """
-
+    time_steps, _ = x.shape
     if k == 0:
         edge_index = torch.empty((2, 0), dtype=torch.long)  # Empty edge_index
         edge_weight = torch.ones(edge_index.shape[1])
