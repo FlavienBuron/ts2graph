@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import rpy2.robjects as robjects
 import torch
-from rpy2.rinterface import RRuntimeWarning
+from rpy2.rinterface import NULL, RRuntimeWarning
 from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import importr, isinstalled
 from torch_geometric.utils import dense_to_sparse
@@ -158,7 +158,7 @@ class Ts2Net:
                 }
             }
         """)
-        attr = "weight" if weighted else None
+        attr = "weight" if weighted else NULL
         adj_matrix = robjects.r("get_adj_matrix")(graph, sparse, attr)
         adj_matrix_tensor = torch.tensor(np.asarray(adj_matrix), dtype=torch.float32)
 
