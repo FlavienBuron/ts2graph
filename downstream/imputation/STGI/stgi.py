@@ -120,7 +120,7 @@ class STGI(nn.Module):
 
                 if self.temporal_graph_fn is not None:
                     temporal_edge_index, temporal_edge_weight = self.temporal_graph_fn(
-                        x=x_node, num_nodes=1
+                        x=x_node
                     )
                 else:
                     temporal_edge_index = torch.empty((2, 0), dtype=torch.long)

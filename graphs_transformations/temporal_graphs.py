@@ -3,7 +3,7 @@ import torch
 
 def k_hop_graph(
     x: torch.Tensor,
-    num_nodes: int,
+    num_nodes: int = 1,
     k: int = 1,
     bidirectional: bool = True,
 ) -> tuple[torch.Tensor, torch.Tensor]:
