@@ -23,6 +23,7 @@ from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.STGI import STGI
 from graphs_transformations.temporal_graphs import k_hop_graph
+from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
     compute_laplacian_smoothness,
@@ -572,6 +573,11 @@ def get_temporal_graph_function(technique: str, parameter: float) -> Callable:
         print("Using Naive Temporal Graph")
         parameter = int(parameter)
         return partial(k_hop_graph, k=parameter)
+    if "vis" in technique:
+        ts2net = Ts2Net()
+        print("Using Naive Temporal Graph")
+
+        return partial(ts2net.tsnet_vg)
 
     def empty_temporal_graph():
         return torch.empty((2, 0), dtype=torch.long), torch.empty(
@@ -615,7 +621,7 @@ def run(args: Namespace) -> None:
     temporal_graph_technique, temporal_graph_param = args.temporal_graph_technique
     spatial_graph_param = float(spatial_graph_param)
     temporal_graph_param = float(temporal_graph_param)
-    # ts2net = Ts2Net()
+    ts2net = Ts2Net()
     metrics = {}
     metrics.update(vars(args))
 
