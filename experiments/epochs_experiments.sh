@@ -86,6 +86,8 @@ declare -A TEMPO_TECH=(
     ["naive_0"]=0
     ["naive_1"]=1
     ["naive_2"]=2
+    ["vis"]=0
+    ["vis"]=1
 )
 
 # Loop through epochs and groups
@@ -120,10 +122,18 @@ elif [[ "$STGI_MODE" == 't' ]]; then
         for G in "${!TEMPO_TECH[@]}"; do
             V=${TEMPO_TECH[$G]}
             G="${G%%_*}"
+            PARAM=$V
+            if [[ "$G" == "vis" ]]; then
+                if [[ "$V" == "0" ]]; then
+                    PARAM="nvg"
+                else
+                    PARAM="hvg"
+                fi
+            fi
 
             echo "Running: -m $STGI_MODE -g $G $V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
             TIMESTAMP=$(date +%y%m%d_%H%M%S)
-            FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${G}_${V}_${E}.json"
+            FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${G}_${PARAM}_${E}.json"
             python -u main.py -d $DATASET -sp $FILENAME -tg "$G" "$V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
         done
     done
@@ -150,10 +160,18 @@ else
             for TG in "${!TEMPO_TECH[@]}"; do
                 TG_V=${TEMPO_TECH[$TG]}
                 TG="${TG%%_*}"
+                PARAM=$TG_V
+                if [[ "$TG" == "vis" ]]; then
+                    if [[ "$TG_V" == "0" ]]; then
+                        PARAM="nvg"
+                    else
+                        PARAM="hvg"
+                    fi
+                fi
 
                 echo "Running: -m $STGI_MODE -sg $BASE_G $V -tg $TG $TG_V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
                 TIMESTAMP=$(date +%y%m%d_%H%M%S)
-                FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${TG}_${TG_V}_${E}.json"
+                FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${TG}_${PARAM}_${E}.json"
                 python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -tg "$TG" "$TG_V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
             done
         done

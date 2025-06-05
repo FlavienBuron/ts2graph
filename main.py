@@ -576,8 +576,8 @@ def get_temporal_graph_function(technique: str, parameter: float) -> Callable:
     if "vis" in technique:
         ts2net = Ts2Net()
         print("Using Naive Temporal Graph")
-
-        return partial(ts2net.tsnet_vg)
+        method = "hvg" if parameter else "nvg"
+        return partial(ts2net.tsnet_vg, method=method)
 
     def empty_temporal_graph():
         return torch.empty((2, 0), dtype=torch.long), torch.empty(
