@@ -100,7 +100,6 @@ class Ts2Net:
         net = self.r_ts2net.tsnet_vg(
             r_data, method, directed, limit, num_cores=num_cores
         )
-        print(f"{len(net)=}")
         edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
         return edge_index, edge_weight
 
@@ -161,6 +160,7 @@ class Ts2Net:
         """)
         attr = "weight" if weighted else NULL
         adj_matrix = robjects.r("get_adj_matrix")(graph, sparse, attr)
+        print(f"{adj_matrix.shape=}")
         adj_matrix_tensor = torch.tensor(np.asarray(adj_matrix), dtype=torch.float32)
 
         return dense_to_sparse(adj_matrix_tensor)
