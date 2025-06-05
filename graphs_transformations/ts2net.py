@@ -158,7 +158,7 @@ class Ts2Net:
                 }
             }
         """)
-        attr = "weight" if weighted else NULL
+        attr = "weight" if weighted else None
         adj_matrix = robjects.r("get_adj_matrix")(graph, sparse, attr)
         adj_matrix_tensor = torch.tensor(np.asarray(adj_matrix), dtype=torch.float32)
 
