@@ -94,7 +94,7 @@ class Ts2Net:
             raise RuntimeError(
                 "ts2net was not loaded, tsnet_vg function is not available"
             )
-        x_np = x.detach().numpy()
+        x_np = x.detach().numpy().flatten()
         r_data = robjects.FloatVector(x_np)
         limit = limit if limit is not None else robjects.r("Inf")
         net = self.r_ts2net.tsnet_vg(
