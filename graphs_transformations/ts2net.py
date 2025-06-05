@@ -95,7 +95,6 @@ class Ts2Net:
                 "ts2net was not loaded, tsnet_vg function is not available"
             )
         x_np = x.detach().numpy().flatten()
-        print(f"{x.shape=} {x_np.shape=}")
         r_data = robjects.FloatVector(x_np)
         limit = limit if limit is not None else robjects.r("Inf")
         net = self.r_ts2net.tsnet_vg(
@@ -161,7 +160,6 @@ class Ts2Net:
         """)
         attr = "weight" if weighted else NULL
         adj_matrix = robjects.r("get_adj_matrix")(graph, sparse, attr)
-        print(f"{adj_matrix.shape=}")
         adj_matrix_tensor = torch.tensor(np.asarray(adj_matrix), dtype=torch.float32)
 
         return dense_to_sparse(adj_matrix_tensor)
