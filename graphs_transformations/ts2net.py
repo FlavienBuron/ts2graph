@@ -123,6 +123,7 @@ class Ts2Net:
         net = self.r_ts2net.tsnet_rn(
             x, radius, embedding_dim, time_lag, do_plot, **kwargs
         )
+        print(f"{net.shape=}")
         adj_matrix = self._get_adjacency_matrix(net, sparse)
         return adj_matrix
 
