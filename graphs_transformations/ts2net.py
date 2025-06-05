@@ -82,7 +82,7 @@ class Ts2Net:
 
     def tsnet_vg(
         self,
-        x: np.ndarray,
+        x: torch.Tensor,
         method: str = "nvg",
         directed: bool = False,
         sparse: bool = True,
@@ -94,15 +94,14 @@ class Ts2Net:
             raise RuntimeError(
                 "ts2net was not loaded, tsnet_vg function is not available"
             )
-
-        r_data = robjects.FloatVector(x)
+        x_np = x.detach().numpy()
+        r_data = robjects.FloatVector(x_np)
         limit = limit if limit is not None else robjects.r("Inf")
         net = self.r_ts2net.tsnet_vg(
             r_data, method, directed, limit, num_cores=num_cores
         )
-        adj_matrix = self._get_adjacency_matrix(net, sparse, weighted)
-        edge_index, edge_weight
-        return adj_matrix
+        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
+        return edge_index, edge_weight
 
     def tsnet_rn(
         self,
