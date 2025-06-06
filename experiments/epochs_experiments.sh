@@ -79,6 +79,7 @@ declare -A SPATIAL_TECH=(
     ["one_1"]=1
     ["one_0"]=0
     ["loc"]=0.5
+    ["radius"]=0.5
     ["knn"]=$KNN_VAL
 )
 
@@ -124,7 +125,7 @@ elif [[ "$STGI_MODE" == 't' ]]; then
             G="${G%%_*}"
             PARAM=$V
             if [[ "$G" == "vis" ]]; then
-                if [[ "$V" == "0" ]]; then
+                if [[ "$V" -eq 0 ]]; then
                     PARAM="nvg"
                 else
                     PARAM="hvg"
@@ -162,7 +163,7 @@ else
                 TG="${TG%%_*}"
                 PARAM=$TG_V
                 if [[ "$TG" == "vis" ]]; then
-                    if [[ "$TG_V" == "0" ]]; then
+                    if [[ "$TG_V" -eq 0 ]]; then
                         PARAM="nvg"
                     else
                         PARAM="hvg"

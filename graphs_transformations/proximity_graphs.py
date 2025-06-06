@@ -51,5 +51,7 @@ def from_radius(
     if cosine:
         data = normalize(input=data, p=2, dim=1)
 
-    edge_index = radius_graph(x=data, r=radius, loop=loop)
+    edge_index = radius_graph(
+        x=data, r=radius, loop=loop, max_num_neighbors=data.shape[1] + 1
+    )
     return edge_index

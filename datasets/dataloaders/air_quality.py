@@ -275,7 +275,7 @@ class AirQualityLoader(GraphLoader):
 
     def get_radius_graph(
         self,
-        radius: int,
+        radius: float,
         use_corrupted_data: bool = False,
         loop: bool = False,
         cosine: bool = False,

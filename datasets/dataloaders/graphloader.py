@@ -59,7 +59,7 @@ class GraphLoader(Dataset, ABC):
         pass
 
     @abstractmethod
-    def get_radius_graph(self, k: int, *args, **kwargs) -> Any:
+    def get_radius_graph(self, radius: float, *args, **kwargs) -> Any:
         pass
 
     @abstractmethod

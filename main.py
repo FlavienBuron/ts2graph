@@ -557,6 +557,11 @@ def get_spatial_graph(
         adj_matrix = torch.ones_like(adj_matrix)
         if not bool(args.self_loop):
             adj_matrix.fill_diagonal_(0.0)
+    elif "rad" in technique:
+        param = int(parameter)
+        adj_matrix = dataset.get_radius_graph(
+            radius=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
+        )
     else:
         param = int(parameter)
         adj_matrix = dataset.get_knn_graph(
