@@ -12,8 +12,8 @@ def get_adaptive_radius(
     data: torch.Tensor,
     mask: torch.Tensor,
     alpha: float,
-    low: float = 10.0,
-    high: float = 90.0,
+    low: float = 1.0,
+    high: float = 99.0,
     cosine: bool = False,
 ) -> float:
     if torch.isnan(data).any():
