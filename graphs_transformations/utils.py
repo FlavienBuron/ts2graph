@@ -32,14 +32,13 @@ def get_adaptive_radius(
     for q in [0.01, 0.1, 0.5, 0.9, 0.95, 0.99]:
         print(f"{int(q * 100)}th percentile:", torch.quantile(dists, q).item())
 
-    # r_min = torch.quantile(dists, low / 100.0)
-    # r_max = torch.quantile(dists, high / 100.0)
+    r_min = torch.quantile(dists, low / 100.0)
+    r_max = torch.quantile(dists, high / 100.0)
 
-    # Interpolate alpha over the quantile domain, not value domain
-    q = low + alpha * (high - low)
-    r = torch.quantile(dists, q / 100.0)
+    r = r_min + alpha * (r_max - r_min)
 
-    print(f"[alpha={alpha:.2f}] percentile={q:.1f} → r={r:.4f}")
+    # print(f"[alpha={alpha:.2f}] percentile={q:.1f} → r={r:.4f}")
+    print(f"[alpha={alpha:.2f}] → r={r:.4f}")
 
     return r.item()
 
