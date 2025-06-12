@@ -73,9 +73,9 @@ mkdir -p "$EXP_DIR"
 # Sweep knn values from 1 to KNN_MAX
 for RAD in $(seq 0.0 $FRACTION 1.0); do
     printf -v RAD_FMT "%.2f" "$RAD"
-    echo "Running: -g loc $RAD_FMT -e $EPOCHS"
+    echo "Running: -g rad $RAD_FMT -e $EPOCHS"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_rad_${RAD_FMT}_sl${SELF_LOOP}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g rad $RADRAD_FMTT -e $EPOCHS \
-           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -gs -dt -v 0 | tee -a "$LOGFILE"
+    python -u main.py -d $DATASET -sp $FILENAME -sg rad $RADRAD_FMTT -e $EPOCHS \
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -gs -dt -v 1
 done
