@@ -26,7 +26,7 @@ def get_adaptive_radius(
     dists = (
         torch.cdist(data, data, p=2) if not cosine else 1 - torch.matmul(data, data.T)
     )
-
+    print(f"{data.min=} {data.max=}")
     dists = dists[dists > 0]  # remove self-distances
 
     r_min = torch.quantile(dists, low / 100.0)
