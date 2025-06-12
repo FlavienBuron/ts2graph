@@ -41,7 +41,11 @@ def from_radius(
     if torch.isnan(data).any():
         means = data.nanmean(dim=1, keepdim=True)
         data = torch.where(mask, data, means)
-    radius = get_adaptive_radius(data=data, mask=mask, alpha=radius, cosine=cosine)
+
+    radius = get_adaptive_radius(
+        data=data, mask=mask, alpha=radius, low=5.0, high=95.0, cosine=cosine
+    )
+
     # Step 2: Check for invalid values
     if torch.isnan(data).any() or torch.isinf(data).any():
         raise ValueError("Data tensor contains NaN or inf values after imputation.")
