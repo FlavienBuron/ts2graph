@@ -159,10 +159,14 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
 
     # Density and Clustering
     density = nx.density(G)
-    clustering_coeff = nx.average_clustering(
-        G, weight="weight" if is_weighted else None
-        ) if G.number_of_edges() != 0
-    binary_clustering_coeff = nx.average_clustering(G, weight=None) if G.number_of_edges() != 0
+    clustering_coeff = (
+        nx.average_clustering(G, weight="weight" if is_weighted else None)
+        if G.number_of_edges() != 0
+        else 0
+    )
+    binary_clustering_coeff = (
+        nx.average_clustering(G, weight=None) if G.number_of_edges() != 0 else 0
+    )
 
     # Triangle counts
     try:
