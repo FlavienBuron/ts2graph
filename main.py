@@ -649,7 +649,7 @@ def run(args: Namespace) -> None:
         )
 
     if args.graph_stats:
-        save_stats_path = "./experiments/results/graphs/"
+        save_stats_path = args.save_path
         if use_spatial:
             save_path = os.path.join(
                 save_stats_path,
