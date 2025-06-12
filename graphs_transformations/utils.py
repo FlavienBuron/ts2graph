@@ -12,8 +12,8 @@ def get_adaptive_radius(
     data: torch.Tensor,
     mask: torch.Tensor,
     alpha: float,
-    low: float = 1.0,
-    high: float = 99.0,
+    low: float = 0.0,
+    high: float = 100.0,
     cosine: bool = False,
 ) -> float:
     if torch.isnan(data).any():
@@ -133,21 +133,21 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
 
     # Basic stats, unweighted
     binary_degrees = [d for _, d in G.degree(weight=None)]
-    binary_avg_degree = np.mean(binary_degrees)
-    binary_median_degree = np.median(binary_degrees)
-    binary_max_degree = max(binary_degrees)
-    binary_min_degree = min(binary_degrees)
-    binary_degree_std = np.std(binary_degrees)
+    binary_avg_degree = np.mean(binary_degrees) if binary_degrees != [] else 0
+    binary_median_degree = np.median(binary_degrees) if binary_degrees != [] else 0
+    binary_max_degree = max(binary_degrees) if binary_degrees != [] else 0
+    binary_min_degree = min(binary_degrees) if binary_degrees != [] else 0
+    binary_degree_std = np.std(binary_degrees) if binary_degrees != [] else 0
 
     if is_weighted:
         # If weighted graph, weighted basic stats
         # Basic stats, unweighted
         degrees = [d for _, d in G.degree(weight="weight")]
-        avg_degree = np.mean(degrees)
-        median_degree = np.median(degrees)
-        max_degree = max(degrees)
-        min_degree = min(degrees)
-        degree_std = np.std(degrees)
+        avg_degree = np.mean(degrees) if degrees != [] else 0
+        median_degree = np.median(degrees) if degrees != [] else 0
+        max_degree = max(degrees) if degrees != [] else 0
+        min_degree = min(degrees) if degrees != [] else 0
+        degree_std = np.std(degrees) if degrees != [] else 0
     else:
         # Basic stats, unweighted
         degrees = binary_degrees
