@@ -558,7 +558,7 @@ def get_spatial_graph(
         if not bool(args.self_loop):
             adj_matrix.fill_diagonal_(0.0)
     elif "rad" in technique:
-        param = int(parameter)
+        param = float(parameter)
         adj_matrix = dataset.get_radius_graph(
             radius=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
         )
