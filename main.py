@@ -647,9 +647,9 @@ def run(args: Namespace) -> None:
     spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
     temporal_graph_technique = args.temporal_graph_technique[0]
     temporal_graph_params = args.temporal_graph_technique[1:]
+    print(f"{temporal_graph_technique=} {temporal_graph_params=}")
     spatial_graph_param = float(spatial_graph_param)
     temporal_graph_params = float(temporal_graph_params)
-    ts2net = Ts2Net()
     metrics = {}
     metrics.update(vars(args))
 
