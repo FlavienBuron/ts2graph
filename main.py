@@ -649,7 +649,11 @@ def run(args: Namespace) -> None:
     temporal_graph_params = args.temporal_graph_technique[1:]
     print(f"{temporal_graph_technique=} {temporal_graph_params=}")
     spatial_graph_param = float(spatial_graph_param)
-    temporal_graph_params = float(temporal_graph_params)
+    temporal_graph_params = (
+        float(temporal_graph_params)
+        if not isinstance(temporal_graph_params, list)
+        else temporal_graph_params
+    )
     metrics = {}
     metrics.update(vars(args))
 
