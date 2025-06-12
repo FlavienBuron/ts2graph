@@ -126,7 +126,7 @@ class Ts2Net:
             else lib.estimateEmbeddingDim(r_data, time_lag=time_lag, do_plot=do_plot)
         )
         radius = get_radius_for_rec(
-            x=x, alpha=radius, dim=embedding_dim.item(), time_delay=time_lag
+            x=x, alpha=radius, dim=int(embedding_dim.item()), time_delay=time_lag
         )
         # r_data = robjects.FloatVector(x)
         net = self.r_ts2net.tsnet_rn(
