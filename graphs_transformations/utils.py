@@ -29,7 +29,8 @@ def get_adaptive_radius(
     print(f"{data.min()=} {data.max()=}")
     dists = dists[dists > 0]  # remove self-distances
 
-    print(f"{dists.min()=} {dists.max()=}")
+    for q in [0.01, 0.1, 0.5, 0.9, 0.95, 0.99]:
+        print(f"{int(q * 100)}th percentile:", torch.quantile(dists, q).item())
 
     r_min = torch.quantile(dists, low / 100.0)
     r_max = torch.quantile(dists, high / 100.0)
