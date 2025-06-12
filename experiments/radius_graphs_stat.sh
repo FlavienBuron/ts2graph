@@ -76,6 +76,6 @@ for RAD in $(seq 0.0 $FRACTION 1.0); do
     echo "Running: -g loc $RAD_FMT -e $EPOCHS"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_rad_${RAD_FMT}_sl${SELF_LOOP}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g rad $RAD_FMT -e $EPOCHS \
+    python -u main.py -d $DATASET -sp $FILENAME -g rad $RADRAD_FMTT -e $EPOCHS \
            -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -gs -dt -v 0 | tee -a "$LOGFILE"
 done
