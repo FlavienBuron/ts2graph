@@ -4,7 +4,37 @@ import networkx as nx
 import numpy as np
 import torch
 from community import community_louvain
+from torch.nn.functional import normalize
 from torch_geometric.utils import get_laplacian, to_dense_adj
+
+
+def get_adaptive_radius(
+    data: torch.Tensor,
+    mask: torch.Tensor,
+    alpha: float,
+    low: float = 1.0,
+    high: float = 99.0,
+    cosine: bool = False,
+) -> float:
+    if torch.isnan(data).any():
+        means = data.nanmean(dim=1, keepdim=True)
+        data = torch.where(mask, data, means)
+
+    if cosine:
+        data = normalize(data, p=2, dim=1)
+
+    dists = (
+        torch.cdist(data, data, p=2) if not cosine else 1 - torch.matmul(data, data.T)
+    )
+
+    dists = dists[dists > 0]  # remove self-distances
+
+    r_min = torch.quantile(dists, low / 100.0)
+    r_max = torch.quantile(dists, high / 100.0)
+
+    r = r_min + alpha * (r_max - r_min)
+
+    return r.item()
 
 
 def compute_laplacian_smoothness(

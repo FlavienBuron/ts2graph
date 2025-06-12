@@ -87,8 +87,8 @@ declare -A TEMPO_TECH=(
     ["naive_0"]=0
     ["naive_1"]=1
     ["naive_2"]=2
-    ["vis"]=0
-    ["vis"]=1
+    ["vis_0"]=0
+    ["vis_1"]=1
 )
 
 # Loop through epochs and groups
@@ -122,20 +122,21 @@ elif [[ "$STGI_MODE" == 't' ]]; then
     for E in "${EPOCHS[@]}"; do
         for G in "${!TEMPO_TECH[@]}"; do
             V=${TEMPO_TECH[$G]}
-            G="${G%%_*}"
+            BASE_G="${G%%_*}"
+            IDX="${G#*_}"
             PARAM=$V
-            if [[ "$G" == "vis" ]]; then
-                if [[ "$V" -eq 0 ]]; then
+            if [[ "$BASE_G" == "vis" ]]; then
+                if [[ "$IDX" -eq 0 ]]; then
                     PARAM="nvg"
                 else
                     PARAM="hvg"
                 fi
             fi
 
-            echo "Running: -m $STGI_MODE -g $G $V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
+            echo "Running: -m $STGI_MODE -g $BASE_G $V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
             TIMESTAMP=$(date +%y%m%d_%H%M%S)
-            FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${G}_${PARAM}_${E}.json"
-            python -u main.py -d $DATASET -sp $FILENAME -tg "$G" "$V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+            FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${PARAM}_${E}.json"
+            python -u main.py -d $DATASET -sp $FILENAME -tg "$BASE_G" "$V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
         done
     done
 else
@@ -160,20 +161,21 @@ else
 
             for TG in "${!TEMPO_TECH[@]}"; do
                 TG_V=${TEMPO_TECH[$TG]}
-                TG="${TG%%_*}"
+                BASE_TG="${TG%%_*}"
+                IDX="${TG#*_}"
                 PARAM=$TG_V
-                if [[ "$TG" == "vis" ]]; then
-                    if [[ "$TG_V" -eq 0 ]]; then
+                if [[ "$BASE_TG" == "vis" ]]; then
+                    if [[ "$IDX" -eq 0 ]]; then
                         PARAM="nvg"
                     else
                         PARAM="hvg"
                     fi
                 fi
 
-                echo "Running: -m $STGI_MODE -sg $BASE_G $V -tg $TG $TG_V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
+                echo "Running: -m $STGI_MODE -sg $BASE_G $V -tg $BASE_TG $TG_V -e $E -bs $BATCH_SIZE" | tee -a "$LOGFILE"
                 TIMESTAMP=$(date +%y%m%d_%H%M%S)
-                FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${TG}_${PARAM}_${E}.json"
-                python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -tg "$TG" "$TG_V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+                FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_bs${BATCH_SIZE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_${BASE_TG}_${PARAM}_${E}.json"
+                python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -tg "$BASE_TG" "$TG_V" -e "$E" -bs $BATCH_SIZE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
             done
         done
     done

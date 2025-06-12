@@ -2,6 +2,8 @@ import torch
 from torch.nn.functional import normalize
 from torch_geometric.nn import knn_graph, radius_graph
 
+from graphs_transformations.utils import get_adaptive_radius
+
 
 def from_knn(
     data: torch.Tensor,
@@ -39,7 +41,7 @@ def from_radius(
     if torch.isnan(data).any():
         means = data.nanmean(dim=1, keepdim=True)
         data = torch.where(mask, data, means)
-
+    radius = get_adaptive_radius(data=data, mask=mask, alpha=radius, cosine=cosine)
     # Step 2: Check for invalid values
     if torch.isnan(data).any() or torch.isinf(data).any():
         raise ValueError("Data tensor contains NaN or inf values after imputation.")
