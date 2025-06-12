@@ -3,7 +3,7 @@ import os
 import random
 from argparse import ArgumentParser, Namespace
 from functools import partial
-from typing import Callable
+from typing import Callable, Union
 
 import numpy as np
 import torch
@@ -85,7 +85,7 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--temporal_graph_technique",
         "-tg",
-        nargs=2,
+        nargs="+",
         help="which algorithm to use for temporal graph completion, if used, e.g. 'naive 1'",
         default=["naive", "1"],
     )
@@ -573,16 +573,38 @@ def get_spatial_graph(
     return adj_matrix
 
 
-def get_temporal_graph_function(technique: str, parameter: float) -> Callable:
+def get_temporal_graph_function(
+    technique: str, parameter: Union[float, list]
+) -> Callable:
     if "naive" in technique:
         print("Using Naive Temporal Graph")
-        parameter = int(parameter)
+        if isinstance(parameter, float):
+            parameter = int(parameter)
+        else:
+            raise ValueError("Too many paramters given for Naive")
         return partial(k_hop_graph, k=parameter)
     if "vis" in technique:
         ts2net = Ts2Net()
-        print("Using Naive Temporal Graph")
+        print("Using Visual Temporal Graph")
         method = "hvg" if parameter else "nvg"
         return partial(ts2net.tsnet_vg, method=method)
+    if "rec" in technique or "rn" in technique:
+        ts2net = Ts2Net()
+        if not isinstance(parameter, list):
+            alpha = parameter
+            time_lag = 1
+            embedding_dim = None
+        else:
+            alpha = float(parameter[0])
+            time_lag = int(parameter[1]) if len(parameter) > 1 else 1
+            embedding_dim = int(parameter[2]) if len(parameter) > 2 else None
+        print("Using Reccurrent Temporal Graph")
+        return partial(
+            ts2net.tsnet_rn,
+            radius=alpha,
+            time_lag=time_lag,
+            embedding_dim=embedding_dim,
+        )
 
     def empty_temporal_graph():
         return torch.empty((2, 0), dtype=torch.long), torch.empty(
@@ -623,9 +645,10 @@ def run(args: Namespace) -> None:
         "Missing values present under evaluation mask (run)"
     )
     spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
-    temporal_graph_technique, temporal_graph_param = args.temporal_graph_technique
+    temporal_graph_technique = args.temporal_graph_technique[0]
+    temporal_graph_params = args.temporal_graph_technique[1:]
     spatial_graph_param = float(spatial_graph_param)
-    temporal_graph_param = float(temporal_graph_param)
+    temporal_graph_params = float(temporal_graph_params)
     ts2net = Ts2Net()
     metrics = {}
     metrics.update(vars(args))
@@ -640,12 +663,12 @@ def run(args: Namespace) -> None:
     if use_temporal:
         temporal_graph_fn = get_temporal_graph_function(
             temporal_graph_technique,
-            temporal_graph_param,
+            temporal_graph_params,
         )
     else:
         temporal_graph_fn = get_temporal_graph_function(
             "",
-            temporal_graph_param,
+            temporal_graph_params,
         )
 
     if args.graph_stats:

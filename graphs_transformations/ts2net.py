@@ -9,6 +9,8 @@ from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import importr, isinstalled
 from torch_geometric.utils import dense_to_sparse
 
+from graphs_transformations.utils import get_radius_for_rec
+
 warnings.filterwarnings("ignore", category=RRuntimeWarning)
 
 numpy2ri.activate()
@@ -105,7 +107,7 @@ class Ts2Net:
 
     def tsnet_rn(
         self,
-        x: np.ndarray,
+        x: torch.Tensor,
         radius: float,
         embedding_dim: Optional[int] = None,
         time_lag: int = 1,
@@ -114,17 +116,22 @@ class Ts2Net:
         **kwargs,
     ):
         lib = self._ensure_dependencies_installed()
+        x_np = x.detach().numpy().flatten()
+        r_data = robjects.FloatVector(x_np)
         embedding_dim = (
             embedding_dim
             if embedding_dim is not None
-            else lib.estimateEmbeddingDim(x, time_lag=time_lag, do_plot=do_plot)
+            else lib.estimateEmbeddingDim(r_data, time_lag=time_lag, do_plot=do_plot)
+        )
+        radius = get_radius_for_rec(
+            x=x, alpha=radius, dim=embedding_dim, time_delay=time_lag
         )
         # r_data = robjects.FloatVector(x)
         net = self.r_ts2net.tsnet_rn(
-            x, radius, embedding_dim, time_lag, do_plot, **kwargs
+            r_data, radius, embedding_dim, time_lag, do_plot, **kwargs
         )
-        adj_matrix = self._get_adjacency_matrix(net, sparse)
-        return adj_matrix
+        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse)
+        return edge_index, edge_weight
 
     def tsnet_qn(
         self,
@@ -139,8 +146,8 @@ class Ts2Net:
         net = self.r_ts2net.tsnet_qn(
             r_data, breaks, weights_as_prob, remove_loops, **kwargs
         )
-        adj_matrix = self._get_adjacency_matrix(net, sparse)
-        return adj_matrix
+        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse)
+        return edge_index, edge_weight
 
     def _suppress_warnings(self, expr: str):
         """Run an R command with warnings suppressed."""

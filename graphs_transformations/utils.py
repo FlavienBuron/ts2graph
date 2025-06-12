@@ -36,6 +36,34 @@ def get_adaptive_radius(
     return r.item()
 
 
+def embed_time_series(x: torch.Tensor, dim: int, time_delay: int) -> torch.Tensor:
+    N = len(x) - (dim - 1) * time_delay
+    return torch.stack(
+        ([x[i : i + N] for i in range(0, dim * time_delay, time_delay)]), dim=1
+    )
+
+
+def get_radius_for_rec(
+    x: torch.Tensor,
+    alpha: float,
+    dim: int,
+    time_delay: int,
+    low: float = 0.0,
+    high: float = 100.0,
+) -> float:
+    X_emb = embed_time_series(x, dim, time_delay)
+
+    dists = torch.cdist(X_emb, X_emb, p=2)
+    dists = dists[dists > 0]
+
+    r_min = torch.quantile(dists, low / 100.0)
+    r_max = torch.quantile(dists, high / 100.0)
+
+    r = r_min + alpha * (r_max - r_min)
+
+    return r.item()
+
+
 def compute_laplacian_smoothness(
     x, edge_index, edge_weight=None, mask=None, normalize=True, debug=False
 ):
