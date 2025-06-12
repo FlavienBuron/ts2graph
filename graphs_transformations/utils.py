@@ -34,6 +34,8 @@ def get_adaptive_radius(
 
     r = r_min + alpha * (r_max - r_min)
 
+    print(f"{r=}")
+
     return r.item()
 
 
