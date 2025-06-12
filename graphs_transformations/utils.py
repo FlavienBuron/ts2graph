@@ -37,7 +37,7 @@ def get_adaptive_radius(
 
 
 def embed_time_series(x: torch.Tensor, dim: int, time_delay: int) -> torch.Tensor:
-    N = len(x) - (dim - 1) * time_delay
+    N = x.size(0) - (dim - 1) * time_delay
     return torch.stack(
         ([x[i : i + N] for i in range(0, dim * time_delay, time_delay)]), dim=1
     )
