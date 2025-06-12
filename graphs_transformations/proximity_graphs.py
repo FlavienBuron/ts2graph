@@ -43,7 +43,7 @@ def from_radius(
         data = torch.where(mask, data, means)
 
     radius = get_adaptive_radius(
-        data=data, mask=mask, alpha=radius, low=5.0, high=95.0, cosine=cosine
+        data=data, mask=mask, alpha=radius, low=2.0, high=98.0, cosine=cosine
     )
 
     # Step 2: Check for invalid values
