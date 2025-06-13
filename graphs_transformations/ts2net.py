@@ -126,7 +126,6 @@ class Ts2Net:
                 embedding_dim = min(10, max(3, x.shape[0] // 10))
             else:
                 embedding_dim = int(dim.item())
-        print(f"{embedding_dim=}")
         radius = get_radius_for_rec(
             x=x, alpha=radius, dim=embedding_dim, time_delay=time_lag
         )
