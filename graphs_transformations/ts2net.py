@@ -119,7 +119,6 @@ class Ts2Net:
         lib = self._ensure_dependencies_installed()
         x = x.squeeze(-1)
         x_np = x.detach().numpy().flatten()
-        print(f"{x.shape=}")
         r_data = robjects.FloatVector(x_np)
         embedding_dim = (
             embedding_dim
@@ -130,6 +129,7 @@ class Ts2Net:
                 ).item()
             )
         )
+        print(f"{embedding_dim=}")
         radius = get_radius_for_rec(
             x=x, alpha=radius, dim=embedding_dim, time_delay=time_lag
         )
