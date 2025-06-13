@@ -112,12 +112,14 @@ class Ts2Net:
         embedding_dim: Optional[int] = None,
         time_lag: int = 1,
         sparse: bool = False,
+        weighted: bool = False,
         do_plot: bool = False,
         **kwargs,
     ):
         lib = self._ensure_dependencies_installed()
         x = x.squeeze(-1)
         x_np = x.detach().numpy().flatten()
+        print(f"{type(x)=} {type(x_np)=}", end="\r")
         r_data = robjects.FloatVector(x_np)
         embedding_dim = (
             embedding_dim
@@ -135,23 +137,26 @@ class Ts2Net:
         net = self.r_ts2net.tsnet_rn(
             r_data, radius, embedding_dim, time_lag, do_plot, **kwargs
         )
-        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse)
+        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
         return edge_index, edge_weight
 
     def tsnet_qn(
         self,
-        x: np.ndarray,
+        x: torch.Tensor,
         breaks,
         weights_as_prob: bool = True,
         remove_loops: bool = False,
         sparse: bool = False,
+        weighted: bool = False,
         **kwargs,
     ):
+        x = x.squeeze(-1)
+        x_np = x.detach().numpy().flatten()
         r_data = robjects.FloatVector(x)
         net = self.r_ts2net.tsnet_qn(
             r_data, breaks, weights_as_prob, remove_loops, **kwargs
         )
-        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse)
+        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
         return edge_index, edge_weight
 
     def _suppress_warnings(self, expr: str):
