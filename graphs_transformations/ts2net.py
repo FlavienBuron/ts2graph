@@ -119,7 +119,7 @@ class Ts2Net:
         lib = self._ensure_dependencies_installed()
         x = x.squeeze(-1)
         x_np = x.detach().numpy().flatten()
-        print(f"{type(x)=} {type(x_np)=}", end="\r")
+        print(f"{x.shape=}")
         r_data = robjects.FloatVector(x_np)
         embedding_dim = (
             embedding_dim
