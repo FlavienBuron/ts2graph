@@ -120,15 +120,12 @@ class Ts2Net:
         x = x.squeeze(-1)
         x_np = x.detach().numpy().flatten()
         r_data = robjects.FloatVector(x_np)
-        embedding_dim = (
-            embedding_dim
-            if embedding_dim is not None
-            else int(
-                lib.estimateEmbeddingDim(
-                    r_data, time_lag=time_lag, do_plot=do_plot
-                ).item()
-            )
-        )
+        if embedding_dim is None:
+            dim = lib.estimateEmbeddingDim(r_data, time_lag=time_lag, do_plot=do_plot)
+            if isinstance(dim, robjects.vectors.BoolVector):
+                embedding_dim = min(10, max(3, x.shape[0] // 10))
+            else:
+                embedding_dim = int(dim.item())
         print(f"{embedding_dim=}")
         radius = get_radius_for_rec(
             x=x, alpha=radius, dim=embedding_dim, time_delay=time_lag
