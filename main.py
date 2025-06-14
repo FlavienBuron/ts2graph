@@ -556,7 +556,6 @@ def get_decay_function(name: Optional[str]) -> Optional[Callable[[int], float]]:
     Returns None if name is None or 'none'.
     Raises ValueError for unsupported strings.
     """
-    print(f"{name=}")
     if name is None or name.lower() == "none":
         return None
 
