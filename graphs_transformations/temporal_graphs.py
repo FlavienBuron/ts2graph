@@ -22,7 +22,8 @@ def k_hop_graph(
     for node in range(num_nodes):
         node_offset = node * time_steps
 
-        for offset in range(1, k + 1):
+        max_valid_k = time_steps - 1
+        for offset in range(1, min(k, max_valid_k) + 1):
             src = torch.arange(time_steps - offset)
             dst = src + offset
 
