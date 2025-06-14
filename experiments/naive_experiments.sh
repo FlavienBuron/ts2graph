@@ -78,7 +78,8 @@ echo "Running experiments on $DATE" >> "$LOGFILE"
 # Generate the list of K values
 N_VALUES=$(awk -v max=$NUM_NODES '
     BEGIN {
-        for (n = 0; n <= max; n *= 2) {
+        print 0
+        for (n = 1; n <= max; n *= 2) {
             print n
         }
     }' | sort -n | uniq)
