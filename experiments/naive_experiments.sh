@@ -76,7 +76,7 @@ mkdir -p "$EXP_DIR"
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
 # Generate the list of K values
-N_VALUES=$(awk -v max=$NUM_NODES '
+N_VALUES=$(awk -v max=$BATCH_SIZE '
     BEGIN {
         print 0
         for (n = 1; n <= max; n *= 2) {
