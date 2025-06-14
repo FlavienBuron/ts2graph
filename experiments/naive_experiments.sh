@@ -12,6 +12,7 @@ DATASET="airq_small"
 NUM_NODES=36
 FRACTION=0.05
 BATCH_SIZE=128
+DECAY="exp"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -45,6 +46,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --batch_size)
             BATCH_SIZE="$2"
+            shift 2
+            ;;
+        --decay)
+            DECAY="$2"
             shift 2
             ;;
         *)
