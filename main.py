@@ -1,9 +1,10 @@
 import json
+import math
 import os
 import random
 from argparse import ArgumentParser, Namespace
 from functools import partial
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 import torch
@@ -540,6 +541,42 @@ def flatten_metrics(metrics: dict) -> list[dict]:
     ]
 
 
+def get_decay_function(name: Optional[str]) -> Optional[Callable[[int], float]]:
+    """
+    Returns a decay function given a string identifier.
+
+    Supported:
+    - 'none'           : constant weight of 1.0
+    - 'exponential'    : 0.9 ** hop
+    - 'inverse'        : 1 / hop
+    - 'inverse_square' : 1 / hop**2
+    - 'logarithmic'    : 1 / log(1 + hop)
+    - 'linear'         : max(0, 1 - hop / max_hop) — requires lambda binding externally
+
+    Returns None if name is None or 'none'.
+    Raises ValueError for unsupported strings.
+    """
+
+    if name is None or name.lower() == "none":
+        return None
+
+    name = name.lower()
+    if "exp" in name:
+        return lambda hop: 0.9**hop
+    elif "inv" in name:
+        return lambda hop: 1.0 / hop if hop != 0 else 1.0
+    elif "squ" in name:
+        return lambda hop: 1.0 / (hop**2) if hop != 0 else 1.0
+    elif "log" in name:
+        return lambda hop: 1.0 / math.log1p(hop) if hop > 0 else 1.0
+    elif name.startswith("linear"):  # requires a max_hop context
+        raise ValueError(
+            "The 'linear' decay needs a max_hop value; use a custom lambda."
+        )
+    else:
+        raise ValueError(f"Unsupported decay function: '{name}'")
+
+
 def get_spatial_graph(
     technique: str, parameter: float, dataset: GraphLoader, args: Namespace
 ) -> torch.Tensor:
@@ -577,7 +614,9 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
     if "naive" in technique:
         print("Using Naive Temporal Graph")
         param = int(parameter[0])
-        return partial(k_hop_graph, k=param)
+        decay = str(parameter[1]) if len(parameter) > 1 else "none"
+        decay_fn = get_decay_function(decay)
+        return partial(k_hop_graph, k=param, decay=decay_fn)
     if "vis" in technique:
         ts2net = Ts2Net()
         print("Using Visual Temporal Graph")
