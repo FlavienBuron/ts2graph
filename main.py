@@ -3,7 +3,7 @@ import os
 import random
 from argparse import ArgumentParser, Namespace
 from functools import partial
-from typing import Callable, Union
+from typing import Callable
 
 import numpy as np
 import torch
@@ -573,25 +573,20 @@ def get_spatial_graph(
     return adj_matrix
 
 
-def get_temporal_graph_function(
-    technique: str, parameter: Union[float, list]
-) -> Callable:
+def get_temporal_graph_function(technique: str, parameter: list[float]) -> Callable:
     if "naive" in technique:
         print("Using Naive Temporal Graph")
-        if isinstance(parameter, float):
-            parameter = int(parameter)
-        else:
-            raise ValueError("Too many paramters given for Naive")
-        return partial(k_hop_graph, k=parameter)
+        param = int(parameter[0])
+        return partial(k_hop_graph, k=param)
     if "vis" in technique:
         ts2net = Ts2Net()
         print("Using Visual Temporal Graph")
-        method = "hvg" if parameter else "nvg"
+        method = "hvg" if parameter[0] == 1 else "nvg"
         return partial(ts2net.tsnet_vg, method=method)
     if "rec" in technique or "rn" in technique:
         ts2net = Ts2Net()
-        if not isinstance(parameter, list):
-            alpha = parameter
+        if len(parameter) == 1:
+            alpha = float(parameter[0])
             time_lag = 1
             embedding_dim = None
         else:
