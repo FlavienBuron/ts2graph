@@ -93,6 +93,6 @@ for N in $N_VALUES; do
     echo "Running: -g naive $N -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_naive_${N}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -tg naive $N exp -e $EPOCHS \
+    python -u main.py -d $DATASET -sp $FILENAME -tg naive $N $DECAY -e $EPOCHS \
         -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -bs $BATCH_SIZE -v 0 | tee -a "$LOGFILE"
 done
