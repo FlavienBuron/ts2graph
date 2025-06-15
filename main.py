@@ -541,7 +541,7 @@ def flatten_metrics(metrics: dict) -> list[dict]:
     ]
 
 
-def get_decay_function(name: Optional[str]) -> Optional[Callable[[int], float]]:
+def get_decay_function(name: Optional[str]) -> Optional[Callable[[int, int], float]]:
     """
     Returns a decay function given a string identifier.
 
@@ -561,17 +561,15 @@ def get_decay_function(name: Optional[str]) -> Optional[Callable[[int], float]]:
 
     name = name.lower()
     if "exp" in name:
-        return lambda hop: 0.9**hop
+        return lambda hop, _: 0.9**hop
     elif "inv" in name:
-        return lambda hop: 1.0 / hop if hop != 0 else 1.0
+        return lambda hop, _: 1.0 / hop if hop != 0 else 1.0
     elif "squ" in name:
-        return lambda hop: 1.0 / (hop**2) if hop != 0 else 1.0
+        return lambda hop, _: 1.0 / (hop**2) if hop != 0 else 1.0
     elif "log" in name:
-        return lambda hop: 1.0 / math.log1p(hop) if hop > 0 else 1.0
-    elif name.startswith("linear"):  # requires a max_hop context
-        raise ValueError(
-            "The 'linear' decay needs a max_hop value; use a custom lambda."
-        )
+        return lambda hop, _: 1.0 / math.log1p(hop) if hop > 0 else 1.0
+    elif "linear" in name:  # requires a max_hop context
+        return lambda hop, max_hop: 1 - (hop - 1) / (max_hop)
     else:
         raise ValueError(f"Unsupported decay function: '{name}'")
 
