@@ -618,7 +618,8 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
         ts2net = Ts2Net()
         print("Using Visual Temporal Graph")
         method = "hvg" if parameter[0] == 1 else "nvg"
-        return partial(ts2net.tsnet_vg, method=method)
+        limit = parameter[1] if len(parameter) > 1 else None
+        return partial(ts2net.tsnet_vg, method=method, limit=limit)
     if "rec" in technique or "rn" in technique:
         ts2net = Ts2Net()
         if len(parameter) == 1:
