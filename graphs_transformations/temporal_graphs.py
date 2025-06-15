@@ -16,7 +16,7 @@ def k_hop_graph(
     time_steps, _ = x.shape
     if k == 0:
         edge_index = torch.empty((2, 0), dtype=torch.long)  # Empty edge_index
-        edge_weight = torch.ones(edge_index.shape[1])
+        edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float)
 
         return edge_index, edge_weight
 
