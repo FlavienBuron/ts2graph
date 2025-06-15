@@ -37,7 +37,7 @@ def k_hop_graph(
             edge_list.append(torch.stack([src, dst], dim=0))
 
             weight = decay(offset) if decay is not None else 1
-            weight_tensor = torch.full((src.shape[0],), weight)
+            weight_tensor = torch.full((src.shape[0],), weight, dtype=torch.float)
             weight_list.append(weight_tensor)
 
             if bidirectional:
