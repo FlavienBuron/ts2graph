@@ -92,7 +92,7 @@ class Ts2Net:
         weighted: bool = False,
         limit: Optional[int | object] = None,
         num_cores: Optional[int] = None,
-        optimized: bool = False,
+        optimized: bool = True,
     ):
         if self.r_ts2net is None:
             raise RuntimeError(
@@ -187,47 +187,53 @@ class Ts2Net:
     def _inject_optimized_vis(self):
         robjects.r("""
             tsnet_vg <- function(x, method = c("nvg", "hvg"), directed = FALSE, limit = +Inf, num_cores = 1) {
-              method <- match.arg(method)
-              len <- length(x)
-              
-              id_combs <- list()
-              for (i in 1:(len - 1)) {
-                max_j <- min(i + limit, len)
-                if (max_j > i) {
-                  id_combs <- c(id_combs, lapply((i + 1):max_j, function(j) c(i, j)))
-                }
-              }
-
-              links <- unlist(parallel::mclapply(id_combs, function(ids) {
-                linked <- TRUE
-                if (abs(diff(ids)) != 1) {
-                  switch(method,
-                    nvg = {
-                      for (i in (ids[1] + 1):(ids[2] - 1)) {
-                        if (x[i] >= x[ids[2]] + ((x[ids[1]] - x[ids[2]]) * (ids[2] - i) / (ids[2] - ids[1]))) {
-                          return(FALSE)
-                        }
-                      }
-                    },
-                    hvg = {
-                      for (i in (ids[1] + 1):(ids[2] - 1)) {
-                        if (x[i] >= x[ids[1]] || x[i] >= x[ids[2]]) {
-                          return(FALSE)
-                        }
-                      }
+                  method <- match.arg(method)
+                  n <- length(x)
+                  
+                  # Generate pairs (i,j) with j > i, but prune by limit to only pairs close enough
+                  pairs <- unlist(mclapply(1:(n-1), function(i) {
+                    max_j <- min(i + limit, n)
+                    if (max_j > i) {
+                      seq(i+1, max_j)
+                    } else {
+                      integer(0)
                     }
-                  )
-                }
-                return(TRUE)
-              }, mc.cores = num_cores), recursive = FALSE)
-
-              if (length(links) == 0) {
-                return(igraph::make_empty_graph(n = len, directed = directed))
+                  }, mc.cores = num_cores), recursive = FALSE)
+                  
+                  # Flatten pairs into i and j vectors
+                  i_vec <- rep(1:(n-1), times = pmin(limit, n - (1:(n-1))))
+                  j_vec <- unlist(pairs)
+                  
+                  # Function to check visibility for one pair (i,j)
+                  is_visible <- function(i, j) {
+                    if (j - i == 1) return(TRUE) # Adjacent nodes always visible
+                    
+                    seq_mid <- (i+1):(j-1)
+                    xi <- x[i]
+                    xj <- x[j]
+                    xmids <- x[seq_mid]
+                    
+                    if (method == "nvg") {
+                      # Linear interpolation height between i and j for each mid point
+                      interp <- xj + (xi - xj) * (j - seq_mid) / (j - i)
+                      return(all(xmids < interp))
+                    } else { # hvg
+                      return(all(xmids < xi & xmids < xj))
+                    }
+                  }
+                  
+                  # Vectorize the visibility check over all pairs (using mcmapply for parallel)
+                  visible <- mcmapply(is_visible, i_vec, j_vec, mc.cores = num_cores)
+                  
+                  # Extract only visible edges
+                  edges <- cbind(i_vec[visible], j_vec[visible])
+                  
+                  if (nrow(edges) == 0) {
+                    return(make_empty_graph(n = n, directed = directed))
+                  }
+                  
+                  graph.data.frame(edges, directed = directed)            
               }
-
-              valid_links <- do.call(rbind, id_combs[unlist(links)])
-              igraph::graph.data.frame(valid_links, directed = directed)
-            }
         """)
 
 
