@@ -186,6 +186,9 @@ class Ts2Net:
 
     def _inject_optimized_vis(self):
         robjects.r("""
+            library(parallel)
+            library(igraph)
+
             tsnet_vg <- function(x, method = c("nvg", "hvg"), directed = FALSE, limit = +Inf, num_cores = 1) {
                   method <- match.arg(method)
                   n <- length(x)
