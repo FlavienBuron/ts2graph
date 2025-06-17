@@ -1,3 +1,4 @@
+import multiprocessing
 import warnings
 from typing import Optional
 
@@ -90,13 +91,15 @@ class Ts2Net:
         sparse: bool = True,
         weighted: bool = False,
         limit: Optional[int | object] = None,
-        num_cores: int = 1,
-        optimized: bool = True,
+        num_cores: Optional[int] = None,
+        optimized: bool = False,
     ):
         if self.r_ts2net is None:
             raise RuntimeError(
                 "ts2net was not loaded, tsnet_vg function is not available"
             )
+        if num_cores is None:
+            num_cores = multiprocessing.cpu_count()
         if optimized:
             self._inject_optimized_vis()
 
