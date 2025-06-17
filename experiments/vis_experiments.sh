@@ -83,7 +83,6 @@ echo "Running experiments on $DATE" >> "$LOGFILE"
 # Generate the list of K values
 LIMITS=$(awk -v max=$BATCH_SIZE '
     BEGIN {
-        print 0
         for (n = 1; n <= max; n *= 2) {
             print n
         }
