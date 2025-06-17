@@ -91,11 +91,15 @@ class Ts2Net:
         weighted: bool = False,
         limit: Optional[int | object] = None,
         num_cores: int = 1,
+        optimized: bool = True,
     ):
         if self.r_ts2net is None:
             raise RuntimeError(
                 "ts2net was not loaded, tsnet_vg function is not available"
             )
+        if optimized:
+            self._inject_optimized_vis()
+
         x_np = x.detach().numpy().flatten()
         r_data = robjects.FloatVector(x_np)
         limit = limit if limit is not None else robjects.r("Inf")
@@ -176,6 +180,52 @@ class Ts2Net:
         adj_matrix_tensor = torch.tensor(np.asarray(adj_matrix), dtype=torch.float32)
 
         return dense_to_sparse(adj_matrix_tensor)
+
+    def _inject_optimized_vis(self):
+        robjects.r("""
+            tsnet_vg <- function(x, method = c("nvg", "hvg"), directed = FALSE, limit = +Inf, num_cores = 1) {
+              method <- match.arg(method)
+              len <- length(x)
+              
+              id_combs <- list()
+              for (i in 1:(len - 1)) {
+                max_j <- min(i + limit, len)
+                if (max_j > i) {
+                  id_combs <- c(id_combs, lapply((i + 1):max_j, function(j) c(i, j)))
+                }
+              }
+
+              links <- unlist(parallel::mclapply(id_combs, function(ids) {
+                linked <- TRUE
+                if (abs(diff(ids)) != 1) {
+                  switch(method,
+                    nvg = {
+                      for (i in (ids[1] + 1):(ids[2] - 1)) {
+                        if (x[i] >= x[ids[2]] + ((x[ids[1]] - x[ids[2]]) * (ids[2] - i) / (ids[2] - ids[1]))) {
+                          return(FALSE)
+                        }
+                      }
+                    },
+                    hvg = {
+                      for (i in (ids[1] + 1):(ids[2] - 1)) {
+                        if (x[i] >= x[ids[1]] || x[i] >= x[ids[2]]) {
+                          return(FALSE)
+                        }
+                      }
+                    }
+                  )
+                }
+                return(TRUE)
+              }, mc.cores = num_cores), recursive = FALSE)
+
+              if (length(links) == 0) {
+                return(igraph::make_empty_graph(n = len, directed = directed))
+              }
+
+              valid_links <- do.call(rbind, id_combs[unlist(links)])
+              igraph::graph.data.frame(valid_links, directed = directed)
+            }
+        """)
 
 
 # Example usage
