@@ -4,6 +4,7 @@ import os
 import random
 from argparse import ArgumentParser, Namespace
 from functools import partial
+from time import perf_counter
 from typing import Callable, Optional
 
 import numpy as np
@@ -216,6 +217,7 @@ def train_imputer(
         sum_ls_after_masked = 0.0
         sum_eds_before_masked = 0.0
         sum_eds_after_masked = 0.0
+        batch_temp_graph_times = []
         for iter in range(num_iteration):
             iteration_imputed_data = []
             batch_losses = []
@@ -252,13 +254,14 @@ def train_imputer(
                     )
 
                     # Imputation step
-                    imputed_data = model(
+                    imputed_data, temp_graph_time = model(
                         # x=batch_data.unsqueeze(2).to(device),
                         x=batch_data.to(device),
                         mask=batch_mask.to(device),
                         spatial_edge_index=spatial_edge_index.to(device),
                         spatial_edge_weight=spatial_edge_weight.to(device),
                     )
+                    batch_temp_graph_times.append(temp_graph_time)
                     # imputed_data = imputed_data.squeeze(-1)
                     train_mask_cpu = batch_train_mask.cpu().bool()
                     # print(
@@ -341,6 +344,8 @@ def train_imputer(
                 "masked_lap_smooth_after": sum_ls_after_masked,
                 "masked_eds_before": sum_eds_before_masked,
                 "masked_eds_after": sum_eds_after_masked,
+                "temp_graph_total_time": sum(batch_temp_graph_times),
+                "temp_graph_avg_time": sum(batch_temp_graph_times) / nb_batches,
             }
         )
         if verbose:
@@ -393,6 +398,7 @@ def impute_missing_data(
         sum_imputed_ls_after = 0.0
         sum_imputed_eds_before = 0.0
         sum_imputed_eds_after = 0.0
+        temp_graph_times = []
         batch_size = dataloader.batch_size if dataloader.batch_size else 1
         nb_batches = len(dataloader)
         for _ in range(num_iteration):
@@ -430,13 +436,14 @@ def impute_missing_data(
                     mask=~batch_mask,
                 )
 
-                imputed_data = model(
+                imputed_data, temp_graph_time = model(
                     # batch_data.unsqueeze(2).to(device),
                     x=batch_data.to(device),
                     mask=batch_mask.to(device),
                     spatial_edge_index=spatial_edge_index.to(device),
                     spatial_edge_weight=spatial_edge_weight.to(device),
                 )
+                temp_graph_times.append(temp_graph_time)
                 # imputed_data = imputed_data.squeeze(-1)
                 # imputed_batch = batch_data.clone().detach().cpu()
                 mask_cpu = batch_mask.cpu().bool()
@@ -499,6 +506,8 @@ def impute_missing_data(
                 "masked_lap_smooth_after": sum_ls_after_masked,
                 "masked_eds_before": sum_eds_before_masked,
                 "masked_eds_after": sum_eds_after_masked,
+                "temp_graph_total_time": sum(temp_graph_times),
+                "temp_graph_avg_time": sum(temp_graph_times) / nb_batches,
             }
         )
     return dataset.current_data
@@ -576,35 +585,46 @@ def get_decay_function(name: Optional[str]) -> Optional[Callable[[int, int], flo
 
 def get_spatial_graph(
     technique: str, parameter: float, dataset: GraphLoader, args: Namespace
-) -> torch.Tensor:
+) -> tuple[torch.Tensor, float]:
+    total_time = 0.0
     if "loc" in technique:
+        start = perf_counter()
         adj_matrix = dataset.get_geolocation_graph(
             threshold=parameter, include_self=args.self_loop
         )
+        end = perf_counter()
     elif "zero" in technique:
+        start = perf_counter()
         adj_matrix = dataset.get_geolocation_graph(threshold=parameter)
         adj_matrix = torch.zeros_like(adj_matrix)
         if args.self_loop:
             adj_matrix.fill_diagonal_(1.0)
+        end = perf_counter()
     elif "one" in technique:
+        start = perf_counter()
         adj_matrix = dataset.get_geolocation_graph(threshold=parameter)
         adj_matrix = torch.ones_like(adj_matrix)
         if not bool(args.self_loop):
             adj_matrix.fill_diagonal_(0.0)
+        end = perf_counter()
     elif "rad" in technique:
+        start = perf_counter()
         param = float(parameter)
         adj_matrix = dataset.get_radius_graph(
             radius=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
         )
+        end = perf_counter()
     else:
+        start = perf_counter()
         param = int(parameter)
         adj_matrix = dataset.get_knn_graph(
             k=param,
             loop=args.self_loop,
             cosine=args.similarity_metric == "cosine",
         )
-
-    return adj_matrix
+        end = perf_counter()
+    total_time = end - start
+    return adj_matrix, total_time
 
 
 def get_temporal_graph_function(technique: str, parameter: list[float]) -> Callable:
@@ -637,6 +657,11 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
             time_lag=time_lag,
             embedding_dim=embedding_dim,
         )
+    if "qn" in technique or "quant" in technique:
+        ts2net = Ts2Net()
+        breaks = int(parameter[0])
+        print("Using Transition/Quantile Temporal Graph")
+        return partial(ts2net.tsnet_qn, breaks=breaks)
 
     def empty_temporal_graph():
         return torch.empty((2, 0), dtype=torch.long), torch.empty(
@@ -679,18 +704,14 @@ def run(args: Namespace) -> None:
     spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
     temporal_graph_technique = args.temporal_graph_technique[0]
     temporal_graph_params = args.temporal_graph_technique[1:]
-    print(f"{temporal_graph_technique=} {temporal_graph_params=}")
     spatial_graph_param = float(spatial_graph_param)
-    temporal_graph_params = (
-        float(temporal_graph_params)
-        if not isinstance(temporal_graph_params, list)
-        else temporal_graph_params
-    )
+
     metrics = {}
     metrics.update(vars(args))
 
+    spatial_graph_time = 0.0
     if use_spatial:
-        spatial_adj_matrix = get_spatial_graph(
+        spatial_adj_matrix, spatial_graph_time = get_spatial_graph(
             spatial_graph_technique, spatial_graph_param, dataset, args
         )
     else:
@@ -706,6 +727,8 @@ def run(args: Namespace) -> None:
             "",
             temporal_graph_params,
         )
+
+    metrics.update({"spatial_graph_time": spatial_graph_time})
 
     if args.graph_stats:
         save_stats_path = args.save_path

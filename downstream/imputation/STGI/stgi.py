@@ -1,3 +1,4 @@
+from time import perf_counter
 from typing import Callable, Optional
 
 import torch
@@ -93,6 +94,7 @@ class STGI(nn.Module):
         time_steps, num_nodes, features = x.shape
         device = x.device
         ori_x = x.detach().clone()
+        temporal_graph_time = 0.0
 
         # === Spatial GNN ===
         if self.use_spatial:
@@ -119,7 +121,7 @@ class STGI(nn.Module):
             for node_idx in range(num_nodes):
                 # Get the time series for this node: shape (T, F)
                 x_node = x[:, node_idx, :]
-
+                temporal_graph_start = perf_counter()
                 if self.temporal_graph_fn is not None:
                     temporal_edge_index, temporal_edge_weight = self.temporal_graph_fn(
                         x=x_node
@@ -127,7 +129,8 @@ class STGI(nn.Module):
                 else:
                     temporal_edge_index = torch.empty((2, 0), dtype=torch.long)
                     temporal_edge_weight = torch.empty((0,), dtype=torch.float)
-
+                temporal_graph_end = perf_counter()
+                temporal_graph_time = temporal_graph_end - temporal_graph_start
                 # Apply temporal GNN layers
                 for i, temp_gnn_layers in enumerate(self.temp_gnn_layers):
                     x_node = temp_gnn_layers(
@@ -148,4 +151,4 @@ class STGI(nn.Module):
             print("Stats:", x.min(), x.max(), x.mean())
             raise ValueError("NaNs in model output")
 
-        return x
+        return x, temporal_graph_time
