@@ -109,6 +109,60 @@ class Ts2Net:
         edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
         return edge_index, edge_weight
 
+    def chunked_tsnet_vg(
+        self,
+        x: torch.Tensor,
+        window_size: int = 32,
+        stride: int = 1,
+        method: str = "nvg",
+        directed: bool = False,
+        sparse: bool = True,
+        weighted: bool = False,
+        limit: Optional[int | object] = None,
+        num_cores: Optional[int] = None,
+    ):
+        time_steps = x.size(0)
+        all_edges, all_weights = [], []
+
+        for start in range(0, time_steps, stride):
+            end = min(start + window_size, time_steps)
+            if end - start < 3:
+                continue
+
+            ei, ew = self.tsnet_vg(
+                x=x[start:end],
+                method=method,
+                directed=directed,
+                limit=limit,
+                num_cores=num_cores,
+            )
+
+            ei += start  # shift to global indices
+            all_edges.append(ei)
+            all_weights.append(ew)
+
+        if not all_edges:
+            edge_index = torch.zeros((2, 0), dtype=torch.long)
+            edge_weight = torch.zeros((0,), dtype=torch.float)
+            return edge_index, edge_weight
+
+        # concatenation then deduplication
+        edge_index = torch.cat(all_edges, dim=1).T
+        edge_weight = torch.cat(all_weights)
+
+        edge_index_sorted, _ = torch.sort(edge_index, dim=1)
+        uniq, idx = torch.unique(edge_index_sorted, dim=0, return_inverse=True)
+
+        # aggregate weights (mean) per unique edge
+        if edge_weight.numel():
+            edge_weight = (
+                torch.zeros(uniq.size(0)).index_add(0, idx, edge_weight)
+                / torch.bincount(idx).float()
+            )
+        edge_index = uniq.T
+
+        return edge_index, edge_weight
+
     def tsnet_rn(
         self,
         x: torch.Tensor,
@@ -180,14 +234,3 @@ class Ts2Net:
         adj_matrix_tensor = torch.tensor(np.asarray(adj_matrix), dtype=torch.float32)
 
         return dense_to_sparse(adj_matrix_tensor)
-
-
-# Example usage
-if __name__ == "__main__":
-    api = Ts2Net()
-
-    ts1 = np.random.rand(10, 100)
-
-    print(f"Visibility Graph:\n {api.tsnet_vg(ts1, 'nvg').shape}.")
-    print(f"Recurrent Graph:\n {api.tsnet_rn(ts1, 3.0).shape}")
-    print(f"Quantile Graph:\n {api.tsnet_qn(ts1, ts1.shape[0]).shape}")

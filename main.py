@@ -634,6 +634,20 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
         decay = str(parameter[1]) if len(parameter) > 1 else "none"
         decay_fn = get_decay_function(decay)
         return partial(k_hop_graph, k=param, decay=decay_fn)
+    if "chunked" in technique:
+        ts2net = Ts2Net()
+        print("Using Chuncked Visual Temporal Graph")
+        method = "hvg" if parameter[0] == 1 else "nvg"
+        limit = int(parameter[1])
+        window_size = int(parameter[2])
+        stride = int(parameter[3]) if len(parameter) > 3 else window_size
+        return partial(
+            ts2net.chunked_tsnet_vg,
+            window_size=window_size,
+            stride=stride,
+            method=method,
+            limit=limit,
+        )
     if "vis" in technique:
         ts2net = Ts2Net()
         print("Using Visual Temporal Graph")
