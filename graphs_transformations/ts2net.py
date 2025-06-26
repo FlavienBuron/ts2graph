@@ -192,6 +192,7 @@ class Ts2Net:
             r_data, radius, embedding_dim, time_lag, do_plot, **kwargs
         )
         edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
+        print(f"{edge_index.shape=}")
         return edge_index, edge_weight
 
     def tsnet_qn(
