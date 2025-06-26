@@ -656,14 +656,9 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
         return partial(ts2net.tsnet_vg, method=method, limit=limit)
     if "rec" in technique or "rn" in technique:
         ts2net = Ts2Net()
-        if len(parameter) == 1:
-            alpha = float(parameter[0])
-            time_lag = 1
-            embedding_dim = None
-        else:
-            alpha = float(parameter[0])
-            time_lag = int(parameter[1]) if len(parameter) > 1 else 1
-            embedding_dim = int(parameter[2]) if len(parameter) > 2 else None
+        alpha = float(parameter[0])
+        time_lag = int(parameter[1]) if len(parameter) > 1 else 1
+        embedding_dim = int(parameter[2]) if len(parameter) > 2 else None
         print("Using Reccurrent Temporal Graph")
         return partial(
             ts2net.tsnet_rn,
