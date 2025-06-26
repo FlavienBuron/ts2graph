@@ -207,7 +207,7 @@ class Ts2Net:
     ):
         x = x.squeeze(-1)
         x_np = x.detach().numpy().flatten()
-        r_data = robjects.FloatVector(x)
+        r_data = robjects.FloatVector(x_np)
         net = self.r_ts2net.tsnet_qn(
             r_data, breaks, weights_as_prob, remove_loops, **kwargs
         )
