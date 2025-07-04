@@ -21,7 +21,7 @@ from torch_geometric.utils import dense_to_sparse
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
-from downstream.imputation.STGI import STGI
+from downstream.imputation.STGI.stgn_i import STGN_I
 from graphs_transformations.temporal_graphs import k_hop_graph
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
@@ -660,7 +660,7 @@ def run(args: Namespace) -> None:
     if args.downstream_task:
         spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
 
-        stgi = STGI(
+        stgi = STGN_I(
             in_dim=1,
             hidden_dim=args.hidden_dim,
             num_layers=args.layer_num,
