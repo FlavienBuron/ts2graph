@@ -89,7 +89,7 @@ class Ts2Net:
         method: str = "nvg",
         directed: bool = False,
         sparse: bool = True,
-        weighted: bool = False,
+        weighted: bool = True,
         limit: Optional[int | object] = None,
         num_cores: Optional[int] = None,
     ):
@@ -170,7 +170,7 @@ class Ts2Net:
         embedding_dim: Optional[int] = None,
         time_lag: int = 1,
         sparse: bool = False,
-        weighted: bool = False,
+        weighted: bool = True,
         do_plot: bool = False,
         **kwargs,
     ):
@@ -201,7 +201,7 @@ class Ts2Net:
         weights_as_prob: bool = True,
         remove_loops: bool = False,
         sparse: bool = False,
-        weighted: bool = False,
+        weighted: bool = True,
         **kwargs,
     ):
         x = x.squeeze(-1)
