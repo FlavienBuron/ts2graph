@@ -1,0 +1,95 @@
+#!/bin/bash
+
+. .venv/bin/activate
+
+EPOCHS=30
+HIDDEN_DIM=32
+LAYER_NUMBER=1
+SELF_LOOP=0
+STGI_MODE='t'
+MLP_SIZE=32
+DATASET="airq_small"
+NUM_NODES=36
+FRACTION=0.05
+BATCH_SIZE=128
+DECAY="exp"
+BREAK_STEP=10
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --epochs)
+            EPOCHS="$2"
+            shift 2
+            ;;
+        --dataset)
+            DATASET="$2"
+            shift 2
+            ;;
+        --self-loop)
+            SELF_LOOP=1
+            shift
+            ;;
+        --hidden_dim)
+            HIDDEN_DIM="$2"
+            shift 2
+            ;;
+        --layers)
+            LAYER_NUMBER="$2"
+            shift 2
+            ;;
+        --mode)
+            STGI_MODE="$2"
+            shift 2
+            ;;
+        --lr)
+            LR="$2"
+            shift 2
+            ;;
+        --batch_size)
+            BATCH_SIZE="$2"
+            shift 2
+            ;;
+        --decay)
+            DECAY="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ "$DATASET" == "airq" ]]; then
+    NUM_NODES=437
+fi
+
+if [[ -z "$LR" || "$LR" == "0" ]]; then
+    if [[ "$LAYER_NUMBER" -eq 1 ]]; then
+        LR=0.007
+    else
+        LR=0.0005
+    fi
+fi
+
+
+DATE=$(date +%y%m%d)
+EXP_DIR="./experiments/results/quant/"
+LOGFILE="${EXP_DIR}${DATE}-qn-experiments.txt"
+
+mkdir -p "$EXP_DIR"
+
+echo "Running experiments on $DATE" >> "$LOGFILE"
+BREAK_VALUES=$(awk -v max=100 -v step=$BREAK_STEP '
+    BEGIN {
+        for (k = 1; k <= max; k += step) {
+            printf "%.0f\n", k
+        }
+    }' | sort -n | uniq)
+for BREAK in $BREAK_VALUES; do
+    echo "Running: -g qn $BREAK -e $EPOCHS" | tee -a "$LOGFILE"
+    TIMESTAMP=$(date +%y%m%d_%H%M%S)
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_qn_${BREAK}_sl${SELF_LOOP}_${EPOCHS}.json"
+    python -u main.py -d $DATASET -sp $FILENAME -tg qn $BREAK -e $EPOCHS \
+        -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -bs $BATCH_SIZE -v 0 | tee -a "$LOGFILE"
+done
