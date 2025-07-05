@@ -1,24 +1,26 @@
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
-use tch::{Kind, Tensor};
+use tch::{Device, Kind, PyTensor};
 
 use crate::utils::DecayFunction;
 
 #[pyfunction]
 pub fn k_hop_graph(
-    x: Tensor,
+    x: PyTensor,
     num_nodes: i64,
     k: i64,
     bidirectional: bool,
     decay_name: Option<String>,
-) -> PyResult<(Tensor, Tensor)> {
+) -> PyResult<(PyTensor, PyTensor)> {
+    let x = x.tensor();
+    let x = x.to(Device::Cpu);
     let size = x.size();
     let time_steps = size[0];
 
     if k == 0 || time_steps < 2 {
-        let edge_index = Tensor::empty(&[2, 0], Kind::Int64);
-        let edge_weight = Tensor::ones(&[0], Kind::Float);
-        return OK((edge_index, edge_weight));
+        let edge_index = Tensor::empty(&[2, 0], (Kind::Int64, Device::Cpu));
+        let edge_weight = Tensor::ones(&[0], (Kind::Float, Device::Cpu));
+        return Ok((edge_index, edge_weight));
     }
 
     let decay_fn = decay_name.as_deref().and_then(DecayFunction::from_str);
@@ -52,13 +54,13 @@ pub fn k_hop_graph(
         }
     }
 
-    let edge_index = Tensor::of_slice(&edges).view([-1, 2]).transpose(0, 1);
-    let edge_weight = Tensor::of_slice(&weights);
+    let edge_index = Tensor::from_slice(&edges).view([-1, 2]).transpose(0, 1);
+    let edge_weight = Tensor::from_slice(&weights);
 
-    Ok((edge_index, edge_weight))
+    Ok((PyTensor::from(edge_index), PyTensor::from(edge_weight)))
 }
 
-fn register(m: &PyModule) -> PyResult<()> {
+pub fn register(m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(k_hop_graph, m)?)?;
     Ok(())
 }

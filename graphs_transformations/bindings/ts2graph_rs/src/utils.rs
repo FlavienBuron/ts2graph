@@ -1,5 +1,5 @@
 use std::f32;
-use std::f64::consts::lN_2;
+use std::f64::consts::LN_2;
 
 #[derive(Debug, Clone)]
 pub enum DecayFunction {
@@ -10,7 +10,7 @@ pub enum DecayFunction {
     Linear,
 }
 
-impl DecayFunction {
+pub impl DecayFunction {
     pub fn from_str(name: &str) -> Option<Self> {
         match name.to_lowercase().as_str {
             "none" => None,
@@ -23,7 +23,7 @@ impl DecayFunction {
         }
     }
 
-    fn decay_value(&self, hop: i64, max_hop: i64) -> f32 {
+    pub fn decay_value(&self, hop: i64, max_hop: i64) -> f32 {
         match self {
             DecayFunction::Exponential => 0.9f32.powi(hop as i32),
             DecayFunction::Inverse => {
