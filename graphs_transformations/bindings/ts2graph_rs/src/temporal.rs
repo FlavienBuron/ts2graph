@@ -90,14 +90,14 @@ fn build_temporal_edges(
             for i in 0..edge_len {
                 let src = base + i;
                 let dst = base + i + offset;
-                edges.push(src);
-                edges.push(dst);
-                weights.push(weight);
+                src_indices.push(src);
+                dst_indices.push(dst);
+                weights_values.push(weight);
 
                 if bidirectional {
-                    edges.push(dst);
-                    edges.push(src);
-                    weights.push(weight)
+                    src_indices.push(dst);
+                    dst_indices.push(src);
+                    weights_values.push(weight)
                 }
             }
         }
