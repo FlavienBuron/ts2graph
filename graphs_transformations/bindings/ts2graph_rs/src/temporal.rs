@@ -136,5 +136,4 @@ mod python_bindings {
     }
 }
 
-#[cfg(feature = "python")]
 pub use python_bindings::register;

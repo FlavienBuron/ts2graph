@@ -1,3 +1,4 @@
+use pyo3::PyErr;
 use pyo3::exceptions::PyValueError;
 use std::f32;
 use std::f64::consts::LN_2;
