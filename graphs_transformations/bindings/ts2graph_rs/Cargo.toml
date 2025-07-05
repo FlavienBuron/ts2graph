@@ -9,4 +9,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.25", features = ["extension-module"] }
-tch = { version = "0.18.1", features = ["torch-sys", "python"] }
+tch = { version = "0.18.1", features = ["torch-sys", "cpython"] }
