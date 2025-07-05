@@ -25,13 +25,12 @@ impl From<GraphError> for PyErr {
 #[pyfunction]
 #[pyo3(signature = (x, num_nodes, k, bidirectional=true, decay_name=None))]
 pub fn k_hop_graph(
-    py: Python<'_>,
-    x: &PyAny,
+    x: Bound<'_, PyAny>,
     num_nodes: i64,
     k: i64,
     bidirectional: bool,
     decay_name: Option<String>,
-) -> Result<(Tensor, Tensor)> {
+) -> Result<(Tensor, Tensor), E> {
     // Validate inputs
     if num_nodes <= 0 {
         return Err(GraphError("num_nodes must be positive".to_string()).into());
