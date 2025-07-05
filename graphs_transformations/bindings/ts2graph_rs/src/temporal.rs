@@ -11,8 +11,7 @@ pub fn k_hop_graph(
     k: i64,
     bidirectional: bool,
     decay_name: Option<String>,
-) -> PyResult<(Tensor, Tensor)> {
-    let x = x.tensor();
+) -> Result<(Tensor, Tensor)> {
     let x = x.to(Device::Cpu);
     let size = x.size();
     let time_steps = size[0];
@@ -57,7 +56,7 @@ pub fn k_hop_graph(
     let edge_index = Tensor::from_slice(&edges).view([-1, 2]).transpose(0, 1);
     let edge_weight = Tensor::from_slice(&weights);
 
-    Ok((Tensor::from(edge_index), Tensor::from(edge_weight)))
+    Ok((edge_index, edge_weight))
 }
 
 pub fn register(m: &PyModule) -> PyResult<()> {
