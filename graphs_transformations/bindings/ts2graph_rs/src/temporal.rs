@@ -3,7 +3,7 @@ use pyo3::types::{PyList, PyTuple};
 use pyo3::{exceptions::PyValueError, prelude::*};
 use tch::{Device, Kind, Tensor};
 
-use crate::utils::DecayFunction;
+use crate::utils::{DecayFunction, GraphError};
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn k_hop_graph_rs(
