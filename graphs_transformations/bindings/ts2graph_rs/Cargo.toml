@@ -17,7 +17,7 @@ tch = { version = "0.18.1", features = ["cpython"] }
 [features]
 
 default = []
-python = ["tch/python"]
+python = ["tch"]
 
 [dev-dependencies]
 criterion = "0.5"
