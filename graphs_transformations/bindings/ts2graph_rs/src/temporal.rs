@@ -108,7 +108,6 @@ fn build_temporal_edges(
 
 ///////////////////////////////////////////////////////////////////////////
 
-#[cfg(feature = "python")]
 mod python_bindings {
     use super::*;
     use pyo3::prelude::*;

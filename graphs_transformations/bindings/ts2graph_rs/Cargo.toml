@@ -14,10 +14,6 @@ ndarray = "0.15"
 numpy = "0.25"
 tch = { version = "0.18.1", features = ["cpython"] }
 
-[features]
-
-default = []
-python = ["tch"]
 
 [dev-dependencies]
 criterion = "0.5"
