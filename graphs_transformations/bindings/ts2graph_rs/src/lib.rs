@@ -1,5 +1,7 @@
+mod temporal;
+
 use pyo3::prelude::*;
-use temporal;
+use temporal::k_hop_graph;
 
 #[pymodule]
 fn ts2graph_rs(_py: Python, m: &PyModule) -> PyResult<()> {
