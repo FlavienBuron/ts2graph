@@ -6,7 +6,7 @@ use crate::utils::DecayFunction;
 
 #[pyfunction]
 pub fn k_hop_graph(
-    x: PyTensor,
+    x: Tensor,
     num_nodes: i64,
     k: i64,
     bidirectional: bool,
