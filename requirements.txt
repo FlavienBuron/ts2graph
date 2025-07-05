@@ -10,3 +10,4 @@ networkx==3.4.2
 torch-spatiotemporal==0.9.5
 rpy2==3.5.17
 python-louvain==0.16
+maturin==1.9.0

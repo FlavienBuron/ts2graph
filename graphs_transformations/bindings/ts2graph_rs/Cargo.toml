@@ -1,0 +1,12 @@
+[package]
+name = "ts2graph_rs"
+version = "0.1.0"
+edition = "2025"
+
+[lib]
+name = "ts2graph_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.25", features = ["extension-module"] }
+tch = "0.20"
