@@ -10,7 +10,7 @@ pub enum DecayFunction {
     Linear,
 }
 
-pub impl DecayFunction {
+impl DecayFunction {
     pub fn from_str(name: &str) -> Option<Self> {
         match name.to_lowercase().as_str {
             "none" => None,

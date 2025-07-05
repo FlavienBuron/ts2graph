@@ -9,4 +9,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.25", features = ["extension-module"] }
+ndarray = "0.15"
+numpy = "0.20"
 tch = { version = "0.18.1", features = ["cpython"] }

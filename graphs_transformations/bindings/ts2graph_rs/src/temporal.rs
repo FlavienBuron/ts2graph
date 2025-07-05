@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
-use tch::{Device, Kind, PyTensor};
+use tch::{Device, Kind, Tensor};
 
 use crate::utils::DecayFunction;
 
@@ -11,7 +11,7 @@ pub fn k_hop_graph(
     k: i64,
     bidirectional: bool,
     decay_name: Option<String>,
-) -> PyResult<(PyTensor, PyTensor)> {
+) -> PyResult<(Tensor, Tensor)> {
     let x = x.tensor();
     let x = x.to(Device::Cpu);
     let size = x.size();
@@ -57,7 +57,7 @@ pub fn k_hop_graph(
     let edge_index = Tensor::from_slice(&edges).view([-1, 2]).transpose(0, 1);
     let edge_weight = Tensor::from_slice(&weights);
 
-    Ok((PyTensor::from(edge_index), PyTensor::from(edge_weight)))
+    Ok((Tensor::from(edge_index), Tensor::from(edge_weight)))
 }
 
 pub fn register(m: &PyModule) -> PyResult<()> {
