@@ -1,9 +1,6 @@
-use numpy::{IntoPyArray, PyArray2, PyArrayDyn};
-use pyo3::types::{PyList, PyTuple};
-use pyo3::{exceptions::PyValueError, prelude::*};
 use tch::{Device, Kind, Tensor};
 
-use crate::utils::{DecayFunction, GraphError};
+use crate::utils::DecayFunction;
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn k_hop_graph_rs(
@@ -15,13 +12,13 @@ pub fn k_hop_graph_rs(
 ) -> Result<(Tensor, Tensor), String> {
     // Validate inputs
     if time_steps <= 0 {
-        return Err(GraphError("time_steps must be positive".to_string()).into());
+        return Err("time_steps must be positive".to_string());
     }
     if num_nodes <= 0 {
-        return Err(GraphError("num_nodes must be positive".to_string()).into());
+        return Err("num_nodes must be positive".to_string());
     }
     if k < 0 {
-        return Err(GraphError("k must be non-negative".to_string()).into());
+        return Err("k must be non-negative".to_string());
     }
 
     let device = Device::Cpu;
@@ -76,7 +73,7 @@ fn build_temporal_edges(
     let mut dst_indices = Vec::with_capacity(estimated_edges);
     let mut weights_values = Vec::with_capacity(estimated_edges);
 
-    /// Create edges for each node
+    // Create edges for each node
     for node in 0..num_nodes {
         let base = node * time_steps;
 

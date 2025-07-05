@@ -1,25 +1,5 @@
-use pyo3::PyErr;
-use pyo3::exceptions::PyValueError;
 use std::f32;
-use std::f64::consts::LN_2;
 use std::fmt;
-
-#[derive(Debug, Clone)]
-pub struct GraphError(pub String);
-
-impl fmt::Display for GraphError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Graph error: {}", self.0)
-    }
-}
-
-impl std::error::Error for GraphError {}
-
-impl From<GraphError> for PyErr {
-    fn from(value: GraphError) -> PyErr {
-        PyValueError::new_err(value.0)
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 pub enum DecayFunction {
