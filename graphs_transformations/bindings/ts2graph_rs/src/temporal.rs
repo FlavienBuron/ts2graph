@@ -57,3 +57,8 @@ pub fn k_hop_graph(
 
     Ok((edge_index, edge_weight))
 }
+
+fn register(m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(k_hop_graph, m)?)?;
+    Ok(())
+}

@@ -1,4 +1,5 @@
 mod temporal;
+mod utils;
 
 use pyo3::prelude::*;
 use temporal::k_hop_graph;
