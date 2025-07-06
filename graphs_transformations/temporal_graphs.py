@@ -13,7 +13,13 @@ def k_hop_graph_rs(
 ):
     time_steps, _ = x.shape
 
-    edge_index, edge_weight = khgrs(time_steps, num_nodes, k, bidirectional, decay_name)
+    edge_index, edge_weight = khgrs(
+        time_steps=time_steps,
+        num_nodes=num_nodes,
+        k=k,
+        bidirectional=bidirectional,
+        decay_name=decay_name,
+    )
 
     return edge_index, edge_weight
 
