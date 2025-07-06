@@ -32,6 +32,13 @@ impl TensorConverter {
                 let cols = shape[1] as usize;
                 let vec2d: Vec<Vec<T>> = data.chunks(cols).map(|chunk| chunk.to_vec()).collect();
 
+                // Handle zero-dimension early
+                if rows == 0 || cols == 0 {
+                    // Return empty PyArray2 with shape [rows, cols]
+                    let array = PyArray2::<T>::empty(py, [rows, cols], false);
+                    return Ok(array.into_pyobject(py)?.unbind().into());
+                }
+
                 if vec2d.len() != rows {
                     return Err(PyRuntimeError::new_err(format!(
                         "Tensor shape mismatch during reshaping: expected {} rows, got {}",
