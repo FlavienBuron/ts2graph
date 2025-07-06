@@ -57,6 +57,15 @@ impl TensorConverter {
         }
     }
 
+    fn create_empty_array<T: numpy::Element + Clone>(
+        py: Python,
+        rows: usize,
+        cols: usize,
+    ) -> PyResult<PyObject> {
+        let array = unsafe { PyArray2::<T>::new(py, [rows, cols], false) };
+        Ok(array.into_py(py))
+    }
+
     /// Convert tch::Tensor to numpy array (integer tensors)
     pub fn tensor_to_numpy_i64(py: Python, tensor: &Tensor) -> PyResult<PyObject> {
         Self::tensor_to_numpy_generic::<i64>(py, tensor, Kind::Int64)
