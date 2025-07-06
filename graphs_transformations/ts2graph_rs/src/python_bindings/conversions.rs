@@ -17,6 +17,8 @@ impl TensorConverter {
         let shape = tensor.size();
         let data: Vec<T> = tensor
             .to_kind(kind)
+            .contiguous()
+            .view([-1])
             .try_into()
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to extract tensor data: {e}")))?;
 
