@@ -53,7 +53,6 @@ impl TensorConverter {
             2 => {
                 let rows = shape[0] as usize;
                 let cols = shape[1] as usize;
-                let vec2d: Vec<Vec<T>> = data.chunks(cols).map(|chunk| chunk.to_vec()).collect();
 
                 // Handle zero-dimension early
                 if rows == 0 || cols == 0 {
@@ -61,6 +60,8 @@ impl TensorConverter {
                     let array = Self::create_empty_array_2d::<T>(py, rows, cols)?;
                     return Ok(array.into_pyobject(py)?.unbind().into());
                 }
+
+                let vec2d: Vec<Vec<T>> = data.chunks(cols).map(|chunk| chunk.to_vec()).collect();
 
                 if vec2d.len() != rows {
                     return Err(PyRuntimeError::new_err(format!(
