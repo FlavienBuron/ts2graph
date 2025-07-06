@@ -44,7 +44,7 @@ impl TensorConverter {
                 let length = shape[0] as usize;
 
                 if length == 0 {
-                    let array = Self::create_empty_array_1d(py, length);
+                    let array = Self::create_empty_array_1d(py, length)?;
                     let pyobj = array.into_pyobject(py)?;
                     Ok(pyobj);
                 }
@@ -59,7 +59,7 @@ impl TensorConverter {
                 // Handle zero-dimension early
                 if rows == 0 || cols == 0 {
                     // Return empty PyArray2 with shape [rows, cols]
-                    let array = Self::create_empty_array_2d(py, rows, cols);
+                    let array = Self::create_empty_array_2d(py, rows, cols)?;
                     let pyobj = array.into_pyobject(py)?;
                     return Ok(array);
                 }
