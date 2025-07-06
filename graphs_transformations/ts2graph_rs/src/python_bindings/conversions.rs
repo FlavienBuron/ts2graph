@@ -1,4 +1,4 @@
-use numpy::{IntoPyArray, PyArray1, PyArray2};
+use numpy::{PyArray1, PyArray2};
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 use std::fmt;
 use tch::{Kind, Tensor};
@@ -46,7 +46,7 @@ impl TensorConverter {
                 if length == 0 {
                     let array = Self::create_empty_array_1d(py, length)?;
                     let pyobj = array.into_pyobject(py)?;
-                    Ok(pyobj);
+                    return Ok(pyobj);
                 }
                 let array = PyArray1::from_vec(py, data);
                 Ok(array.into_pyobject(py)?.unbind().into())
