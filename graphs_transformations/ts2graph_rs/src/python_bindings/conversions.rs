@@ -23,7 +23,7 @@ impl TensorConverter {
         match shape.len() {
             1 => {
                 let array = PyArray1::from_vec(py, data);
-                Ok(array.into_pyobject(py)?.unbind())
+                Ok(array.into_pyobject(py)?.unbind().into())
             }
             2 => {
                 let rows = shape[0] as usize;
@@ -39,7 +39,7 @@ impl TensorConverter {
                 }
 
                 let array = PyArray2::from_vec2(py, &vec2d)?;
-                Ok(array.into_pyobject(py)?.unbind())
+                Ok(array.into_pyobject(py)?.unbind().into())
             }
             _ => Err(PyRuntimeError::new_err(format!(
                 "Unsupported tensor dimensions {:?}D for conversion to numpy",
