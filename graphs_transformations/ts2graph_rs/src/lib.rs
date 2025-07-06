@@ -14,7 +14,7 @@ fn ts2graph_rs(py: Python, m: Bound<'_, PyModule>) -> PyResult<()> {
 
     // Add module metadata
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
-    m.add("__author__", "Flavien Buron");
+    m.add("__author__", "Flavien Buron")?;
 
     Ok(())
 }
