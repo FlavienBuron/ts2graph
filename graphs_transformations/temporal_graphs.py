@@ -21,8 +21,8 @@ def k_hop_graph_rs(
         decay_name=decay_name,
     )
 
-    print(f"{edge_index.dtype=}")
-    print(f"{edge_weight.dtype=}")
+    edge_index = torch.from_numpy(edge_index).long()
+    edge_weight = torch.from_numpy(edge_weight).float()
 
     return edge_index, edge_weight
 
