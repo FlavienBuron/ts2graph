@@ -8,7 +8,7 @@ pub use python_bindings::register;
 use pyo3::prelude::*;
 
 #[pymodule]
-fn ts2graph_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn ts2graph_rs(py: Python, m: &PyModule) -> PyResult<()> {
     // Expose temporal graph functions
     let bound_m = m.bind(py);
     python_bindings::register(bound_m)?;
