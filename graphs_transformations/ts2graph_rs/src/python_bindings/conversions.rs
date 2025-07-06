@@ -35,7 +35,7 @@ impl TensorConverter {
                 // Handle zero-dimension early
                 if rows == 0 || cols == 0 {
                     // Return empty PyArray2 with shape [rows, cols]
-                    let array = PyArray2::<T>::empty(py, [rows, cols], false);
+                    let array = PyArray2::<T>::from_shape_vec(py, (rows, cols), Vec::new())?;
                     return Ok(array.into_pyobject(py)?.unbind().into());
                 }
 
