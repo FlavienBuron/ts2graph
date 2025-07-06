@@ -1,5 +1,4 @@
 use std::f32;
-use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
 pub enum DecayFunction {
