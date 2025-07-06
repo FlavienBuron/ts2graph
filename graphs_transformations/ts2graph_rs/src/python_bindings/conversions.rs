@@ -7,6 +7,15 @@ use tch::{Kind, Tensor};
 pub struct TensorConverter;
 
 impl TensorConverter {
+    fn create_empty_array<T: numpy::Element + Clone>(
+        py: Python,
+        rows: usize,
+        cols: usize,
+    ) -> PyResult<PyObject> {
+        let array = unsafe { PyArray2::<T>::new(py, [rows, cols], false) };
+        Ok(array.into_py(py))
+    }
+
     /// Generic tch::Tensor to numpy array
     fn tensor_to_numpy_generic<T>(py: Python, tensor: &Tensor, kind: Kind) -> PyResult<PyObject>
     where
@@ -35,7 +44,7 @@ impl TensorConverter {
                 // Handle zero-dimension early
                 if rows == 0 || cols == 0 {
                     // Return empty PyArray2 with shape [rows, cols]
-                    let array = PyArray2::<T>::from_shape_vec(py, (rows, cols), Vec::new())?;
+                    let array = create_empty_array(py, rows, cols);
                     return Ok(array.into_pyobject(py)?.unbind().into());
                 }
 
@@ -55,15 +64,6 @@ impl TensorConverter {
                 tensor.kind()
             ))),
         }
-    }
-
-    fn create_empty_array<T: numpy::Element + Clone>(
-        py: Python,
-        rows: usize,
-        cols: usize,
-    ) -> PyResult<PyObject> {
-        let array = unsafe { PyArray2::<T>::new(py, [rows, cols], false) };
-        Ok(array.into_py(py))
     }
 
     /// Convert tch::Tensor to numpy array (integer tensors)
