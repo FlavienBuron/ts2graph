@@ -6,7 +6,6 @@ pub use graph::k_hop_graph_rs;
 pub use python_bindings::register;
 
 use pyo3::prelude::*;
-pub use temporal::temporal::k_hop_graph_rs;
 
 #[pymodule]
 fn ts2graph_rs(_py: Python, m: &PyModule) -> PyResult<()> {
