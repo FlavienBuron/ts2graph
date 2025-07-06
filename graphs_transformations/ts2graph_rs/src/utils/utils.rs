@@ -11,7 +11,7 @@ pub enum DecayFunction {
 
 impl DecayFunction {
     pub fn from_str(name: &str) -> Option<Self> {
-        match name.to_lowercase().as_str {
+        match name.to_lowercase().as_str() {
             n if n.contains("exp") => Some(Self::Exponential),
             n if n.contains("inv") && !n.contains("squ") => Some(Self::Inverse),
             n if n.contains("squ") => Some(Self::InverseSquare),
