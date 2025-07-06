@@ -8,10 +8,9 @@ pub use python_bindings::register;
 use pyo3::prelude::*;
 
 #[pymodule]
-fn ts2graph_rs(py: Python, m: &PyModule) -> PyResult<()> {
+fn ts2graph_rs(py: Python, m: Bound<'_, PyModule>) -> PyResult<()> {
     // Expose temporal graph functions
-    let bound_m = m.bind(py);
-    python_bindings::register(bound_m)?;
+    python_bindings::register(py, m)?;
 
     // Add module metadata
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
