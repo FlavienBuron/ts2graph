@@ -1,6 +1,6 @@
 use tch::{Device, Kind, Tensor};
 
-use crate::utils::DecayFunction;
+use crate::utils::utils::DecayFunction;
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn k_hop_graph_rs(
