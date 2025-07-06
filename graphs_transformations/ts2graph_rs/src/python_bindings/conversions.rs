@@ -6,11 +6,11 @@ use tch::{Kind, Tensor};
 /// Tensor to Numpy conversion utilities
 pub struct TensorConverter;
 
-impl TensorConverter {
+impl<T> TensorConverter {
     /// Generic tch::Tensor to numpy array
     fn tensor_to_numpy(py: Python, tensor: &Tensor, kind: Kind) -> PyResult<PyObject>
     where
-        T: Element + Clone,
+        T: numpy::Element + Clone,
         Vec<T>: TryFrom<Tensor>,
         <Vec<T> as TryFrom<Tensor>>::Error: fmt::Display,
     {
