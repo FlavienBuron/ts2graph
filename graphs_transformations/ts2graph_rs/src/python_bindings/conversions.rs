@@ -5,9 +5,9 @@ use tch::{Kind, Tensor};
 /// Tensor to Numpy conversion utilities
 pub struct TensorConverter;
 
-impl<T> TensorConverter {
+impl TensorConverter {
     /// Generic tch::Tensor to numpy array
-    fn tensor_to_numpy_generic(py: Python, tensor: &Tensor, kind: Kind) -> PyResult<PyObject>
+    fn tensor_to_numpy_generic<T>(py: Python, tensor: &Tensor, kind: Kind) -> PyResult<PyObject>
     where
         T: numpy::Element + Clone,
         Vec<T>: TryFrom<Tensor>,
@@ -49,12 +49,12 @@ impl<T> TensorConverter {
 
     /// Convert tch::Tensor to numpy array (integer tensors)
     pub fn tensor_to_numpy_i64(py: Python, tensor: &Tensor) -> PyResult<PyObject> {
-        tensor_to_numpy_generic::<i64>(py, tensor, Kind::Int64)
+        Self::tensor_to_numpy_generic::<i64>(py, tensor, Kind::Int64)
     }
 
     /// Convert tch::Tensor to numpy array (float32 Tensor)
     pub fn tensor_to_numpy_f32(py: Python, tensor: &Tensor) -> PyResult<PyObject> {
-        tensor_to_numpy_generic::<f32>(py, tensor, Kind::Float)
+        Self::tensor_to_numpy_generic::<f32>(py, tensor, Kind::Float)
     }
 
     /// Generic tensor to numpy conversion with type detection
