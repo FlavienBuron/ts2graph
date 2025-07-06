@@ -1,4 +1,4 @@
-use numpy::{PyArray1, PyArray2};
+use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 use std::fmt;
 use tch::{Kind, Tensor};
