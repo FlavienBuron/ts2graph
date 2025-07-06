@@ -11,7 +11,7 @@ impl TensorConverter {
         py: Python,
         rows: usize,
         cols: usize,
-    ) -> PyResult<&PyArray2<T, _>> {
+    ) -> PyResult<&PyArray2<T>> {
         let array = unsafe { PyArray2::<T>::new(py, [rows, cols], false) };
         Ok(array)
     }
@@ -19,7 +19,7 @@ impl TensorConverter {
     fn create_empty_array_1d<T: numpy::Element + Clone>(
         py: Python,
         length: usize,
-    ) -> PyResult<&PyArray1<T, _>> {
+    ) -> PyResult<PyArray1<T>> {
         let array = unsafe { PyArray1::<T>::new(py, [length], false) };
         Ok(array)
     }
