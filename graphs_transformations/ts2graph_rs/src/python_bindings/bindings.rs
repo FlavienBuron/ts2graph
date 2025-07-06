@@ -25,6 +25,6 @@ pub fn k_hop_graph(
 }
 
 pub fn register(py: Python<'_>, m: Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(k_hop_graph, m)?)?;
+    m.add_function(wrap_pyfunction!(k_hop_graph, py)?)?;
     Ok(())
 }

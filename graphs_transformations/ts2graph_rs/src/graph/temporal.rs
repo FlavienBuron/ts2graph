@@ -32,8 +32,6 @@ pub fn k_hop_graph_rs(
     let decay_fn = decay_name.as_deref().and_then(DecayFunction::from_str);
     let max_k = std::cmp::min(k, time_steps - 1);
 
-    let estimated_edges = calculate_estimated_edges(time_steps, num_nodes, max_k, bidirectional);
-
     // Build graph structure
     let (src_indices, dst_indices, weights_values) =
         build_temporal_edges(time_steps, num_nodes, max_k, bidirectional, decay_fn);
