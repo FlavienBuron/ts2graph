@@ -103,34 +103,36 @@ fn build_temporal_edges(
     (src_indices, dst_indices, weights_values)
 }
 
-///////////////////////////////////////////////////////////////////////////
-
-mod python_bindings {
-    use super::*;
-    use pyo3::prelude::*;
-
-    #[pyfunction]
-    #[pyo3(signature = (time_steps, num_nodes, k, bidirectional=true, decay_name=None))]
-    pub fn k_hop_graph(
-        time_steps: i64,
-        num_nodes: i64,
-        k: i64,
-        bidirectional: bool,
-        decay_name: Option<String>,
-    ) -> Result<(PyObject, PyObject), PyErr> {
-        // Call the pure Rust function
-        let decay_name_str = decay_name.as_deref();
-        let (edge_index, edge_weight) =
-            k_hop_graph_rs(time_steps, num_nodes, k, bidirectional, decay_name_str)
-                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e))?;
-
-        Ok((edge_index.into_py_object(), edge_weight.into_py_object()))
-    }
-
-    pub fn register(m: &PyModule) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(k_hop_graph, m)?)?;
-        Ok(())
-    }
-}
-
-pub use python_bindings::register;
+// ///////////////////////////////////////////////////////////////////////////
+//
+// mod python_bindings {
+//     use super::*;
+//     use pyo3::prelude::*;
+//
+//     #[pyfunction]
+//     #[pyo3(signature = (time_steps, num_nodes, k, bidirectional=true, decay_name=None))]
+//     pub fn k_hop_graph(
+//         time_steps: i64,
+//         num_nodes: i64,
+//         k: i64,
+//         bidirectional: bool,
+//         decay_name: Option<String>,
+//     ) -> Result<(PyObject, PyObject), PyErr> {
+//         // Call the pure Rust function
+//         let decay_name_str = decay_name.as_deref();
+//         let (edge_index, edge_weight) =
+//             k_hop_graph_rs(time_steps, num_nodes, k, bidirectional, decay_name_str)
+//                 .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e))?;
+//
+//
+//
+//         Ok((edge_index.into_py_object(), edge_weight.into_py_object()))
+//     }
+//
+//     pub fn register(m: &PyModule) -> PyResult<()> {
+//         m.add_function(wrap_pyfunction!(k_hop_graph, m)?)?;
+//         Ok(())
+//     }
+// }
+//
+// pub use python_bindings::register;
