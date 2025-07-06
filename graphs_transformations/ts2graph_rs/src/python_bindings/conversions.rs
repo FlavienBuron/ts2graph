@@ -7,13 +7,21 @@ use tch::{Kind, Tensor};
 pub struct TensorConverter;
 
 impl TensorConverter {
-    fn create_empty_array<T: numpy::Element + Clone>(
+    fn create_empty_array_2d<T: numpy::Element + Clone>(
         py: Python,
         rows: usize,
         cols: usize,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<PyArray2<T>> {
         let array = unsafe { PyArray2::<T>::new(py, [rows, cols], false) };
-        Ok(array.into_py(py))
+        Ok(array)
+    }
+
+    fn create_empty_array_1d<T: numpy::Element + Clone>(
+        py: Python,
+        length: usize,
+    ) -> PyResult<PyArray1<T>> {
+        let array = unsafe { PyArray1::<T>::new(py, [length], false) };
+        Ok(array)
     }
 
     /// Generic tch::Tensor to numpy array
@@ -33,6 +41,12 @@ impl TensorConverter {
 
         match shape.len() {
             1 => {
+                let length = shape[0] as usize;
+
+                if length == 0 {
+                    let array = Self::create_empty_array_1d(py, length);
+                    Ok(array.into_pyobject(py)?.unbind().into());
+                }
                 let array = PyArray1::from_vec(py, data);
                 Ok(array.into_pyobject(py)?.unbind().into())
             }
@@ -44,7 +58,7 @@ impl TensorConverter {
                 // Handle zero-dimension early
                 if rows == 0 || cols == 0 {
                     // Return empty PyArray2 with shape [rows, cols]
-                    let array = Self::create_empty_array(py, rows, cols);
+                    let array = Self::create_empty_array_2d(py, rows, cols);
                     return Ok(array.into_pyobject(py)?.unbind().into());
                 }
 
