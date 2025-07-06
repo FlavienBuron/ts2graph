@@ -45,10 +45,10 @@ impl TensorConverter {
 
                 if length == 0 {
                     let array = Self::create_empty_array_1d(py, length);
-                    Ok(array);
+                    return Ok(array);
                 }
                 let array = PyArray1::from_vec(py, data);
-                Ok(array)
+                Ok(array.into_pyobject(py)?.unbind().into())
             }
             2 => {
                 let rows = shape[0] as usize;
@@ -59,7 +59,7 @@ impl TensorConverter {
                 if rows == 0 || cols == 0 {
                     // Return empty PyArray2 with shape [rows, cols]
                     let array = Self::create_empty_array_2d(py, rows, cols);
-                    return Ok(array.into_pyobject(py)?.unbind().into());
+                    return Ok(array);
                 }
 
                 if vec2d.len() != rows {
