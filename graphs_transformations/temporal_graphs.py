@@ -21,6 +21,9 @@ def k_hop_graph_rs(
         decay_name=decay_name,
     )
 
+    print(f"{edge_index.shape=}")
+    print(f"{edge_weight.shape=}")
+
     return edge_index, edge_weight
 
 
