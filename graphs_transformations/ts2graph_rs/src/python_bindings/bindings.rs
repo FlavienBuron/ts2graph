@@ -1,5 +1,5 @@
 use super::conversions::TensorConverter;
-use crate::graph::temporal::k_hop_graph;
+use crate::graph::temporal::k_hop_graph as k_hop_rs;
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 
 #[pyfunction]
@@ -14,7 +14,7 @@ pub fn k_hop_graph(
 ) -> PyResult<(PyObject, PyObject)> {
     let decay_name_str = decay_name.as_deref();
     let (edge_index, edge_weight) =
-        k_hop_graph(time_steps, num_nodes, k, bidirectional, decay_name_str)
+        k_hop_rs(time_steps, num_nodes, k, bidirectional, decay_name_str)
             .map_err(|e| PyRuntimeError::new_err(format!("Graph generation failed!: {e}")))?;
 
     // Convert to Numpy

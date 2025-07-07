@@ -1,3 +1,4 @@
+pub mod graph;
 pub mod python_bindings;
 
 // pub use graph::k_hop_graph_rs;
