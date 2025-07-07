@@ -1,9 +1,9 @@
 use tch::{Device, Kind, Tensor};
 
-use crate::utils::utils::DecayFunction;
+use crate::utils::DecayFunction;
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn k_hop_graph_rs(
+pub fn k_hop_graph(
     time_steps: i64,
     num_nodes: i64,
     k: i64,

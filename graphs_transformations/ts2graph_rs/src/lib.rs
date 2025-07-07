@@ -1,6 +1,4 @@
-pub mod graph;
 pub mod python_bindings;
-pub mod utils;
 
 // pub use graph::k_hop_graph_rs;
 pub use python_bindings::register;
