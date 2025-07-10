@@ -100,7 +100,10 @@ class STGI(nn.Module):
             for t in range(time_steps):
                 x_t = x[t]
                 for i, gnn_layer in enumerate(self.gnn_layers):
-                    x_t = gnn_layer(x_t, spatial_edge_index, spatial_edge_weight)
+                    if isinstance(gnn_layer, pyg_nn.GCNConv):
+                        x_t = gnn_layer(x_t, spatial_edge_index, spatial_edge_weight)
+                    else:
+                        x_t = gnn_layer(x_t, spatial_edge_index)
                     if i < len(self.gnn_layers) - 1:
                         x_t = F.relu(x_t)
                 spatial_outputs.append(x_t)
