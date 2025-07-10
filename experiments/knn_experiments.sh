@@ -11,6 +11,7 @@ MLP_SIZE=32
 DATASET="airq_small"
 NUM_NODES=36
 FRACTION=0.05
+LAYER_TYPE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -20,6 +21,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dataset)
             DATASET="$2"
+            shift 2
+            ;;
+        --layer_type)
+            LAYER_TYPE="$2"
             shift 2
             ;;
         --self-loop)
@@ -117,9 +122,14 @@ K_VALUES=$(awk -v max=$NUM_NODES -v step=$KNN_STEP '
     }' | sort -n | uniq)
 
 for K in $K_VALUES; do
-    echo "Running: -g knn $K -e $EPOCHS" | tee -a "$LOGFILE"
+    if [[ "$LAYER_TYPE" != "" ]]; then
+        mkdir -p "${EXP_DIR}/${LAYER_TYPE}/"
+    else
+        LAYER_TYPE="GCNConv"
+    fi
+    echo "Running: -g knn $K -e $EPOCHS -l $LAYER_TYPE" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_knn_${K}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g knn $K -e $EPOCHS \
+    python -u main.py -d $DATASET -sp $FILENAME -sg knn $K -e $EPOCHS -l $LAYER_TYPE \
            -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
