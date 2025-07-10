@@ -77,8 +77,6 @@ echo "Running experiments on $DATE" >> "$LOGFILE"
 
 declare -A TECHNIQUES=(
     ["zero_0"]=0
-    ["zero_1"]=1
-    ["one_1"]=1
     ["one_0"]=0
     ["loc"]=0.5
 )
@@ -105,7 +103,7 @@ for G in "${!TECHNIQUES[@]}"; do
     echo "Running: -g $G $V -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g "$BASE_G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+    python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
 
 SELF_LOOP=$ORIGINAL

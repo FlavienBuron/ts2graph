@@ -759,6 +759,7 @@ def run(args: Namespace) -> None:
             use_spatial=use_spatial,
             use_temporal=use_temporal,
             temporal_graph_fn=temporal_graph_fn,
+            add_self_loops=False,
         )
 
         stgi.to(device)
