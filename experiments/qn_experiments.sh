@@ -79,13 +79,13 @@ LOGFILE="${EXP_DIR}${DATE}-qn-experiments.txt"
 
 mkdir -p "$EXP_DIR"
 
-echo "Running: -g qn $BREAK -e $EPOCHS" | tee -a "$LOGFILE"
-TIMESTAMP=$(date +%y%m%d_%H%M%S)
-FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_zero_0_sl${SELF_LOOP}_${EPOCHS}.json"
-python -u main.py -d $DATASET -sp $FILENAME -sg zero 0 -e $EPOCHS \
-    -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m s -sl $SELF_LOOP -bs $BATCH_SIZE -v 0 | tee -a "$LOGFILE"
-
-
+# echo "Running: -g qn $BREAK -e $EPOCHS" | tee -a "$LOGFILE"
+# TIMESTAMP=$(date +%y%m%d_%H%M%S)
+# FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_zero_0_sl${SELF_LOOP}_${EPOCHS}.json"
+# python -u main.py -d $DATASET -sp $FILENAME -sg zero 0 -e $EPOCHS \
+#     -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m s -sl $SELF_LOOP -bs $BATCH_SIZE -v 0 | tee -a "$LOGFILE"
+#
+#
 echo "Running experiments on $DATE" >> "$LOGFILE"
 BREAK_VALUES=$(awk -v max=100 -v step=$BREAK_STEP '
     BEGIN {
