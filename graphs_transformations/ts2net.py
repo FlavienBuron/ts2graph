@@ -8,6 +8,7 @@ import torch
 from rpy2.rinterface import NULL, RRuntimeWarning
 from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import importr, isinstalled
+from torch._C import float32
 from torch_geometric.utils import dense_to_sparse
 
 from graphs_transformations.utils import get_radius_for_rec
@@ -206,11 +207,58 @@ class Ts2Net:
     ):
         x = x.squeeze(-1)
         x_np = x.detach().numpy().flatten()
+
+        # Bin assignment - which quantile each time point belongs to
+        bin_assignments = np.digitize(x_np, breaks) - 1
+        bin_assignments = np.clip(bin_assignments, 0, len(breaks) - 2)
+
+        # Build bin-level graph from R (always get as sparse for efficiency)
         r_data = robjects.FloatVector(x_np)
         net = self.r_ts2net.tsnet_qn(
             r_data, breaks, weights_as_prob, remove_loops, **kwargs
         )
-        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
+        bin_edge_index, bin_edge_weight = self._get_sparse_matrix(
+            graph=net, weighted=weighted
+        )
+
+        # Build efficiency bin to edge indices mapping
+        from collections import defaultdict
+
+        bin_to_time = defaultdict(list)
+        for time_idx, bin_idx in enumerate(bin_assignments):
+            bin_to_time[bin_idx].append(time_idx)
+
+        # Convert bin edges to time-point edges
+        time_edges = []
+        time_weights = []
+
+        for edge_idx in range(bin_edge_index.shape[1]):
+            bin_src = bin_edge_index[0, edge_idx].item()
+            bin_dst = bin_edge_index[1, edge_idx].item()
+            edge_weight_val = bin_edge_weight[edge_idx].item() if weighted else 1.0
+
+            # Create edges between all time points in source bin to all in destination bin
+            for src_time in bin_to_time[bin_src]:
+                for dst_time in bin_to_time[bin_dst]:
+                    if remove_loops and src_time == dst_time:
+                        continue
+                    time_edges.append((src_time, dst_time))
+                    time_weights.append(edge_weight_val)
+
+        # Convert to PyTorch tensors in PyG format
+        if time_edges:
+            edge_index = torch.tensor(
+                time_edges, dtype=torch.long
+            ).T  # Shape [2, num_edges]
+            edge_weight = (
+                torch.tensor(time_weights, dtype=torch.float32)
+                if weighted
+                else torch.ones(edge_index.shape[1], dtype=float32)
+            )
+        else:
+            edge_index = torch.empty((2, 0), dtype=torch.long)
+            edge_weight = torch.empty(0, dtype=torch.float32)
+
         return edge_index, edge_weight
 
     def _suppress_warnings(self, expr: str):
@@ -234,3 +282,26 @@ class Ts2Net:
         adj_matrix_tensor = torch.tensor(np.asarray(adj_matrix), dtype=torch.float32)
 
         return dense_to_sparse(adj_matrix_tensor)
+
+    def _get_sparse_matrix(self, graph, weighted=True):
+        """
+        Retrieve the adjacency matrix from an igraph object,
+        as sparce edge index and weight
+        """
+        robjects.r("""
+            get_edges <- function(graph, attr) {
+                edges <- as_edgelist(graph, names = False)
+                weights <- if (!is.null(attr)) edge_attr(graph, attr) else rep(1, nrow(edges))
+                list(edges = edges, weights = weights)
+            }
+        """)
+        attr = "weight" if weighted else NULL
+        edge_data = robjects.r("get_edges")(graph, attr)
+        edges = np.array(edge_data[0], dtype=np.int64)  # shape (num_edges, 2)
+        weights = np.array(edge_data[1], dtype=np.float32)
+
+        # Transpose to match PyG's [2, num_edges] format
+        edge_index = torch.tensor(edges.T, dtype=torch.long)
+        edge_weight = torch.tensor(weights, dtype=torch.float32)
+
+        return edge_index, edge_weight
