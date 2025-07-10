@@ -290,7 +290,7 @@ class Ts2Net:
         """
         robjects.r("""
             get_edges <- function(graph, attr) {
-                edges <- as_edgelist(graph, names = False)
+                edges <- as_edgelist(graph, names = FALSE)
                 weights <- if (!is.null(attr)) edge_attr(graph, attr) else rep(1, nrow(edges))
                 list(edges = edges, weights = weights)
             }
