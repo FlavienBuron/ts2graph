@@ -208,8 +208,9 @@ class Ts2Net:
         x_np = x.detach().numpy().flatten()
 
         # Bin assignment - which quantile each time point belongs to
-        bin_assignments = np.digitize(x_np, breaks) - 1
-        bin_assignments = np.clip(bin_assignments, 0, len(breaks) - 2)
+        quantile_levels = np.linspace(0, 1, breaks + 1)
+        bins = np.quantile(x_np, quantile_levels)
+        bin_assignments = np.digitize(x_np, bins[1:-1], right=True)
 
         # Build bin-level graph from R (always get as sparse for efficiency)
         r_data = robjects.FloatVector(x_np)
