@@ -8,7 +8,6 @@ import torch
 from rpy2.rinterface import NULL, RRuntimeWarning
 from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import importr, isinstalled
-from torch._C import float32
 from torch_geometric.utils import dense_to_sparse
 
 from graphs_transformations.utils import get_radius_for_rec
@@ -253,7 +252,7 @@ class Ts2Net:
             edge_weight = (
                 torch.tensor(time_weights, dtype=torch.float32)
                 if weighted
-                else torch.ones(edge_index.shape[1], dtype=float32)
+                else torch.ones(edge_index.shape[1], dtype=torch.float32)
             )
         else:
             edge_index = torch.empty((2, 0), dtype=torch.long)
