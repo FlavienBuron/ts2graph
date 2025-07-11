@@ -71,7 +71,12 @@ DATE=$(date +%y%m%d)
 EXP_DIR="./experiments/results/knn/"
 LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
 
-mkdir -p "$EXP_DIR"
+if [[ "$LAYER_TYPE" != "" ]]; then
+    mkdir -p "${EXP_DIR}/${LAYER_TYPE}/"
+else
+    mkdir -p "$EXP_DIR"
+    LAYER_TYPE="GCNConv"
+fi
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
@@ -103,7 +108,7 @@ for G in "${!TECHNIQUES[@]}"; do
     echo "Running: -g $G $V -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+    python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -l $LAYER_TYPE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
 
 SELF_LOOP=$ORIGINAL
@@ -120,11 +125,6 @@ K_VALUES=$(awk -v max=$NUM_NODES -v step=$KNN_STEP '
     }' | sort -n | uniq)
 
 for K in $K_VALUES; do
-    if [[ "$LAYER_TYPE" != "" ]]; then
-        mkdir -p "${EXP_DIR}/${LAYER_TYPE}/"
-    else
-        LAYER_TYPE="GCNConv"
-    fi
     echo "Running: -g knn $K -e $EPOCHS -l $LAYER_TYPE" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_knn_${K}_sl${SELF_LOOP}_${EPOCHS}.json"
