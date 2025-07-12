@@ -6,6 +6,7 @@ EPOCHS=1
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
+STGI_MODE="s"
 USE_TEMPORAL=0
 MLP_SIZE=32
 DATASET="airq_small"
@@ -76,6 +77,6 @@ for LOC in $(seq 0.0 $FRACTION 1.0); do
     echo "Running: -g loc $LOC_FMT -e $EPOCHS"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_loc_${LOC_FMT}_sl${SELF_LOOP}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g loc $LOC_FMT -e $EPOCHS \
-           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR $USE_TEMP -sl $SELF_LOOP -gs -dt -v 0 | tee -a "$LOGFILE"
+    python -u main.py -d $DATASET -sp $FILENAME -sg loc $LOC_FMT -e $EPOCHS \
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -gs -dt -v 0 | tee -a "$LOGFILE"
 done

@@ -120,6 +120,6 @@ for K in $K_VALUES; do
     echo "Running: -g knn $K -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_knn_${K}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -g knn $K -e $EPOCHS \
+    python -u main.py -d $DATASET -sp $FILENAME -sg knn $K -e $EPOCHS \
            -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
