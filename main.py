@@ -24,7 +24,7 @@ from torch_geometric.utils import dense_to_sparse
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.STGI import STGI
-from graphs_transformations.temporal_graphs import k_hop_graph
+from graphs_transformations.temporal_graphs import k_hop_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
@@ -633,7 +633,7 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
         param = int(parameter[0])
         decay = str(parameter[1]) if len(parameter) > 1 else "none"
         decay_fn = get_decay_function(decay)
-        return partial(k_hop_graph, k=param, decay=decay_fn)
+        return partial(k_hop_graph_rs, k=param, decay_name=decay)
     if "chunked" in technique:
         ts2net = Ts2Net()
         print("Using Chuncked Visual Temporal Graph")
@@ -759,6 +759,7 @@ def run(args: Namespace) -> None:
             use_spatial=use_spatial,
             use_temporal=use_temporal,
             temporal_graph_fn=temporal_graph_fn,
+            add_self_loops=False,
         )
 
         stgi.to(device)

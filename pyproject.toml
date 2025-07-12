@@ -1,0 +1,8 @@
+[build-system]
+requires = ["maturin>=1,4"]
+build-backend = "maturin"
+
+[project]
+name= "ts2graph"
+version = "0.1.0"
+

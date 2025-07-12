@@ -1,3 +1,4 @@
+import inspect
 from time import perf_counter
 from typing import Callable, Optional
 
@@ -61,20 +62,16 @@ class STGI(nn.Module):
         """Helper method to build GNN layers"""
 
         layers = nn.ModuleList()
+        init_signature = inspect.signature(ModelClass.__init__)
+        kwargs = {k: v for k, v in kwargs.items() if k in init_signature.parameters}
 
         if num_layers == 1:
-            layers.append(ModelClass(in_dim, out_dim, add_self_loops=False, **kwargs))
+            layers.append(ModelClass(in_dim, out_dim, **kwargs))
         else:
-            layers.append(
-                ModelClass(in_dim, hidden_dim, add_self_loops=False, **kwargs)
-            )
+            layers.append(ModelClass(in_dim, hidden_dim, **kwargs))
             for _ in range(num_layers - 2):
-                layers.append(
-                    ModelClass(hidden_dim, hidden_dim, add_self_loops=False, **kwargs)
-                )
-            layers.append(
-                ModelClass(hidden_dim, out_dim, add_self_loops=False, **kwargs)
-            )
+                layers.append(ModelClass(hidden_dim, hidden_dim, **kwargs))
+            layers.append(ModelClass(hidden_dim, out_dim, **kwargs))
 
         return layers
 
@@ -103,7 +100,10 @@ class STGI(nn.Module):
             for t in range(time_steps):
                 x_t = x[t]
                 for i, gnn_layer in enumerate(self.gnn_layers):
-                    x_t = gnn_layer(x_t, spatial_edge_index, spatial_edge_weight)
+                    if isinstance(gnn_layer, pyg_nn.GCNConv):
+                        x_t = gnn_layer(x_t, spatial_edge_index, spatial_edge_weight)
+                    else:
+                        x_t = gnn_layer(x_t, spatial_edge_index)
                     if i < len(self.gnn_layers) - 1:
                         x_t = F.relu(x_t)
                 spatial_outputs.append(x_t)

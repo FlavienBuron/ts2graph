@@ -1,6 +1,30 @@
 from typing import Callable, Optional
 
 import torch
+from ts2graph_rs import k_hop_graph as khgrs
+
+
+def k_hop_graph_rs(
+    x: torch.Tensor,
+    num_nodes: int = 1,
+    k: int = 1,
+    bidirectional: bool = True,
+    decay_name=None,
+):
+    time_steps, _ = x.shape
+
+    edge_index, edge_weight = khgrs(
+        time_steps=time_steps,
+        num_nodes=num_nodes,
+        k=k,
+        bidirectional=bidirectional,
+        decay_name=decay_name,
+    )
+
+    edge_index = torch.from_numpy(edge_index).long()
+    edge_weight = torch.from_numpy(edge_weight).float()
+
+    return edge_index, edge_weight
 
 
 def k_hop_graph(
