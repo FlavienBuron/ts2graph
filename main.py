@@ -590,7 +590,7 @@ def get_spatial_graph(
     if "loc" in technique:
         start = perf_counter()
         adj_matrix = dataset.get_geolocation_graph(
-            threshold=parameter, include_self=args.self_loop
+            threshold=parameter, include_self=args.self_loop, weighted=False
         )
         end = perf_counter()
     elif "zero" in technique:

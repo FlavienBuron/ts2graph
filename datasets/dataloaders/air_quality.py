@@ -236,12 +236,15 @@ class AirQualityLoader(GraphLoader):
         threshold_on_input: bool = False,
         include_self: bool = False,
         force_symmetric: bool = False,
+        weighted: bool = True,
     ) -> torch.Tensor:
         theta = self.distances.std()
         # adj = np.exp(-(self.distances**2) / (2 * theta**2))
         adj = torch.exp(-torch.square(self.distances / theta))
         mask = self.distances > threshold if threshold_on_input else adj < threshold
         adj[mask] = 0
+        if not weighted:
+            adj[adj > 0] = 1.0
         if not include_self:
             adj.fill_diagonal_(0.0)
         if force_symmetric:
