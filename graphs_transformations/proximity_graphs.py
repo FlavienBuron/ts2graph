@@ -2,7 +2,7 @@ import torch
 from torch.nn.functional import normalize
 from torch_geometric.nn import knn_graph, radius_graph
 
-from graphs_transformations.utils import get_adaptive_radius
+from graphs_transformations.utils import get_quantile_radius
 
 
 def from_knn(
@@ -42,8 +42,8 @@ def from_radius(
         means = data.nanmean(dim=1, keepdim=True)
         data = torch.where(mask, data, means)
 
-    radius = get_adaptive_radius(
-        data=data, mask=mask, alpha=radius, low=0.0, high=100.0, cosine=cosine
+    radius = get_quantile_radius(
+        data=data, mask=mask, quantile=radius, low=0.0, high=100.0, cosine=cosine
     )
 
     # Step 2: Check for invalid values

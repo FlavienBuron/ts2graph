@@ -8,12 +8,12 @@ from torch.nn.functional import normalize
 from torch_geometric.utils import get_laplacian, to_dense_adj
 
 
-def get_adaptive_radius(
+def get_quantile_radius(
     data: torch.Tensor,
     mask: torch.Tensor,
-    alpha: float,
+    quantile: float,
     low: float = 0.0,
-    high: float = 100.0,
+    high: float = 1.0,
     cosine: bool = False,
 ) -> float:
     if torch.isnan(data).any():
@@ -28,12 +28,9 @@ def get_adaptive_radius(
     )
     dists = dists[dists > 0]  # remove self-distances
 
-    r_min = torch.quantile(dists, low / 100.0)
-    r_max = torch.quantile(dists, high / 100.0)
+    quantile = (quantile - low) / (high - low)
 
-    r = r_min + alpha * (r_max - r_min)
-
-    return r.item()
+    return torch.quantile(dists, quantile).item()
 
 
 def embed_time_series(x: torch.Tensor, dim: int, time_delay: int) -> torch.Tensor:
