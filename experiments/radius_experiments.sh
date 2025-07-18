@@ -112,7 +112,7 @@ ORIGINAL=$SELF_LOOP
 SELF_LOOP=$ORIGINAL
 
 # Sweep knn values from 1 to KNN_MAX
-for RAD in $(seq 0.0 $FRACTION 1.0); do
+for RAD in $(seq 0.5 $FRACTION 1.0); do
     printf -v RAD_FMT "%.2f" "$RAD"
     echo "Running: -g rad $RAD_FMT -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
