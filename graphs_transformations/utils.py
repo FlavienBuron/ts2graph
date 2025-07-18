@@ -26,7 +26,9 @@ def get_quantile_radius(
     dists = (
         torch.cdist(data, data, p=2) if not cosine else 1 - torch.matmul(data, data.T)
     )
-    print(dists)
+    print("Min distance:", dists.min().item())
+    print("Median distance:", dists.median().item())
+    print("Max distance:", dists.max().item())
     mask_self = ~torch.eye(data.shape[0], dtype=torch.bool)
     dists = dists[mask_self]  # remove self-distances
     print("Min distance:", dists.min().item())
