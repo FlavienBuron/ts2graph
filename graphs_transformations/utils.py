@@ -26,6 +26,7 @@ def get_quantile_radius(
     dists = (
         torch.cdist(data, data, p=2) if not cosine else 1 - torch.matmul(data, data.T)
     )
+    pos = dists[dists > 0]
     print("Min distance:", dists.min().item())
     print("Median distance:", dists.median().item())
     print("Max distance:", dists.max().item())
@@ -34,6 +35,10 @@ def get_quantile_radius(
     print("Min distance:", dists.min().item())
     print("Median distance:", dists.median().item())
     print("Max distance:", dists.max().item())
+
+    print("Min pos distance:", pos.min().item())
+    print("Median pos distance:", pos.median().item())
+    print("Max pos distance:", pos.max().item())
 
     quantile = (quantile - low) / (high - low)
 
