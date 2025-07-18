@@ -45,6 +45,7 @@ def from_radius(
     radius = get_quantile_radius(
         data=data, mask=mask, quantile=radius, low=0.0, high=100.0, cosine=cosine
     )
+    print(f"quantile radius is {radius}")
 
     # Step 2: Check for invalid values
     if torch.isnan(data).any() or torch.isinf(data).any():
@@ -60,4 +61,5 @@ def from_radius(
     edge_index = radius_graph(
         x=data, r=radius, loop=loop, max_num_neighbors=data.shape[1] + 1
     )
+    print(f"{edge_index=}")
     return edge_index

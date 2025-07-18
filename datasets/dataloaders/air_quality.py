@@ -297,6 +297,7 @@ class AirQualityLoader(GraphLoader):
             mask = self.missing_mask.permute(1, 0, 2).reshape(
                 self.original_data.shape[1], -1
             )
+        print(f"Get radius graph with {radius=}")
         edge_index = from_radius(
             data=data, mask=mask, radius=radius, loop=loop, cosine=cosine
         )
