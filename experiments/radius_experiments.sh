@@ -87,27 +87,27 @@ fi
 
 ORIGINAL=$SELF_LOOP
 
-# Loop through fixed graphs techniques
-for G in "${!TECHNIQUES[@]}"; do
-    V=${TECHNIQUES[$G]}
-        # Reset default self-loop
-        SELF_LOOP=$ORIGINAL
-        BASE_G=$G
-
-        # Check if technique is a variant of zero or one
-        if [[ "$G" == zero_* ]]; then
-            BASE_G="zero"
-            SELF_LOOP=${G#zero_}
-        elif [[ "$G" == one_* ]]; then
-            BASE_G="one"
-            SELF_LOOP=${G#one_}
-        fi
-
-    echo "Running: -g $BASE_G $V -e $EPOCHS" | tee -a "$LOGFILE"
-    TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
-done
+# # Loop through fixed graphs techniques
+# for G in "${!TECHNIQUES[@]}"; do
+#     V=${TECHNIQUES[$G]}
+#         # Reset default self-loop
+#         SELF_LOOP=$ORIGINAL
+#         BASE_G=$G
+#
+#         # Check if technique is a variant of zero or one
+#         if [[ "$G" == zero_* ]]; then
+#             BASE_G="zero"
+#             SELF_LOOP=${G#zero_}
+#         elif [[ "$G" == one_* ]]; then
+#             BASE_G="one"
+#             SELF_LOOP=${G#one_}
+#         fi
+#
+#     echo "Running: -g $BASE_G $V -e $EPOCHS" | tee -a "$LOGFILE"
+#     TIMESTAMP=$(date +%y%m%d_%H%M%S)
+#     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
+#     python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+# done
 
 SELF_LOOP=$ORIGINAL
 
