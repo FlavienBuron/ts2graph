@@ -61,5 +61,4 @@ def from_radius(
     edge_index = radius_graph(
         x=data, r=radius, loop=loop, max_num_neighbors=data.shape[1] + 1
     )
-    print(f"{edge_index=}")
     return edge_index
