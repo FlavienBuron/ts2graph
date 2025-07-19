@@ -45,7 +45,6 @@ def from_radius(
     radius = get_percentile_radius(
         data=data, mask=mask, percentile=radius, cosine=cosine
     )
-    print(f"percentile radius is {radius}")
 
     # Step 2: Check for invalid values
     if torch.isnan(data).any() or torch.isinf(data).any():

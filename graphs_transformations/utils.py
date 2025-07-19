@@ -30,10 +30,6 @@ def get_percentile_radius(
     min_dist = dists.min()
     max_dist = dists.max()
 
-    print("Mask self min:", dists.min().item())
-    print("Mask self median:", dists.median().item())
-    print("Mask self max:", dists.max().item())
-
     # radius = torch.quantile(dists, percentile).item()
     radius = min_dist + percentile * (max_dist - min_dist)
 
