@@ -43,7 +43,7 @@ def from_radius(
         data = torch.where(mask, data, means)
 
     radius = get_quantile_radius(
-        data=data, mask=mask, quantile=radius, low=0.0, high=100.0, cosine=cosine
+        data=data, mask=mask, quantile=radius, low=0.0, high=0.1, cosine=cosine
     )
     print(f"quantile radius is {radius}")
 
