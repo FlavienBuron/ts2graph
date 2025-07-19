@@ -8,12 +8,10 @@ from torch.nn.functional import normalize
 from torch_geometric.utils import get_laplacian, to_dense_adj
 
 
-def get_quantile_radius(
+def get_percentile_radius(
     data: torch.Tensor,
     mask: torch.Tensor,
-    quantile: float,
-    low: float = 0.0,
-    high: float = 1.0,
+    percentile: float,
     cosine: bool = False,
 ) -> float:
     if torch.isnan(data).any():
@@ -29,15 +27,17 @@ def get_quantile_radius(
     mask_self = ~torch.eye(data.shape[0], dtype=torch.bool)
     dists = dists[mask_self]  # remove self-distances
 
+    min_dist = dists.min()
+    max_dist = dists.max()
+
     print("Mask self min:", dists.min().item())
     print("Mask self median:", dists.median().item())
     print("Mask self max:", dists.max().item())
 
-    r_low = torch.quantile(dists, low)
-    r_high = torch.quantile(dists, high)
-    radius = r_low + quantile * (r_high - r_low)
+    # radius = torch.quantile(dists, percentile).item()
+    radius = min_dist + percentile * (max_dist - min_dist)
 
-    return radius
+    return radius.item()
 
 
 def embed_time_series(x: torch.Tensor, dim: int, time_delay: int) -> torch.Tensor:

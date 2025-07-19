@@ -2,7 +2,7 @@ import torch
 from torch.nn.functional import normalize
 from torch_geometric.nn import knn_graph, radius_graph
 
-from graphs_transformations.utils import get_quantile_radius
+from graphs_transformations.utils import get_percentile_radius
 
 
 def from_knn(
@@ -42,10 +42,10 @@ def from_radius(
         means = data.nanmean(dim=1, keepdim=True)
         data = torch.where(mask, data, means)
 
-    radius = get_quantile_radius(
-        data=data, mask=mask, quantile=radius, low=0.0, high=0.1, cosine=cosine
+    radius = get_percentile_radius(
+        data=data, mask=mask, percentile=radius, cosine=cosine
     )
-    print(f"quantile radius is {radius}")
+    print(f"percentile radius is {radius}")
 
     # Step 2: Check for invalid values
     if torch.isnan(data).any() or torch.isinf(data).any():
