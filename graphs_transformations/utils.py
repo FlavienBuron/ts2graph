@@ -29,10 +29,15 @@ def get_quantile_radius(
     mask_self = ~torch.eye(data.shape[0], dtype=torch.bool)
     dists = dists[mask_self]  # remove self-distances
 
-    quantile = (quantile - low) / (high - low)
-    print(f"{quantile=}")
+    print("Mask self min:", dists.min().item())
+    print("Mask self median:", dists.median().item())
+    print("Mask self max:", dists.max().item())
 
-    return torch.quantile(dists, quantile).item()
+    r_low = torch.quantile(dists, low)
+    r_high = torch.quantile(dists, high)
+    radius = r_low + quantile * (r_high - r_low)
+
+    return radius
 
 
 def embed_time_series(x: torch.Tensor, dim: int, time_delay: int) -> torch.Tensor:
