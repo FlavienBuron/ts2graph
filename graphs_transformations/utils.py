@@ -30,6 +30,7 @@ def get_quantile_radius(
     dists = dists[mask_self]  # remove self-distances
 
     quantile = (quantile - low) / (high - low)
+    print(f"{quantile=}")
 
     return torch.quantile(dists, quantile).item()
 
