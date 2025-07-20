@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Radius Experiment Results</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background-color: #111;
+        color: #f0f0f0;
+        margin: 2rem;
+      }
+      h1 {
+        color: #00ccff;
+      }
+      iframe {
+        border: none;
+        width: 100%;
+        height: 500px;
+        margin-bottom: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Radius Experiment Results</h1>
+    <p>
+      This page shows the MAE, MSE, and RMSE values for different <code>radius</code> values in Radius-based graph
+      techniques, compared with <b>Empty graph</b> and <b>Fully Connected Graph</b>. The vertical line indicates the
+      minimal value, and takes the color of either horizontal lines if those are the minimum (and is placed on either
+      end of the axis).
+    </p>
+
+    <h2>MAE</h2>
+    <iframe src="rad_mae.html"></iframe>
+
+    <h2>MSE</h2>
+    <iframe src="rad_mse.html"></iframe>
+
+    <h2>RMSE</h2>
+    <iframe src="rad_rmse.html"></iframe>
+
+    <h2>MAE vs zero</h2>
+    <iframe src="rad_mae_change.html"></iframe>
+
+    <h2>MSE vs zero</h2>
+    <iframe src="rad_mse_change.html"></iframe>
+
+    <h2>RMSE vs zero</h2>
+    <iframe src="rad_rmse_change.html"></iframe>
+  </body>
+</html>
