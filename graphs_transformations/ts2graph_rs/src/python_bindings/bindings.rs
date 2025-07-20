@@ -1,5 +1,6 @@
 use super::conversions::TensorConverter;
 use crate::graph::temporal::k_hop_graph as k_hop_rs;
+use crate::graph::temporal::recurrence_graph_rs;
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 
 #[pyfunction]
@@ -22,6 +23,16 @@ pub fn k_hop_graph(
     let edge_weight_numpy = TensorConverter::tensor_to_numpy(py, &edge_weight)?;
 
     Ok((edge_index_numpy, edge_weight_numpy))
+}
+
+pub fn recurrence_graph(
+    py: Python<'_>,
+    x: &[f32],
+    radius: f32,
+    embedding_dim: i64,
+    time_lag: i64,
+) -> PyResult<(PyObject, PyObject)> {
+    let (edge_index, edge_weight) = recurrence_graph_rs(x, radius, embedding_dim, time_lag);
 }
 
 pub fn register(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
