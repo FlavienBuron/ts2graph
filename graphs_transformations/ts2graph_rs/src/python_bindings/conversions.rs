@@ -1,6 +1,8 @@
+use numpy::PyUntypedArrayMethods;
 use numpy::{PyArray1, PyArray2, PyReadonlyArrayDyn, PyReadwriteArrayDyn};
+use pyo3::types::{PyAny, PyAnyMethods};
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
-use std::{array, fmt};
+use std::fmt;
 use tch::{Kind, Tensor};
 
 /// Tensor to Numpy conversion utilities
@@ -105,7 +107,7 @@ impl TensorConverter {
         }
     }
     /// Converts a PyTorch tensor (from Python) into a tch::Tensor
-    pub fn from_torch_tensor(py: Python, obj: &PyAny) -> PyResult<Tensor> {
+    pub fn from_torch_tensor(py: Python, obj: &Bound<'_, PyAny>) -> PyResult<Tensor> {
         // Must be a torch tensor
         if !obj.hasattr("numpy")? {
             return Err(PyRuntimeError::new_err(
@@ -120,15 +122,19 @@ impl TensorConverter {
         if let Ok(array) = numpy_obj.extract::<PyReadonlyArrayDyn<f32>>() {
             let data = array.as_slice()?;
             let shape = array.shape();
-            return Ok(Tensor::from_slice(data).reshape(shape).to_kind(Kind::Float));
+            let shape_i64: Vec<i64> = shape.iter().map(|&dim| dim as i64).collect();
+            return Ok(Tensor::from_slice(data)
+                .reshape(shape_i64)
+                .to_kind(Kind::Float));
         }
 
         // Try f64
         if let Ok(array) = numpy_obj.extract::<PyReadonlyArrayDyn<f64>>() {
             let data = array.as_slice()?;
             let shape = array.shape();
+            let shape_i64: Vec<i64> = shape.iter().map(|&dim| dim as i64).collect();
             return Ok(Tensor::from_slice(data)
-                .reshape(shape)
+                .reshape(shape_i64)
                 .to_kind(Kind::Double));
         }
 
@@ -136,7 +142,10 @@ impl TensorConverter {
         if let Ok(array) = numpy_obj.extract::<PyReadonlyArrayDyn<i64>>() {
             let data = array.as_slice()?;
             let shape = array.shape();
-            return Ok(Tensor::from_slice(data).reshape(shape).to_kind(Kind::Int64));
+            let shape_i64: Vec<i64> = shape.iter().map(|&dim| dim as i64).collect();
+            return Ok(Tensor::from_slice(data)
+                .reshape(shape_i64)
+                .to_kind(Kind::Int64));
         }
 
         Err(PyRuntimeError::new_err(
@@ -145,20 +154,24 @@ impl TensorConverter {
     }
 
     /// Convert a Numpy array or PyTorch tensor (CPU) into a `tch::Tensor`
-    pub fn from_numpy(py: Python, obj: &PyAny) -> PyResult<Tensor> {
+    pub fn from_numpy(py: Python, obj: &Bound<'_, PyAny>) -> PyResult<Tensor> {
         // Try float32
         if let Ok(array) = obj.extract::<PyReadwriteArrayDyn<f32>>() {
             let data = array.as_slice()?;
             let shape = array.shape();
-            return Ok(Tensor::from_slice(data).reshape(shape).to_kind(Kind::Float));
+            let shape_i64: Vec<i64> = shape.iter().map(|&dim| dim as i64).collect();
+            return Ok(Tensor::from_slice(data)
+                .reshape(shape_i64)
+                .to_kind(Kind::Float));
         }
 
         // Try float64
         if let Ok(array) = obj.extract::<PyReadonlyArrayDyn<f64>>() {
             let data = array.as_slice()?;
             let shape = array.shape();
+            let shape_i64: Vec<i64> = shape.iter().map(|&dim| dim as i64).collect();
             return Ok(Tensor::from_slice(data)
-                .reshape(shape)
+                .reshape(shape_i64)
                 .to_kind(Kind::Double));
         }
 
@@ -166,20 +179,26 @@ impl TensorConverter {
         if let Ok(array) = obj.extract::<PyReadonlyArrayDyn<i64>>() {
             let data = array.as_slice()?;
             let shape = array.shape();
-            return Ok(Tensor::from_slice(data).reshape(shape).to_kind(Kind::Int64));
+            let shape_i64: Vec<i64> = shape.iter().map(|&dim| dim as i64).collect();
+            return Ok(Tensor::from_slice(data)
+                .reshape(shape_i64)
+                .to_kind(Kind::Int64));
         }
 
         // Try int32
         if let Ok(array) = obj.extract::<PyReadonlyArrayDyn<i32>>() {
             let data = array.as_slice()?;
             let shape = array.shape();
-            return Ok(Tensor::from_slice(data).reshape(shape).to_kind(Kind::Int));
+            let shape_i64: Vec<i64> = shape.iter().map(|&dim| dim as i64).collect();
+            return Ok(Tensor::from_slice(data)
+                .reshape(shape_i64)
+                .to_kind(Kind::Int));
         }
 
         // Try to convert torch.Tensor to numpy and retry
         if obj.hasattr("numpy")? {
             let numpy_obj = obj.call_method0("numpy")?;
-            return Self::from_numpy(py, numpy_obj);
+            return Self::from_numpy(py, &numpy_obj);
         }
 
         Err(PyRuntimeError::new_err(

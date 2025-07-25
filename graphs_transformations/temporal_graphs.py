@@ -2,6 +2,7 @@ from typing import Callable, Optional
 
 import torch
 from ts2graph_rs import k_hop_graph as khgrs
+from ts2graph_rs import recurrence_graph
 
 
 def k_hop_graph_rs(
@@ -20,6 +21,20 @@ def k_hop_graph_rs(
         bidirectional=bidirectional,
         decay_name=decay_name,
     )
+
+    edge_index = torch.from_numpy(edge_index).long()
+    edge_weight = torch.from_numpy(edge_weight).float()
+
+    return edge_index, edge_weight
+
+
+def recurrence_graph_rs(
+    x: torch.Tensor,
+    radius: float,
+    embedding_dim: Optional[int] = None,
+    time_lag: int = 1,
+):
+    edge_index, edge_weight = recurrence_graph(x, radius, embedding_dim, time_lag)
 
     edge_index = torch.from_numpy(edge_index).long()
     edge_weight = torch.from_numpy(edge_weight).float()

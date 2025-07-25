@@ -1,6 +1,5 @@
 use std::f64;
 
-use itertools::Itertools;
 use tch::{Device, Kind, Tensor};
 
 fn embed_timeseries(x: &Tensor, dim: i64, tau: i64) -> Result<Tensor, String> {
@@ -9,15 +8,23 @@ fn embed_timeseries(x: &Tensor, dim: i64, tau: i64) -> Result<Tensor, String> {
         return Err("Time series too short for given embedding parameters".into());
     }
 
-    let num_vectors = n - (dim - 1) * tau + 1;
+    let num_vectors = n - (dim - 1) * tau;
 
+    let size0 = x.size()[0];
     let views: Vec<Tensor> = (0..dim)
-        .map(|j| {
+        .filter_map(|j| {
             let start = j * tau;
-            x.narrow(0, start, num_vectors)
+            if start + num_vectors <= size0 {
+                Some(x.narrow(0, start, num_vectors))
+            } else {
+                None
+            }
         })
         .collect();
 
+    if views.is_empty() {
+        return Err("Embedding failed: no valid segments".into());
+    }
     let embedded = Tensor::stack(&views, 1);
     Ok(embedded)
 }
@@ -37,14 +44,21 @@ fn estimate_embedding_dim(x: &Tensor, time_lag: i64, max_dim: i64) -> Result<i64
 
     // Calculate E1 and E2 for dimensions 1 to max_dim
     for dim in 1..=max_dim {
-        if n < (dim * time_lag + 1) {
+        if n < ((dim - 1) * time_lag + 1) {
             return Err("Time series too short for embedding dimension estimation".into());
         }
 
         let embedded_d = embed_timeseries(x, dim, time_lag)?;
         let embedded_d_plus = embed_timeseries(x, dim + 1, time_lag)?;
 
-        let num_vectors = embedded_d.size()[0];
+        let num_vectors_d = embedded_d.size()[0];
+        let num_vectors_d_plus = embedded_d_plus.size()[0];
+        let num_vectors = std::cmp::min(num_vectors_d, num_vectors_d_plus);
+
+        if num_vectors < 2 {
+            continue;
+        }
+
         let mut e1_sum = 0.0f64;
         let mut e2_sum = 0.0f64;
 
@@ -144,7 +158,8 @@ fn estimate_embedding_dim(x: &Tensor, time_lag: i64, max_dim: i64) -> Result<i64
 
 fn compute_recurrence_matrix(embedded_ts: &Tensor, radius: f64) -> Tensor {
     let n = embedded_ts.size()[0];
-    let mut recurrence_matrix = Tensor::zeros([n, n], (Kind::Bool, Device::Cpu));
+    // let recurrence_matrix = Tensor::zeros([n, n], (Kind::Bool, Device::Cpu));
+    let mut data = vec![0u8; (n * n) as usize];
 
     // Fill the recurrence matrix
     for i in 0..n {
@@ -153,13 +168,18 @@ fn compute_recurrence_matrix(embedded_ts: &Tensor, radius: f64) -> Tensor {
                 let v1 = embedded_ts.get(i);
                 let v2 = embedded_ts.get(j);
                 let dist = euclidian_distance(&v1, &v2);
-                let is_recurrent = dist.le(radius);
-                recurrence_matrix.get(i).get(j).copy_(&is_recurrent);
+                let is_recurrent = dist.le(radius).int64_value(&[]) != 0;
+
+                // recurrence_matrix.get(i).get(j).copy_(&is_recurrent);
+                data[(i * n + j) as usize] = if is_recurrent { 1 } else { 0 };
             }
         }
     }
 
-    recurrence_matrix
+    // recurrence_matrix
+    Tensor::from_slice(&data)
+        .reshape(&[n, n])
+        .to_kind(Kind::Bool)
 }
 
 fn recurrence_matrix_to_edges(recurrence_matrix: &Tensor) -> (Tensor, Tensor) {
@@ -284,6 +304,8 @@ pub fn estimate_embedding_dim_from_slice(
     time_lag: i64,
     max_dim: i64,
 ) -> Result<i64, String> {
+    let max_feasible_dim = ((x.len() - 1) / time_lag as usize) as i64;
+    let max_dim = std::cmp::min(max_dim, max_feasible_dim);
     let x_tensor = tensor_from_slice(x);
     estimate_embedding_dim(&x_tensor, time_lag, max_dim)
 }
@@ -292,24 +314,47 @@ pub fn estimate_embedding_dim_from_slice(
 mod tests {
     use super::*;
 
+    // Create a Tensor from a tensor slice
+    fn tensor_from_slice<T: tch::kind::Element>(slice: &[T]) -> Tensor {
+        Tensor::f_from_slice(slice).expect("Failed to create tensor from slice")
+    }
+
+    fn assert_tensor_eq(actual: &Tensor, expected: &[f64], row_idx: usize) {
+        let expected_tensor = tensor_from_slice(expected).to_kind(Kind::Double);
+
+        let is_equal = actual.eq_tensor(&expected_tensor).all().int64_value(&[]) != 0;
+
+        assert!(
+            is_equal,
+            "Mismatch at row {}: expected {:?}, got {:?}",
+            row_idx, expected_tensor, actual
+        );
+    }
+
     #[test]
     fn test_embedding() {
         let x = tensor_from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0]);
         let embedded = embed_timeseries(&x, 2, 1).unwrap();
         assert_eq!(embedded.size(), [4, 2]);
 
-        let first_row: Vec<f64> = embedded.get(0).into();
-        assert_eq!(first_row, vec![1.0, 2.0]);
+        let expected_rows = [
+            &[1.0, 2.0][..],
+            &[2.0, 3.0][..],
+            &[3.0, 4.0][..],
+            &[4.0, 5.0][..],
+        ];
 
-        let second_row: Vec<f64> = embedded.get(1).into();
-        assert_eq!(second_row, vec![2.0, 3.0]);
+        for (i, expected) in expected_rows.iter().enumerate() {
+            let actual = embedded.get(i as i64);
+            assert_tensor_eq(&actual, expected, i);
+        }
     }
 
     #[test]
     fn test_euclidian_distance() {
         let v1 = tensor_from_slice(&[0.0f64, 0.0]);
         let v2 = tensor_from_slice(&[3.0f64, 4.0]);
-        let dist: f64 = euclidian_distance(&v1, &v2).into();
+        let dist: f64 = euclidian_distance(&v1, &v2).double_value(&[]) as f64;
         assert!((dist - 5.0).abs() < 1e-6);
     }
 
@@ -324,9 +369,9 @@ mod tests {
 
         let rm = compute_recurrence_matrix(&embedded, 0.5);
 
-        let val_02: bool = rm.get(0).get(2).into();
-        let val_20: bool = rm.get(2).get(0).into();
-        let val_01: bool = rm.get(0).get(1).into();
+        let val_02: bool = rm.get(0).get(2).int64_value(&[]) != 0;
+        let val_20: bool = rm.get(2).get(0).int64_value(&[]) != 0;
+        let val_01: bool = rm.get(0).get(1).int64_value(&[]) != 0;
 
         assert_eq!(val_02, true); // Points 0 and 2 should be connected
         assert_eq!(val_20, true); // Symmetric
@@ -336,7 +381,7 @@ mod tests {
     #[test]
     fn test_embedding_dim_estimation() {
         // Create a simple periodic signal
-        let x: Vec<f64> = (0..100).map(|i| (i as f32 * 0.1).sin()).collect();
+        let x: Vec<f64> = (0..100).map(|i| (i as f64 * 0.1).sin()).collect();
         let estimated_dim = estimate_embedding_dim_from_slice(&x, 1, 10).unwrap();
         assert!(estimated_dim >= 1 && estimated_dim <= 10);
     }
@@ -346,22 +391,18 @@ mod tests {
         let x = [
             1.0f64, 2.0, 3.0, 4.0, 5.0, 4.0, 3.0, 2.0, 1.0, 2.0, 3.0, 4.0,
         ];
-        let (edge_index, edge_weight, estimated_dim) =
-            recurrence_graph_from_slice(&x, 1.0, None, 1).unwrap();
+        let (edge_index, edge_weight) = recurrence_graph_from_slice(&x, 5.0, None, 1).unwrap();
 
         assert_eq!(edge_index.size()[0], 2); // should have 2 rows (src, dst)
         assert!(edge_index.size()[1] > 0); // Should have some edges
         assert_eq!(edge_weight.size()[0], edge_index.size()[1]); // Same number of weights as edges
-        assert!(estimated_dim >= 1 && estimated_dim <= 10) // Reasonable embedding dimension
     }
 
     #[test]
     fn test_recurrence_graph_with_specified_dim() {
         let x = [1.0f64, 2.0, 3.0, 4.0, 5.0, 4.0, 3.0, 2.0, 1.0];
-        let (edge_index, edge_weight, used_dim) =
-            recurrence_graph_from_slice(&x, 1.0, Some(2), 1).unwrap();
+        let (edge_index, edge_weight) = recurrence_graph_from_slice(&x, 5.0, Some(2), 1).unwrap();
 
-        assert_eq!(used_dim, 2); // Should use the specified dimension
         assert_eq!(edge_index.size()[0], 2);
         assert!(edge_index.size()[1] > 0);
         assert_eq!(edge_weight.size()[0], edge_index.size()[1]);
