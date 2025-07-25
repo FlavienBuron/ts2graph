@@ -131,6 +131,7 @@ class STGI(nn.Module):
                     temporal_edge_weight = torch.empty((0,), dtype=torch.float)
                 temporal_graph_end = perf_counter()
                 temporal_graph_time = temporal_graph_end - temporal_graph_start
+                print(f"{temporal_graph_time=}")
                 # Apply temporal GNN layers
                 for i, temp_gnn_layers in enumerate(self.temp_gnn_layers):
                     x_node = temp_gnn_layers(
