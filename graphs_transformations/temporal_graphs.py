@@ -1,8 +1,8 @@
 from typing import Callable, Optional
 
 import torch
-from ts2graph_rs import k_hop_graph as khgrs
-from ts2graph_rs import recurrence_graph
+from ts2graph_rs.src import k_hop_graph as khgrs
+from ts2graph_rs.src import recurrence_graph
 
 
 def k_hop_graph_rs(
