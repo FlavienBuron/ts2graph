@@ -34,7 +34,7 @@ def recurrence_graph_rs(
     embedding_dim: Optional[int] = None,
     time_lag: int = 1,
 ):
-    print("Calling Rust recurrence_graph_rs")
+    x = x.contiguous()
     edge_index, edge_weight = recurrence_graph(x, radius, embedding_dim, time_lag)
 
     edge_index = torch.from_numpy(edge_index).long()
