@@ -16,4 +16,4 @@ pip install -r requirements.txt
 
 cd ./graphs_transformations/bindings/ts2graph_rs/
 
-maturin develop --release --interpreter "$(which python)"
+maturin develop --release
