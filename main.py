@@ -662,6 +662,7 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
         print("Using Reccurrent Temporal Graph")
         return partial(
             ts2net.tsnet_rn,
+            # recurrence_graph_rs,
             radius=alpha,
             time_lag=time_lag,
             embedding_dim=embedding_dim,
