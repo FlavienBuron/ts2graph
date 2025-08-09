@@ -116,7 +116,7 @@ for RAD in $(seq 0.0 $FRACTION 1.0); do
     printf -v RAD_FMT "%.2f" "$RAD"
     echo "Running: -g rad $RAD_FMT -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_loc_${RAD_FMT}_sl${SELF_LOOP}_${EPOCHS}.json"
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_rad_${RAD_FMT}_sl${SELF_LOOP}_${EPOCHS}.json"
     python -u main.py -d $DATASET -sp $FILENAME -sg rad $RAD_FMT -e $EPOCHS \
            -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
 done
