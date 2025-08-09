@@ -1,28 +1,87 @@
-.#!/bin/bash
+#!/bin/bash
 
 . .venv/bin/activate
 
-# Accept custom list of epochs from command line, or use defaults
-FRAC=("$@")
-if [ ${#FRAC[@]} -eq 0 ]; then
-    FRAC=({1..100})
-fi
-
+EPOCHS=1
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
-USE_MLP_OUTPUT=0
+STGI_MODE='s'
 MLP_SIZE=32
 DATASET="airq_small"
-TOTAL=36
+NUM_NODES=36
+FRACTION=0.05
+LAYER_TYPE=""
 
-for K in {1..10} 12 14 16 18 20 22 24 26 28 30 32 34 36; do
-    echo "Running: KNN $K for $DATASET"
-    python -u main.py -d $DATASET -g knn "$K" -e 1 -hd $HIDDEN_DIM -ln $LAYER_NUMBER -gs -dt -v 0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --epochs)
+            EPOCHS="$2"
+            shift 2
+            ;;
+        --dataset)
+            DATASET="$2"
+            shift 2
+            ;;
+        --layer_type)
+            LAYER_TYPE="$2"
+            shift 2
+            ;;
+        --self-loop)
+            SELF_LOOP=1
+            shift
+            ;;
+        --hidden_dim)
+            HIDDEN_DIM="$2"
+            shift 2
+            ;;
+        --layers)
+            LAYER_NUMBER="$2"
+            shift 2
+            ;;
+        --mode)
+            STGI_MODE="$2"
+            shift 2
+            ;;
+        --lr)
+            LR="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
 done
 
-# for F in "${FRAC[@]}"; do
-#     K=$(awk "BEGIN { printf \"%d\", ($TOTAL * $F) / 100 }")
-#     echo "Running: KNN $K for $DATASET"
-#     python -u main.py -d $DATASET -g knn "$K" -e 1 -hd $HIDDEN_DIM -ln $LAYER_NUMBER -gs -dt -v 0
-# done
+if [[ "$DATASET" == "airq" ]]; then
+    NUM_NODES=437
+fi
+
+if [[ -z "$LR" || "$LR" == "0" ]]; then
+    if [[ "$LAYER_NUMBER" -eq 1 ]]; then
+        LR=0.005
+    else
+        LR=0.0005
+    fi
+fi
+
+
+DATE=$(date +%y%m%d)
+EXP_DIR="./experiments/results/knn/"
+LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
+
+if [[ "$LAYER_TYPE" != "" ]]; then
+    mkdir -p "${EXP_DIR}/${LAYER_TYPE}/"
+else
+    mkdir -p "$EXP_DIR"
+    LAYER_TYPE="GCNConv"
+fi
+
+echo "Running experiments on $DATE" >> "$LOGFILE"
+
+for K in $(seq 0.0 $FRACTION 1.0); do
+    echo "Running: -g knn $K -e $EPOCHS -l $LAYER_TYPE" | tee -a "$LOGFILE"
+    python -u main.py -d $DATASET -sp $EXP_DIR -sg knn $K -e $EPOCHS -l $LAYER_TYPE \
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -gs -dt -v 0 | tee -a "$LOGFILE"
+done
