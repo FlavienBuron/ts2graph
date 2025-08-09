@@ -617,11 +617,15 @@ def get_spatial_graph(
     else:
         start = perf_counter()
         param = parameter
-        adj_matrix = dataset.get_knn_graph(
-            k=param,
-            loop=args.self_loop,
-            cosine=args.similarity_metric == "cosine",
-        )
+        if param > 0.0:
+            adj_matrix = dataset.get_knn_graph(
+                k=param,
+                loop=args.self_loop,
+                cosine=args.similarity_metric == "cosine",
+            )
+        else:
+            adj_matrix = dataset.get_knn_graph(k=1.0, loop=False, cosine=False)
+            adj_matrix = torch.zeros_like(adj_matrix)
         end = perf_counter()
     total_time = end - start
     return adj_matrix, total_time
