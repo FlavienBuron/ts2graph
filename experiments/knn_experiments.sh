@@ -2,7 +2,7 @@
 
 . .venv/bin/activate
 
-EPOCHS=50
+EPOCHS=30
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
