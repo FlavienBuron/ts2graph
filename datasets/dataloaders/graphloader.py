@@ -55,7 +55,7 @@ class GraphLoader(Dataset, ABC):
         pass
 
     @abstractmethod
-    def get_knn_graph(self, k: int, *args, **kwargs) -> Any:
+    def get_knn_graph(self, k: int | float, *args, **kwargs) -> Any:
         pass
 
     @abstractmethod

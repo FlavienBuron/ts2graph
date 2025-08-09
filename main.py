@@ -616,7 +616,7 @@ def get_spatial_graph(
         end = perf_counter()
     else:
         start = perf_counter()
-        param = int(parameter)
+        param = parameter
         adj_matrix = dataset.get_knn_graph(
             k=param,
             loop=args.self_loop,

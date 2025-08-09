@@ -253,7 +253,7 @@ class AirQualityLoader(GraphLoader):
 
     def get_knn_graph(
         self,
-        k: int,
+        k: int | float,
         use_corrupted_data: bool = False,
         loop: bool = False,
         cosine: bool = False,

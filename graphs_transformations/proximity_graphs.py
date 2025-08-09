@@ -2,13 +2,13 @@ import torch
 from torch.nn.functional import normalize
 from torch_geometric.nn import knn_graph, radius_graph
 
-from graphs_transformations.utils import get_percentile_radius
+from graphs_transformations.utils import get_percentile_k, get_percentile_radius
 
 
 def from_knn(
     data: torch.Tensor,
     mask: torch.Tensor,
-    k: int,
+    k: int | float,
     loop=False,
     cosine=False,
 ) -> torch.Tensor:
@@ -27,7 +27,14 @@ def from_knn(
     if cosine:
         data = normalize(input=data, p=2, dim=1)
 
-    edge_index = knn_graph(x=data, k=k, loop=loop, cosine=cosine)
+    if type(k) is float:
+        real_k = get_percentile_k(data, k, loop)
+    elif type(k) is int:
+        real_k = k
+    else:
+        real_k = int(k)
+
+    edge_index = knn_graph(x=data, k=real_k, loop=loop, cosine=cosine)
     return edge_index
 
 

@@ -1,4 +1,5 @@
 import json
+import math
 
 import networkx as nx
 import numpy as np
@@ -34,6 +35,15 @@ def get_percentile_radius(
     radius = min_dist + percentile * (max_dist - min_dist)
 
     return radius.item()
+
+
+def get_percentile_k(data: torch.Tensor, percentile: float, loop: bool = False) -> int:
+    shape = data.shape
+    max_k = shape[1] if loop else shape[1] - 1
+
+    k = math.ceil(percentile * max_k)
+
+    return max(1, min(k, max_k))
 
 
 def embed_time_series(x: torch.Tensor, dim: int, time_delay: int) -> torch.Tensor:
