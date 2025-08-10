@@ -35,7 +35,7 @@ def from_knn(
         real_k = int(k)
 
     edge_index = knn_graph(
-        x=data, k=real_k, loop=(real_k == data.shape[1]), cosine=cosine
+        x=data, k=real_k, loop=(real_k == data.shape[0]), cosine=cosine
     )
     return edge_index
 
