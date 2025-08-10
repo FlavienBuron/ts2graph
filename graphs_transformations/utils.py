@@ -38,7 +38,7 @@ def get_percentile_radius(
 
 def get_percentile_k(data: torch.Tensor, percentile: float, loop: bool = False) -> int:
     shape = data.shape
-    max_k = shape[1] if loop else shape[1] - 1
+    max_k = shape[0] if loop else shape[0] - 1
 
     k = round(percentile * max_k)
     print(f"{data.shape=} {max_k=} {k=}")
