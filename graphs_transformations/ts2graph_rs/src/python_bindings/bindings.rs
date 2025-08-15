@@ -1,6 +1,6 @@
 use super::conversions::TensorConverter;
 use crate::graph::temporal::k_hop_graph as k_hop_rs;
-use crate::graph::temporal::recurrence_graph_rs;
+use crate::graph::temporal::{recurrence_graph_rs, tsnet_vg};
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 
 #[pyfunction]
@@ -30,20 +30,41 @@ pub fn k_hop_graph(
 pub fn recurrence_graph(
     py: Python<'_>,
     x: &Bound<'_, PyAny>,
-    radius: f64,
+    radius: f32,
     embedding_dim: Option<i64>,
     time_lag: i64,
 ) -> PyResult<(PyObject, PyObject)> {
     let x_tensor = TensorConverter::from_torch_tensor(py, x)?;
 
-    let (edge_index, edge_weight) = recurrence_graph_rs(&x_tensor, radius, embedding_dim, time_lag)
-        .map_err(|e| {
-            PyRuntimeError::new_err(format!("Recurrence graph generation failed!: {e}"))
-        })?;
+    let net = recurrence_graph_rs(&x_tensor, radius, embedding_dim, time_lag).map_err(|e| {
+        PyRuntimeError::new_err(format!("Recurrence graph generation failed!: {e}"))
+    })?;
 
     // Convert to Numpy
-    let edge_index_numpy = TensorConverter::tensor_to_numpy(py, &edge_index)?;
-    let edge_weight_numpy = TensorConverter::tensor_to_numpy(py, &edge_weight)?;
+    let edge_index_numpy = TensorConverter::tensor_to_numpy(py, &net.edge_index)?;
+    let edge_weight_numpy = TensorConverter::tensor_to_numpy(py, &net.edge_weight)?;
+
+    Ok((edge_index_numpy, edge_weight_numpy))
+}
+
+#[pyfunction]
+pub fn visibility_graph(
+    py: Python<'_>,
+    x: &Bound<'_, PyAny>,
+    method: &str,
+    directed: bool,
+    limit: Option<i64>,
+    num_cores: Option<usize>,
+) -> PyResult<(PyObject, PyObject)> {
+    let x_tensor = TensorConverter::from_torch_tensor(py, x)?;
+
+    let net = tsnet_vg(&x_tensor, method, directed, limit, num_cores).map_err(|e| {
+        PyRuntimeError::new_err(format!("Recurrence graph generation failed!: {e}"))
+    })?;
+
+    // Convert to Numpy
+    let edge_index_numpy = TensorConverter::tensor_to_numpy(py, &net.edge_index)?;
+    let edge_weight_numpy = TensorConverter::tensor_to_numpy(py, &net.edge_weight)?;
 
     Ok((edge_index_numpy, edge_weight_numpy))
 }
@@ -51,5 +72,6 @@ pub fn recurrence_graph(
 pub fn register(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(k_hop_graph, py)?)?;
     m.add_function(wrap_pyfunction!(recurrence_graph, py)?)?;
+    m.add_function(wrap_pyfunction!(visibility_graph, py)?)?;
     Ok(())
 }
