@@ -131,5 +131,7 @@ for LOC in $(seq 0.0 $FRACTION 1.0); do
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_loc_${LOC_FMT}_sl${SELF_LOOP}_${EPOCHS}.json"
     python -u main.py -d $DATASET -sp $FILENAME -sg loc $LOC_FMT -e $EPOCHS -l $LAYER_TYPE \
-           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
+        $( [ "$UNWEIGHTED" -eq 1 ] && echo -ug ) \
+        -v 0 | tee -a "$LOGFILE"
 done
