@@ -24,7 +24,7 @@ from torch_geometric.utils import dense_to_sparse
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.STGI import STGI
-from graphs_transformations.temporal_graphs import k_hop_graph_rs, recurrence_graph_rs
+from graphs_transformations.temporal_graphs import k_hop_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
@@ -172,6 +172,12 @@ def parse_args() -> Namespace:
         "-dt",
         action="store_false",
         help="whether to execute the downstream task (imputation)",
+    )
+    parser.add_argument(
+        "--unweighted_graph",
+        "-ug",
+        action="store_false",
+        help="should the selected graph be weighted, if available",
     )
     args = parser.parse_args()
     return args
@@ -590,7 +596,9 @@ def get_spatial_graph(
     if "loc" in technique:
         start = perf_counter()
         adj_matrix = dataset.get_geolocation_graph(
-            threshold=parameter, include_self=args.self_loop, weighted=True
+            threshold=parameter,
+            include_self=args.self_loop,
+            weighted=args.unweighted_graph,
         )
         end = perf_counter()
     elif "zero" in technique:

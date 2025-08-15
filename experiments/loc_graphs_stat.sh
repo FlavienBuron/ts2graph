@@ -3,6 +3,7 @@
 . .venv/bin/activate
 
 EPOCHS=1
+UNWEIGHTED=0
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
@@ -47,6 +48,10 @@ while [[ $# -gt 0 ]]; do
             LR="$2"
             shift 2
             ;;
+        --unweighted)
+            UNWEIGHTED=1
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -78,5 +83,7 @@ for LOC in $(seq 0.0 $FRACTION 1.0); do
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_loc_${LOC_FMT}_sl${SELF_LOOP}.json"
     python -u main.py -d $DATASET -sp $EXP_DIR -sg loc $LOC_FMT -e $EPOCHS \
-           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -gs -dt -v 0 | tee -a "$LOGFILE"
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -gs -dt \
+            $( [ "$UNWEIGHTED" -eq 1 ] && echo -ug ) \
+           -v 0 | tee -a "$LOGFILE"
 done

@@ -3,6 +3,7 @@
 . .venv/bin/activate
 
 EPOCHS=30
+UNWEIGHTED=0
 HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
@@ -46,6 +47,10 @@ while [[ $# -gt 0 ]]; do
             LR="$2"
             shift 2
             ;;
+        --unweighted)
+            UNWEIGHTED=1
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -72,6 +77,7 @@ LOGFILE="${EXP_DIR}${DATE}-loc-experiments.txt"
 
 if [[ "$LAYER_TYPE" != "" ]]; then
     mkdir -p "${EXP_DIR}/${LAYER_TYPE}/"
+    EXP_DIR="./experiments/results/loc/${LAYER_TYPE}"
 else
     mkdir -p "$EXP_DIR"
     LAYER_TYPE="GCNConv"
@@ -89,11 +95,6 @@ declare -A TECHNIQUES=(
     ["one_0"]=0
     ["knn"]=$KNN_VAL
 )
-
-USE_TEMP=""
-if [ "$USE_TEMPORAL" -eq 1 ]; then
-    USE_TEMP="-ut"
-fi
 
 ORIGINAL=$SELF_LOOP
 
@@ -116,7 +117,9 @@ for G in "${!TECHNIQUES[@]}"; do
     echo "Running: -g $BASE_G $V -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -l $LAYER_TYPE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -v 0 | tee -a "$LOGFILE"
+    python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -l $LAYER_TYPE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
+        $( [ "$UNWEIGHTED" -eq 1 ] && echo -ug ) \
+        -v 0 | tee -a "$LOGFILE"
 done
 
 SELF_LOOP=$ORIGINAL

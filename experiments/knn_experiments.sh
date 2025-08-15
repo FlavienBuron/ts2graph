@@ -73,6 +73,7 @@ LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
 
 if [[ "$LAYER_TYPE" != "" ]]; then
     mkdir -p "${EXP_DIR}/${LAYER_TYPE}/"
+    EXP_DIR="./experiments/results/knn/${LAYER_TYPE}"
 else
     mkdir -p "$EXP_DIR"
     LAYER_TYPE="GCNConv"
