@@ -24,7 +24,7 @@ from torch_geometric.utils import dense_to_sparse
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.STGI import STGI
-from graphs_transformations.temporal_graphs import k_hop_graph_rs
+from graphs_transformations.temporal_graphs import k_hop_graph_rs, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
     compute_edge_difference_smoothness,

@@ -9,7 +9,7 @@ name = "ts2graph_rs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pyo3 = { version = "0.25", features = ["extension-module"] }
+pyo3 = { version = "0.25.1", features = ["extension-module"] }
 ndarray = "0.15"
 numpy = "0.25"
 tch = { version = "0.18.1", features = ["cpython"] }
