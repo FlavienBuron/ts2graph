@@ -12,6 +12,7 @@ MLP_SIZE=32
 DATASET="airq_small"
 NUM_NODES=36
 FRACTION=0.05
+LAYER_TYPE="GCNConv"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -72,16 +73,9 @@ fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/loc/"
+EXP_DIR="./experiments/results/loc/ln${LAYER_NUMBER}/${LAYER_TYPE}/"
+mkdir -p "$EXP_DIR"
 LOGFILE="${EXP_DIR}${DATE}-loc-experiments.txt"
-
-if [[ "$LAYER_TYPE" != "" ]]; then
-    mkdir -p "${EXP_DIR}/${LAYER_TYPE}/"
-    EXP_DIR="./experiments/results/loc/${LAYER_TYPE}"
-else
-    mkdir -p "$EXP_DIR"
-    LAYER_TYPE="GCNConv"
-fi
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
@@ -90,8 +84,8 @@ KNN_VAL=50
 
 declare -A TECHNIQUES=(
     ["zero_0"]=0
-    ["zero_1"]=1
-    ["one_1"]=1
+    # ["zero_1"]=1
+    # ["one_1"]=1
     ["one_0"]=0
     ["knn"]=$KNN_VAL
 )
