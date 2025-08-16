@@ -13,6 +13,7 @@ NUM_NODES=36
 FRACTION=0.05
 BATCH_SIZE=128
 DECAY="exp"
+LAYER_TYPE="GCNConv"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -22,6 +23,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dataset)
             DATASET="$2"
+            shift 2
+            ;;
+        --layer_type)
+            LAYER_TYPE="$2"
             shift 2
             ;;
         --self-loop)
@@ -73,10 +78,9 @@ fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/naive/"
-LOGFILE="${EXP_DIR}${DATE}-naive-experiments.txt"
-
+EXP_DIR="./experiments/results/naive/ln${LAYER_NUMBER}/${LAYER_TYPE}/"
 mkdir -p "$EXP_DIR"
+LOGFILE="${EXP_DIR}${DATE}-naive-experiments.txt"
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
