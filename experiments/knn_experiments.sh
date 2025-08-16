@@ -7,7 +7,6 @@ HIDDEN_DIM=32
 LAYER_NUMBER=1
 SELF_LOOP=0
 STGI_MODE='s'
-MLP_SIZE=32
 DATASET="airq_small"
 NUM_NODES=36
 FRACTION=0.05
@@ -68,16 +67,16 @@ fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/knn/"
-LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
 
 if [[ "$LAYER_TYPE" != "" ]]; then
-    mkdir -p "${EXP_DIR}/${LAYER_TYPE}/"
-    EXP_DIR="./experiments/results/knn/${LAYER_TYPE}"
+    EXP_DIR="./experiments/results/knn/ln${LAYER_NUMBER}/${LAYER_TYPE}"
+    mkdir -p "${EXP_DIR}/"
 else
-    mkdir -p "$EXP_DIR"
     LAYER_TYPE="GCNConv"
+    EXP_DIR="./experiments/results/knn/ln${LAYER_NUMBER}/${LAYER_TYPE}"
+    mkdir -p "${EXP_DIR}/"
 fi
+LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
