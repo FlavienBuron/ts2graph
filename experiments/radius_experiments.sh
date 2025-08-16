@@ -11,6 +11,7 @@ MLP_SIZE=32
 DATASET="airq_small"
 NUM_NODES=36
 FRACTION=0.05
+LAYER_TYPE="GCNConv"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -20,6 +21,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dataset)
             DATASET="$2"
+            shift 2
+            ;;
+        --layer_type)
+            LAYER_TYPE="$2"
             shift 2
             ;;
         --self-loop)
@@ -63,20 +68,16 @@ fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/rad/"
+EXP_DIR="./experiments/results/rad/ln${LAYER_NUMBER}/${LAYER_TYPE}/"
+mkdir -p "$EXP_DIR"
 LOGFILE="${EXP_DIR}${DATE}-rad-experiments.txt"
 
-mkdir -p "$EXP_DIR"
-
 echo "Running experiments on $DATE" >> "$LOGFILE"
-
-KNN_VAL=50
-[ "$DATASET" == "airq_small" ] && KNN_VAL=3
 
 declare -A TECHNIQUES=(
     ["zero_0"]=0
     ["one_0"]=0
-    ["knn"]=$KNN_VAL
+    ["knn"]=0.5
     ["loc"]=0.5
 )
 

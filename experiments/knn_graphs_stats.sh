@@ -60,7 +60,6 @@ fi
 
 DATE=$(date +%y%m%d)
 EXP_DIR="./experiments/results/graphs_stats/knn/"
-LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 

@@ -68,7 +68,7 @@ fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/graphs_stats/"
+EXP_DIR="./experiments/results/graphs_stats/rad/"
 mkdir -p "$EXP_DIR"
 
 # Sweep knn values from 1 to KNN_MAX
