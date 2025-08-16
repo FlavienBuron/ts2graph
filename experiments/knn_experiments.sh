@@ -10,7 +10,7 @@ STGI_MODE='s'
 DATASET="airq_small"
 NUM_NODES=36
 FRACTION=0.05
-LAYER_TYPE=""
+LAYER_TYPE="GCNConv"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -68,14 +68,8 @@ fi
 
 DATE=$(date +%y%m%d)
 
-if [[ "$LAYER_TYPE" != "" ]]; then
-    EXP_DIR="./experiments/results/knn/ln${LAYER_NUMBER}/${LAYER_TYPE}"
-    mkdir -p "${EXP_DIR}/"
-else
-    LAYER_TYPE="GCNConv"
-    EXP_DIR="./experiments/results/knn/ln${LAYER_NUMBER}/${LAYER_TYPE}"
-    mkdir -p "${EXP_DIR}/"
-fi
+EXP_DIR="./experiments/results/knn/ln${LAYER_NUMBER}/${LAYER_TYPE}/"
+mkdir -p "${EXP_DIR}/"
 LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
@@ -112,17 +106,6 @@ for G in "${!TECHNIQUES[@]}"; do
 done
 
 SELF_LOOP=$ORIGINAL
-# Sweep knn values from 1 to KNN_MAX
-
-# KNN_STEP=$(awk -v n=$NUM_NODES -v f=$FRACTION 'BEGIN { print n * f }')
-#
-# # Generate the list of K values
-# K_VALUES=$(awk -v max=$NUM_NODES -v step=$KNN_STEP '
-#     BEGIN {
-#         for (k = 1; k <= max; k += step) {
-#             printf "%.0f\n", k
-#         }
-#     }' | sort -n | uniq)
 
 for K in $(seq 0.0 $FRACTION 1.0); do
     echo "Running: -g knn $K -e $EPOCHS -l $LAYER_TYPE" | tee -a "$LOGFILE"

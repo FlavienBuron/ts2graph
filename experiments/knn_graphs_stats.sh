@@ -68,15 +68,8 @@ fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/knn/"
+EXP_DIR="./experiments/results/graphs_stats/knn/"
 LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
-
-if [[ "$LAYER_TYPE" != "" ]]; then
-    mkdir -p "${EXP_DIR}/${LAYER_TYPE}/"
-else
-    mkdir -p "$EXP_DIR"
-    LAYER_TYPE="GCNConv"
-fi
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
