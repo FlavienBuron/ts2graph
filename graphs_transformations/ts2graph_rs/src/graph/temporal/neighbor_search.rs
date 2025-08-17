@@ -24,21 +24,22 @@ impl NeighborSearch {
         if shape.len() != 2 {
             return Err("Phase space tensor must be 2-dimensional".into());
         }
+
         let number_vectors = shape[0];
         let embedding_dim = shape[1];
         let device = phase_space.device();
-        let n_boxes_actual = match n_boxes {
-            Some(nbr) => nbr,
-            _ => estimate_number_boxes(&phase_space, radius),
+        let n_boxes = match n_boxes {
+            Some(n) => n as usize,
+            _ => estimate_number_boxes(&phase_space, radius) as usize,
         };
 
         let mut instance = Self {
-            phase_space: phase_space.to_kind(Kind::Double),
+            phase_space: phase_space,
             embedding_dim: embedding_dim,
             number_vectors: number_vectors,
             radius: radius,
             searching_workspace: vec![0; number_vectors as usize],
-            boxes: vec![0; n_boxes_actual * n_boxes_actual + 1],
+            boxes: vec![0; n_boxes * n_boxes + 1],
             possible_neighbors: vec![0; number_vectors as usize],
             device: device,
         };
@@ -297,56 +298,6 @@ fn positive_modulo(a: i32, b: i32) -> i32 {
     ((a % b) + b) % b
 }
 
-/// Estimate the number of boxes
-fn estimate_number_boxes(data: &Tensor, radius: f64) -> usize {
-    let k_minimum_number_boxes = 10;
-    let k_maximum_number_boxes = 500;
-    if data.numel() == 0 {
-        return k_minimum_number_boxes;
-    }
-
-    if radius <= 0.0 {
-        return k_minimum_number_boxes;
-    }
-
-    // Find min and max values
-    let min_val = data.min().double_value(&[]) as f64;
-    let max_val = data.max().double_value(&[]) as f64;
-
-    // Calculate number of boxes: (max - min) / radius
-    let range = max_val - min_val;
-    let mut number_boxes = range as f64 / radius;
-
-    // Apply bounds
-    if number_boxes > k_maximum_number_boxes as f64 {
-        number_boxes = k_maximum_number_boxes as f64;
-    }
-    if number_boxes < k_minimum_number_boxes as f64 {
-        number_boxes = k_minimum_number_boxes as f64;
-    }
-
-    number_boxes as usize
-}
-
-pub fn find_neighbors_benchmark() {
-    use std::fs::File;
-    let guard = pprof::ProfilerGuard::new(100).unwrap(); // Start profiler
-
-    let takens = generate_test_takens(10_000, 3, 123);
-    let tensor = Tensor::from_slice2(&takens);
-
-    let start = std::time::Instant::now();
-    let mut finder = NeighborSearch::new(tensor, 0.2, Some(50)).unwrap();
-    let _neighbors = finder.find_all_neighbors().unwrap();
-    println!("Total time: {:?}", start.elapsed());
-    if let Ok(report) = guard.report().build() {
-        let file = File::create("flamegraph.svg").unwrap();
-        let mut options = pprof::flamegraph::Options::default();
-        options.image_width = Some(2500);
-        report.flamegraph_with_options(file, &mut options).unwrap();
-    };
-}
-
 // Helper function to generate test data
 fn generate_test_takens(n_points: usize, dimension: usize, seed: u64) -> Vec<Vec<f64>> {
     use rand::{Rng, SeedableRng};
@@ -365,6 +316,50 @@ fn generate_test_takens(n_points: usize, dimension: usize, seed: u64) -> Vec<Vec
     }
 
     takens
+}
+
+/// Estimate the number of boxes
+fn estimate_number_boxes(data: &Tensor, radius: f64) -> i32 {
+    let min_nb_boxes = 10;
+    let max_nb_boxes = 500;
+    if data.numel() == 0 {
+        return min_nb_boxes;
+    }
+
+    if radius <= 0.0 {
+        return min_nb_boxes;
+    }
+
+    // Find min and max values
+    let min_val = data.min().double_value(&[]) as f64;
+    let max_val = data.max().double_value(&[]) as f64;
+
+    // Calculate number of boxes: (max - min) / radius
+    let range = max_val - min_val;
+    let mut number_boxes = range / radius;
+
+    // Apply bounds
+    if number_boxes > max_nb_boxes as f64 {
+        number_boxes = max_nb_boxes as f64;
+    }
+    if number_boxes < min_nb_boxes as f64 {
+        number_boxes = min_nb_boxes as f64;
+    }
+
+    number_boxes as i32
+}
+
+pub fn find_neighbors_benchmark() {
+    use std::time::Instant;
+    let _guard = pprof::ProfilerGuard::new(100).unwrap(); // Start profiler
+
+    let takens = generate_test_takens(10_000, 3, 123);
+    let tensor = Tensor::from_slice2(&takens);
+
+    let start = Instant::now();
+    let mut finder = NeighborSearch::new(tensor, 0.2, None).unwrap();
+    let _neighbors = finder.find_all_neighbors().unwrap();
+    println!("Total time: {:?}", start.elapsed());
 }
 
 #[cfg(test)]

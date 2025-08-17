@@ -8,11 +8,6 @@ authors = ["Flavien Buron"]
 name = "ts2graph_rs"
 crate-type = ["cdylib", "rlib"]
 
-[[bin]]
-name = "benchmark"
-path = "src/bin/benchmark.rs"
-required_features = ["perf"]
-
 [dependencies]
 pyo3 = { version = "0.25.1", features = ["extension-module"] }
 ndarray = "0.15"
@@ -26,12 +21,10 @@ kdtree = "0.7.0"
 petgraph = "0.8.2"
 rayon = "1.10.0"
 rand_chacha = "0.9.0"
-pprof = { version = "0.15.0", features = ["flamegraph", "protobuf-codec"]}
-flamegraph = "0.6.8"
+pprof = "0.15.0"
 
 [features]
 integration = []
-perf = []
 
 [dev-dependencies]
 criterion = "0.5"
@@ -40,7 +33,3 @@ criterion = "0.5"
 # Configuration for maturin (Python package building)
 python-source = "python"
 module-name = "ts2graph_rs"
-
-[profile.release]
-debug = 1
-lto= true
