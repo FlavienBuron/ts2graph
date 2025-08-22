@@ -64,7 +64,7 @@ if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
         LR=0.007
     else
-        LR=0.0005
+        LR=0.0004
     fi
 fi
 
