@@ -93,7 +93,7 @@ else SPATIAL_TECH=(
     ["one_0"]=0
     ["loc"]=0.5
     ["radius"]=0.5
-    ["knn"]=$KNN_VAL
+    ["knn"]=0.5
     )
 fi
 

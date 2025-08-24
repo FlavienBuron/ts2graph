@@ -67,10 +67,11 @@ KNN_VAL=50
 [ "$DATASET" == "airq_small" ] && KNN_VAL=3
 
 declare -A TECHNIQUES=(
-    ["zero"]=0
-    ["one"]=1
+    ["zero_1"]=1
+    ["one_1"]=1
     ["loc"]=0.5
-    ["knn"]=$KNN_VAL
+    ["radius"]=0.5
+    ["knn"]=0.5
 )
 
 # Loop through epochs and groups

@@ -89,7 +89,7 @@ declare -A TECHNIQUES=(
     # ["zero_1"]=1
     # ["one_1"]=1
     ["one_0"]=0
-    ["knn"]=$KNN_VAL
+    ["knn"]=0.5
 )
 
 ORIGINAL=$SELF_LOOP

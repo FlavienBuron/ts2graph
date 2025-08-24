@@ -78,12 +78,12 @@ KNN_VAL=50
 
 declare -A SPATIAL_TECH=(
     ["zero_0"]=0
-    ["zero_1"]=1
-    ["one_1"]=1
+    # ["zero_1"]=1
+    # ["one_1"]=1
     ["one_0"]=0
     ["loc"]=0.5
     ["radius"]=0.5
-    ["knn"]=$KNN_VAL
+    ["knn"]=0.5
 )
 
 declare -A TEMPO_TECH=(

@@ -92,12 +92,12 @@ if [ ${#CUSTOM_SPATIAL[@]} -gt 0 ]; then
     done
 else SPATIAL_TECH=(
     ["zero_0"]=0
-    ["zero_1"]=1
-    ["one_1"]=1
+    # ["zero_1"]=1
+    # ["one_1"]=1
     ["one_0"]=0
     ["loc"]=0.5
-    ["radius"]=0.75
-    ["knn"]=$KNN_VAL
+    ["radius"]=0.5
+    ["knn"]=0.5
     )
 fi
 
