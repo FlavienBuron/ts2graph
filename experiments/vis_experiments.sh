@@ -74,7 +74,7 @@ if [[ -z "$LR" || "$LR" == "0" ]]; then
 fi
 
 
-EXP_DIR="./experiments/results/vis/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}"
+EXP_DIR="./experiments/results/vis/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}/"
 mkdir -p "${EXP_DIR}/"
 LOGFILE="${EXP_DIR}${DATE}-vis-experiments.txt"
 

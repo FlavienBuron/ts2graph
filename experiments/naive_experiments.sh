@@ -80,7 +80,7 @@ fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/k_hops/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}"
+EXP_DIR="./experiments/results/k_hops/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}/"
 mkdir -p "${EXP_DIR}/"
 LOGFILE="${EXP_DIR}${DATE}-k-hops-experiments.txt"
 
