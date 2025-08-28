@@ -59,16 +59,18 @@ fi
 
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
-        LR=0.005
+        LR=0.007
+    elif [[ "$LAYER_NUMBER" -eq 2 ]]; then
+        LR=0.0004
     else
-        LR=0.0005
+        LR=0.0002
     fi
 fi
 
 
 DATE=$(date +%y%m%d)
 
-EXP_DIR="./experiments/results/knn/ln${LAYER_NUMBER}/${LAYER_TYPE}/"
+EXP_DIR="./experiments/results/knn/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}/"
 mkdir -p "${EXP_DIR}/"
 LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
 
