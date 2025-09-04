@@ -179,6 +179,12 @@ def parse_args() -> Namespace:
         action="store_false",
         help="should the selected graph be weighted, if available",
     )
+    parser.add_argument(
+        "--full_dataset",
+        "-fd",
+        action="store_true",
+        help="should the graph be made using train+test data, if applicable",
+    )
     args = parser.parse_args()
     return args
 
@@ -630,6 +636,7 @@ def get_spatial_graph(
                 k=param,
                 loop=args.self_loop,
                 cosine=args.similarity_metric == "cosine",
+                full_dataset=args.full_dataset,
             )
         else:
             adj_matrix = dataset.get_knn_graph(k=1.0, loop=False, cosine=False)
