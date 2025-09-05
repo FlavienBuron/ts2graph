@@ -2,6 +2,7 @@ use super::conversions::TensorConverter;
 use crate::graph::temporal::k_hop_graph as k_hop_rs;
 use crate::graph::temporal::recurrence_graph_rs;
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
+use std::ffi::CString;
 
 #[pyfunction]
 #[pyo3(signature = (time_steps, num_nodes, k, bidirectional=true, decay_name=None))]
@@ -13,7 +14,8 @@ pub fn k_hop_graph(
     bidirectional: bool,
     decay_name: Option<String>,
 ) -> PyResult<(PyObject, PyObject)> {
-    py.run("print('Test Rust')", None, None);
+    let code = CString::new("print('Test Rust')").unwrap();
+    py.run(&code, None, None).ok();
     let decay_name_str = decay_name.as_deref();
     let (edge_index, edge_weight) =
         k_hop_rs(time_steps, num_nodes, k, bidirectional, decay_name_str)
