@@ -14,8 +14,8 @@ pub fn k_hop_graph(
     bidirectional: bool,
     decay_name: Option<String>,
 ) -> PyResult<(PyObject, PyObject)> {
-    std::io::stdout().flush().unwrap();
     println!("Using Rust K-hop graph.Decay name = {:?}", decay_name);
+    std::io::stdout().flush().unwrap();
     let decay_name_str = decay_name.as_deref();
     let (edge_index, edge_weight) =
         k_hop_rs(time_steps, num_nodes, k, bidirectional, decay_name_str)
