@@ -19,6 +19,7 @@ pub fn k_hop_graph(
     write
         .call1((PyString::new(py, "Using Rust K-Hop graph"),))
         .unwrap();
+    stdout.getattr("flush")?.call0()?;
     println!("Using Rust K-hop graph.Decay name = {:?}", decay_name);
     let decay_name_str = decay_name.as_deref();
     let (edge_index, edge_weight) =
