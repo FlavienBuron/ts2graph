@@ -126,9 +126,6 @@ class STGI(nn.Module):
                     temporal_edge_index, temporal_edge_weight = self.temporal_graph_fn(
                         x=x_node
                     )
-                    print(
-                        f"{temporal_edge_index.size()=} {temporal_edge_weight.size()=}"
-                    )
                 else:
                     temporal_edge_index = torch.empty((2, 0), dtype=torch.long)
                     temporal_edge_weight = torch.empty((0,), dtype=torch.float)

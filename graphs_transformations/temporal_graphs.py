@@ -21,7 +21,7 @@ def k_hop_graph_rs(
         bidirectional=bidirectional,
         decay_name=decay_name,
     )
-
+    print(f"{edge_index.shape=}")
     edge_index = torch.from_numpy(edge_index).long()
     edge_weight = torch.from_numpy(edge_weight).float()
 
