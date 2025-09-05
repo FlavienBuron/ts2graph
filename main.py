@@ -625,7 +625,10 @@ def get_spatial_graph(
         start = perf_counter()
         param = float(parameter)
         adj_matrix = dataset.get_radius_graph(
-            radius=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
+            radius=param,
+            loop=args.self_loop,
+            cosine=args.similarity_metric == "cosine",
+            full_dataset=args.full_dataset,
         )
         end = perf_counter()
     else:
