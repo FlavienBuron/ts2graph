@@ -13,7 +13,6 @@ def k_hop_graph_rs(
     decay_name=None,
 ):
     time_steps, _ = x.shape
-    print(f"{time_steps=}")
 
     edge_index, edge_weight = khgrs(
         time_steps=time_steps,
