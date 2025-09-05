@@ -24,7 +24,7 @@ def k_hop_graph_rs(
 
     edge_index = torch.from_numpy(edge_index).long()
     edge_weight = torch.from_numpy(edge_weight).float()
-
+    print(f"{edge_index.shape=} {edge_weight.shape=} {edge_index.is_nonzero()=}")
     return edge_index, edge_weight
 
 
