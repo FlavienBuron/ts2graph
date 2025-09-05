@@ -30,6 +30,7 @@ pub fn k_hop_graph(
     }
 
     let decay_fn = decay_name.as_deref().and_then(DecayFunction::from_str);
+    println!("decay function: {:?}", decay_name);
     let max_k = std::cmp::min(k, time_steps - 1);
 
     // Build graph structure
