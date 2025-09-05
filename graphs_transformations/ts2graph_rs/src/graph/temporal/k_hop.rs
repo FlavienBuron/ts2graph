@@ -1,3 +1,4 @@
+use std::io::{self, Write};
 use tch::{Device, Kind, Tensor};
 
 use crate::utils::DecayFunction;
@@ -31,6 +32,7 @@ pub fn k_hop_graph(
 
     let decay_fn = decay_name.as_deref().and_then(DecayFunction::from_str);
     println!("decay function: {:?}", decay_name);
+    std::io::stdout().flush().unwrap();
     let max_k = std::cmp::min(k, time_steps - 1);
 
     // Build graph structure
