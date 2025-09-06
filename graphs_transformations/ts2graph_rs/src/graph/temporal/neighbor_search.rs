@@ -1,33 +1,59 @@
-use std::usize;
+use std::{f64, usize};
 
-use tch::{Device, Kind, Tensor};
-
-pub struct NeighborSearch {
-    phase_space: Tensor,
-    embedding_dim: i64,
-    number_vectors: i64,
-    radius: f64,
-    searching_workspace: Vec<i32>,
-    boxes: Vec<i32>,
-    possible_neighbors: Vec<i32>,
-    device: Device,
+pub struct Takens {
+    pub owned: Vec<Vec<f64>>,
 }
 
-impl NeighborSearch {
+impl Takens {
+    // Helper function to generate test data
+    pub fn generate_test_takens(n_points: usize, dimension: usize, seed: u64) -> Takens {
+        use rand::{Rng, SeedableRng};
+        use rand_chacha::ChaCha8Rng;
+
+        let mut rng = ChaCha8Rng::seed_from_u64(seed);
+        let mut takens = Vec::new();
+
+        for _ in 0..n_points {
+            let mut point = Vec::new();
+            for _ in 0..dimension {
+                // Generate points in [0, 1] range
+                point.push(rng.random_range(0.0..=1.0));
+            }
+            takens.push(point);
+        }
+
+        Takens { owned: takens }
+    }
+
+    pub fn views(&self) -> Vec<&[f64]> {
+        self.owned.iter().map(|row| row.as_slice()).collect()
+    }
+}
+
+pub struct NeighborSearch<'a> {
+    phase_space: &'a [&'a [f64]],
+    embedding_dim: usize,
+    number_vectors: usize,
+    radius: f64,
+    searching_workspace: Vec<usize>,
+    boxes: Vec<usize>,
+    possible_neighbors: Vec<usize>,
+}
+
+impl<'a> NeighborSearch<'a> {
     /// Default constructor
     pub fn new(
-        phase_space: Tensor,
+        phase_space: &'a [&'a [f64]],
         radius: f64,
         n_boxes: Option<usize>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let shape = phase_space.size();
-        if shape.len() != 2 {
-            return Err("Phase space tensor must be 2-dimensional".into());
-        }
+        let number_vectors = phase_space.len();
+        let embedding_dim = if number_vectors > 0 {
+            phase_space[0].len()
+        } else {
+            0
+        };
 
-        let number_vectors = shape[0];
-        let embedding_dim = shape[1];
-        let device = phase_space.device();
         let n_boxes = match n_boxes {
             Some(n) => n as usize,
             _ => estimate_number_boxes(&phase_space, radius) as usize,
@@ -41,7 +67,6 @@ impl NeighborSearch {
             searching_workspace: vec![0; number_vectors as usize],
             boxes: vec![0; n_boxes * n_boxes + 1],
             possible_neighbors: vec![0; number_vectors as usize],
-            device: device,
         };
 
         instance.prepare_box_assisted_search()?;
@@ -58,32 +83,29 @@ impl NeighborSearch {
     }
 
     /// Get reference to the phase space tensor
-    pub fn get_phase_space(&self) -> &Tensor {
+    pub fn get_phase_space(&self) -> &[&[f64]] {
         &self.phase_space
     }
 
     /// Get the embedding dimension
-    pub fn get_dimension(&self) -> i64 {
+    pub fn get_dimension(&self) -> usize {
         self.embedding_dim
     }
 
     /// Get the number of vectors
-    pub fn get_number_vectors(&self) -> i64 {
+    pub fn get_number_vectors(&self) -> usize {
         self.number_vectors
     }
 
-    /// Get the device
-    pub fn device(&self) -> Device {
-        self.device
-    }
-
     /// Get wrapped position in the box grid
+    #[inline(always)]
     fn get_wrapped_position(&self, row: i32, col: i32) -> usize {
         let n_boxes = ((self.boxes.len() - 1) as f64).sqrt() as i32;
         (n_boxes * positive_modulo(row, n_boxes) + positive_modulo(col, n_boxes)) as usize
     }
 
     /// Check if two vectors comply with the Theiler window constraint
+    #[inline(always)]
     pub fn comply_theiler_window(
         vector_index1: usize,
         vector_index2: usize,
@@ -102,11 +124,19 @@ impl NeighborSearch {
         vector_index1: usize,
         vector_index2: usize,
     ) -> Result<f64, Box<dyn std::error::Error>> {
-        let vec1 = self.phase_space.get(vector_index1 as i64);
-        let vec2 = self.phase_space.get(vector_index2 as i64);
-        let diff = &vec1 - &vec2;
-        let abs_diff = diff.abs();
-        let max_dist: f64 = abs_diff.max().try_into()?;
+        let vec1 = &self.phase_space[vector_index1];
+        let vec2 = &self.phase_space[vector_index2];
+
+        if vec1.len() != vec2.len() {
+            return Err("Vectors must be of the same length".into());
+        }
+
+        let max_dist = vec1
+            .iter()
+            .zip(vec2.iter())
+            .map(|(a, b)| (a - b).abs())
+            .fold(f64::NEG_INFINITY, f64::max);
+
         Ok(max_dist)
     }
 
@@ -115,22 +145,26 @@ impl NeighborSearch {
         &self,
         vector_index: usize,
         candidates: &[usize],
-    ) -> Result<Tensor, Box<dyn std::error::Error>> {
-        let target_vector = self.phase_space.get(vector_index as i64);
+    ) -> Result<Vec<f64>, Box<dyn std::error::Error>> {
+        let target_vector = &self.phase_space[vector_index];
+        let mut distances = Vec::with_capacity(candidates.len());
 
-        // Create tensor of candidate indices
-        let candidate_indices: Vec<i64> = candidates.iter().map(|&x| x as i64).collect();
-        let indices_tensor = Tensor::from_slice(&candidate_indices);
+        for &candidate_index in candidates {
+            let candidate_vector = &self.phase_space[candidate_index];
+            if candidate_vector.len() != target_vector.len() {
+                return Err("Vectors must of the same length".into());
+            }
 
-        // Index select candidate vectors
-        let candidate_vectors = self.phase_space.index_select(0, &indices_tensor);
+            let max_dist = candidate_vector
+                .iter()
+                .zip(target_vector.iter())
+                .map(|(a, b)| (a - b).abs())
+                .fold(f64::NEG_INFINITY, f64::max);
 
-        // Compute max distance using broadcasting
-        let diff = &candidate_vectors - &target_vector.unsqueeze(0);
-        let abs_diff = diff.abs();
-        let max_distances = abs_diff.amax(&[1i64], false);
+            distances.push(max_dist);
+        }
 
-        Ok(max_distances)
+        Ok(distances)
     }
 
     /// Check if two phase space vectors are neighbors using the max metric
@@ -152,15 +186,15 @@ impl NeighborSearch {
         neighborhood_radius: f64,
     ) -> Result<Vec<bool>, Box<dyn std::error::Error>> {
         let distances = self.calculate_distances_vectorized(vector_index, candidates)?;
-        let threshold = Tensor::scalar_tensor(neighborhood_radius, (Kind::Float, self.device));
-        let mask = distances.lt_tensor(&threshold);
-
-        let mask_vec: Vec<i64> = mask.try_into()?;
-        Ok(mask_vec.into_iter().map(|x| x != 0).collect())
+        let mask = distances
+            .into_iter()
+            .map(|dist| dist < neighborhood_radius)
+            .collect();
+        Ok(mask)
     }
 
     /// Find all neighbors for all vectors without Theiler window
-    pub fn find_all_neighbors(&mut self) -> Result<Vec<Vec<i32>>, Box<dyn std::error::Error>> {
+    pub fn find_all_neighbors(&mut self) -> Result<Vec<Vec<usize>>, Box<dyn std::error::Error>> {
         // A negative Theiler window indicates it can be ignored
         self.find_all_neighbors_with_theiler(-1)
     }
@@ -169,7 +203,7 @@ impl NeighborSearch {
     pub fn find_all_neighbors_with_theiler(
         &mut self,
         theiler_window: i32,
-    ) -> Result<Vec<Vec<i32>>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<Vec<usize>>, Box<dyn std::error::Error>> {
         let n_vectors = self.number_vectors as usize;
         let mut neighbor_list = Vec::with_capacity(n_vectors);
 
@@ -185,25 +219,27 @@ impl NeighborSearch {
         // Reset boxes and possible neighbors
         self.boxes.fill(0);
         self.possible_neighbors.fill(0);
+        let inv_radius = 1.0 / self.radius;
 
         if self.number_vectors == 0 || self.embedding_dim == 0 {
             return Ok(());
         }
 
         let n_takens = self.number_vectors as usize;
-        let last_position = (self.embedding_dim - 1) as i64;
+        let last_position = self.embedding_dim - 1;
 
-        // Extract first and last columns for box positioning using tensor operations
-        let first_col = self.phase_space.select(1, 0);
-        let last_col = self.phase_space.select(1, last_position);
+        // Extract first and last column for box positioning
+        let mut x_positions = Vec::with_capacity(n_takens);
+        let mut y_positions = Vec::with_capacity(n_takens);
 
-        // Calculate box positions
-        let x_box_positions = (&first_col / self.radius).to_kind(Kind::Int);
-        let y_box_positions = (&last_col / self.radius).to_kind(Kind::Int);
+        for vec in &self.phase_space[..n_takens] {
+            if vec.len() != self.embedding_dim as usize {
+                return Err("Vector length does not match embedding_dim".into());
+            }
 
-        // Convert to CPU vectors for further processing
-        let x_positions: Vec<i32> = x_box_positions.try_into()?;
-        let y_positions: Vec<i32> = y_box_positions.try_into()?;
+            x_positions.push((vec[0] * inv_radius) as i32);
+            y_positions.push((vec[last_position as usize] * inv_radius) as i32);
+        }
 
         // Count number of taken vectors in each box
         for i in 0..n_takens {
@@ -220,7 +256,7 @@ impl NeighborSearch {
         for i in 0..n_takens {
             let wrapped_box_position = self.get_wrapped_position(x_positions[i], y_positions[i]);
             self.boxes[wrapped_box_position] -= 1;
-            self.possible_neighbors[self.boxes[wrapped_box_position] as usize] = i as i32;
+            self.possible_neighbors[self.boxes[wrapped_box_position] as usize] = i;
         }
 
         Ok(())
@@ -230,15 +266,15 @@ impl NeighborSearch {
         &mut self,
         vector_index: usize,
         theiler_window: i32,
-    ) -> Result<Vec<i32>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
         let mut n_found = 0;
-        let last_position = (self.embedding_dim - 1) as i64;
+        let last_position = self.embedding_dim - 1;
+        let inv_radius = 1.0 / self.radius;
 
         // Get box positions using tensor operations
-        let target_vector = self.phase_space.get(vector_index as i64);
-        let x_box_positions = (f64::try_from(target_vector.get(0))? / self.radius) as i32;
-        let y_box_positions =
-            (f64::try_from(target_vector.get(last_position))? / self.radius) as i32;
+        let target_vector = &self.phase_space[vector_index];
+        let x_box_positions = (target_vector[0] * inv_radius) as i32;
+        let y_box_positions = (target_vector[last_position] * inv_radius) as i32;
 
         let mut candidates = Vec::new();
 
@@ -275,7 +311,7 @@ impl NeighborSearch {
                 self.are_neighbors_vectorized(vector_index, &candidates, self.radius)?;
             for (i, &is_neighbor) in neighbor_mask.iter().enumerate() {
                 if is_neighbor {
-                    self.searching_workspace[n_found] = candidates[i] as i32;
+                    self.searching_workspace[n_found] = candidates[i];
                     n_found += 1;
                 }
             }
@@ -283,7 +319,7 @@ impl NeighborSearch {
             // Use scalar operations for small candidates sets
             for &candidate in &candidates {
                 if self.are_neighbors(vector_index, candidate, self.radius)? {
-                    self.searching_workspace[n_found] = candidate as i32;
+                    self.searching_workspace[n_found] = candidate;
                     n_found += 1;
                 }
             }
@@ -298,53 +334,36 @@ fn positive_modulo(a: i32, b: i32) -> i32 {
     ((a % b) + b) % b
 }
 
-// Helper function to generate test data
-fn generate_test_takens(n_points: usize, dimension: usize, seed: u64) -> Vec<Vec<f64>> {
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaCha8Rng;
-
-    let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut takens = Vec::new();
-
-    for _ in 0..n_points {
-        let mut point = Vec::new();
-        for _ in 0..dimension {
-            // Generate points in [0, 1] range
-            point.push(rng.random_range(0.0..=1.0));
-        }
-        takens.push(point);
-    }
-
-    takens
-}
-
 /// Estimate the number of boxes
-fn estimate_number_boxes(data: &Tensor, radius: f64) -> i32 {
+fn estimate_number_boxes(data: &[&[f64]], radius: f64) -> i32 {
     let min_nb_boxes = 10;
     let max_nb_boxes = 500;
-    if data.numel() == 0 {
+    if data.is_empty() || radius <= 0.0 {
         return min_nb_boxes;
     }
 
-    if radius <= 0.0 {
-        return min_nb_boxes;
+    let mut min_val = f64::INFINITY;
+    let mut max_val = f64::NEG_INFINITY;
+
+    for row in data {
+        for &val in *row {
+            if val < min_val {
+                min_val = val;
+            }
+            if val > max_val {
+                max_val = val;
+            }
+        }
     }
 
-    // Find min and max values
-    let min_val = data.min().double_value(&[]) as f64;
-    let max_val = data.max().double_value(&[]) as f64;
+    if !min_val.is_finite() || !max_val.is_finite() {
+        return min_nb_boxes;
+    }
 
     // Calculate number of boxes: (max - min) / radius
-    let range = max_val - min_val;
-    let mut number_boxes = range / radius;
+    let mut number_boxes = (max_val - min_val) / radius;
 
-    // Apply bounds
-    if number_boxes > max_nb_boxes as f64 {
-        number_boxes = max_nb_boxes as f64;
-    }
-    if number_boxes < min_nb_boxes as f64 {
-        number_boxes = min_nb_boxes as f64;
-    }
+    number_boxes = number_boxes.clamp(min_nb_boxes as f64, max_nb_boxes as f64);
 
     number_boxes as i32
 }
@@ -353,11 +372,11 @@ pub fn find_neighbors_benchmark() {
     use std::time::Instant;
     let _guard = pprof::ProfilerGuard::new(100).unwrap(); // Start profiler
 
-    let takens = generate_test_takens(10_000, 3, 123);
-    let tensor = Tensor::from_slice2(&takens);
+    let takens = Takens::generate_test_takens(10_000, 3, 123);
+    let takens_view = takens.views();
 
     let start = Instant::now();
-    let mut finder = NeighborSearch::new(tensor, 0.2, None).unwrap();
+    let mut finder = NeighborSearch::new(&takens_view, 0.2, None).unwrap();
     let _neighbors = finder.find_all_neighbors().unwrap();
     println!("Total time: {:?}", start.elapsed());
 }
@@ -366,18 +385,6 @@ pub fn find_neighbors_benchmark() {
 mod tests {
     use super::*;
     use std::collections::HashSet;
-    use tch::Tensor;
-
-    #[test]
-    fn test_neighbor_search_with_tensor() -> Result<(), Box<dyn std::error::Error>> {
-        let data = vec![1.0, 2.0, 3.0, 1.1, 2.1, 3.1, 5.0, 6.0, 7.0];
-        let tensor = Tensor::from_slice(&data).reshape(&[3, 3]);
-
-        let neighbor_search = NeighborSearch::new(tensor, 0.5, Some(10))?;
-        assert_eq!(neighbor_search.get_dimension(), 3);
-        assert_eq!(neighbor_search.get_number_vectors(), 3);
-        Ok(())
-    }
 
     #[test]
     fn test_neighbor_search_with_data() -> Result<(), Box<dyn std::error::Error>> {
@@ -386,8 +393,8 @@ mod tests {
             vec![1.1, 2.1, 3.1],
             vec![5.0, 6.0, 7.0],
         ];
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let neighbor_search = NeighborSearch::new(tensor_phase_space, 0.5, Some(10))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let neighbor_search = NeighborSearch::new(&views, 0.5, Some(10))?;
         assert_eq!(neighbor_search.get_dimension(), 3);
         assert_eq!(neighbor_search.get_number_vectors(), 3);
         Ok(())
@@ -396,8 +403,8 @@ mod tests {
     #[test]
     fn test_distance_calculation() -> Result<(), Box<dyn std::error::Error>> {
         let phase_space = vec![vec![0.0, 0.0], vec![0.1, 0.1], vec![1.0, 1.0]];
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let neighbor_search = NeighborSearch::new(tensor_phase_space, 0.5, Some(5))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let neighbor_search = NeighborSearch::new(&views, 0.5, Some(5))?;
 
         let distance = neighbor_search.calculate_max_distance(0, 1)?;
         assert!((distance - 0.1).abs() < 1e-6);
@@ -410,8 +417,8 @@ mod tests {
     #[test]
     fn test_vectorized_distances() -> Result<(), Box<dyn std::error::Error>> {
         let phase_space = vec![vec![0.0, 0.0], vec![0.1, 0.1], vec![1.0, 1.0]];
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let neighbor_search = NeighborSearch::new(tensor_phase_space, 0.5, Some(5))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let neighbor_search = NeighborSearch::new(&views, 0.5, Some(5))?;
 
         let candidates = vec![1, 2];
         let distances = neighbor_search.calculate_distances_vectorized(0, &candidates)?;
@@ -425,8 +432,8 @@ mod tests {
     #[test]
     fn test_are_neighbors() -> Result<(), Box<dyn std::error::Error>> {
         let phase_space = vec![vec![0.0, 0.0], vec![0.1, 0.1], vec![1.0, 1.0]];
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let neighbor_search = NeighborSearch::new(tensor_phase_space, 0.5, Some(5))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let neighbor_search = NeighborSearch::new(&views, 0.5, Some(5))?;
 
         assert!(neighbor_search.are_neighbors(0, 1, 0.2)?);
         assert!(!neighbor_search.are_neighbors(0, 2, 0.5)?);
@@ -457,8 +464,8 @@ mod tests {
             vec![1.0, 1.0],   // Point 3: far from others
             vec![0.02, 0.03], // Point 4: very close to origin
         ];
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let mut neighbor_search = NeighborSearch::new(tensor_phase_space, 0.1, Some(5))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let mut neighbor_search = NeighborSearch::new(&views, 0.1, Some(5))?;
 
         let all_neighbors = neighbor_search.find_all_neighbors()?;
 
@@ -466,7 +473,7 @@ mod tests {
         assert_eq!(all_neighbors.len(), 5);
 
         // Point 0 should have neighbors 1 and 4 (within radius 0.1)
-        let neighbors_0: HashSet<i32> = all_neighbors[0].iter().cloned().collect();
+        let neighbors_0: HashSet<usize> = all_neighbors[0].iter().cloned().collect();
         assert!(neighbors_0.contains(&1));
         assert!(neighbors_0.contains(&4));
         assert!(!neighbors_0.contains(&2)); // Too far
@@ -489,8 +496,8 @@ mod tests {
             vec![0.03, 0.03], // t=3, close to t=2
             vec![1.0, 1.0],   // t=4, far from others
         ];
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let mut neighbor_search = NeighborSearch::new(tensor_phase_space, 0.05, Some(5))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let mut neighbor_search = NeighborSearch::new(&views, 0.05, Some(5))?;
 
         // Without Theiler window
         let neighbors_no_theiler = neighbor_search.find_all_neighbors()?;
@@ -504,7 +511,8 @@ mod tests {
         assert!(neighbors_no_theiler[0].len() > neighbors_with_theiler[0].len());
 
         // Check that point 0 with Theiler=2 doesn't include points 1 and 2
-        let theiler_neighbors_0: HashSet<i32> = neighbors_with_theiler[0].iter().cloned().collect();
+        let theiler_neighbors_0: HashSet<usize> =
+            neighbors_with_theiler[0].iter().cloned().collect();
         assert!(!theiler_neighbors_0.contains(&1)); // Excluded by Theiler
         assert!(!theiler_neighbors_0.contains(&2)); // Excluded by Theiler
 
@@ -520,19 +528,19 @@ mod tests {
             vec![0.1, 0.1],
             vec![0.5, 0.5],
         ];
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let mut neighbor_search = NeighborSearch::new(tensor_phase_space, 0.15, Some(5))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let mut neighbor_search = NeighborSearch::new(&views, 0.15, Some(5))?;
 
         let all_neighbors = neighbor_search.find_all_neighbors()?;
 
         // Check symmetry: if i is a neighbor of j, then j should be a neighbor of i
         for i in 0..all_neighbors.len() {
-            let _neighbors_i: HashSet<i32> = all_neighbors[i].iter().cloned().collect();
+            let _neighbors_i: HashSet<usize> = all_neighbors[i].iter().cloned().collect();
             for &neighbor_j in &all_neighbors[i] {
                 let j = neighbor_j as usize;
-                let neighbors_j: HashSet<i32> = all_neighbors[j].iter().cloned().collect();
+                let neighbors_j: HashSet<usize> = all_neighbors[j].iter().cloned().collect();
                 assert!(
-                    neighbors_j.contains(&(i as i32)),
+                    neighbors_j.contains(&(i)),
                     "Asymmetric relationship: {} -> {}, but not {} -> {}",
                     i,
                     j,
@@ -565,8 +573,8 @@ mod tests {
             }
         }
 
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let mut neighbor_search = NeighborSearch::new(tensor_phase_space, 0.15, Some(20))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let mut neighbor_search = NeighborSearch::new(&views, 0.15, Some(20))?;
         let all_neighbors = neighbor_search.find_all_neighbors()?;
 
         // Verify basic properties
@@ -606,13 +614,13 @@ mod tests {
         ];
 
         // Test with small radius
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let mut neighbor_search_small = NeighborSearch::new(tensor_phase_space, 0.08, Some(5))?;
+        let views1: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let views2: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let mut neighbor_search_small = NeighborSearch::new(&views1, 0.08, Some(5))?;
         let neighbors_small = neighbor_search_small.find_all_neighbors()?;
 
         // Test with large radius
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let mut neighbor_search_large = NeighborSearch::new(tensor_phase_space, 0.25, Some(5))?;
+        let mut neighbor_search_large = NeighborSearch::new(&views2, 0.25, Some(5))?;
         let neighbors_large = neighbor_search_large.find_all_neighbors()?;
 
         // Larger radius should generally result in more neighbors
@@ -633,16 +641,16 @@ mod tests {
     fn test_find_all_neighbors_edge_cases() -> Result<(), Box<dyn std::error::Error>> {
         // Test with single point
         let single_point = vec![vec![1.0, 2.0]];
-        let tensor_phase_space = Tensor::from_slice2(&single_point);
-        let mut neighbor_search_single = NeighborSearch::new(tensor_phase_space, 1.0, Some(3))?;
+        let views: Vec<&[f64]> = single_point.iter().map(|row| row.as_slice()).collect();
+        let mut neighbor_search_single = NeighborSearch::new(&views, 1.0, Some(3))?;
         let neighbors_single = neighbor_search_single.find_all_neighbors()?;
         assert_eq!(neighbors_single.len(), 1);
         assert_eq!(neighbors_single[0].len(), 0); // No neighbors for single point
 
         // Test with identical points
         let identical_points = vec![vec![1.0, 2.0], vec![1.0, 2.0], vec![1.0, 2.0]];
-        let tensor_phase_space = Tensor::from_slice2(&identical_points);
-        let mut neighbor_search_identical = NeighborSearch::new(tensor_phase_space, 0.1, Some(3))?;
+        let views: Vec<&[f64]> = identical_points.iter().map(|row| row.as_slice()).collect();
+        let mut neighbor_search_identical = NeighborSearch::new(&views, 0.1, Some(3))?;
         let neighbors_identical = neighbor_search_identical.find_all_neighbors()?;
 
         // All points should be neighbors of each other (except self)
@@ -670,12 +678,12 @@ mod tests {
             vec![0.0, 0.05, 0.0, 0.0, 0.0], // Different in second dim only
         ];
 
-        let tensor_phase_space = Tensor::from_slice2(&phase_space_5d);
-        let mut neighbor_search = NeighborSearch::new(tensor_phase_space, 0.08, Some(8))?;
+        let views: Vec<&[f64]> = phase_space_5d.iter().map(|row| row.as_slice()).collect();
+        let mut neighbor_search = NeighborSearch::new(&views, 0.08, Some(8))?;
         let all_neighbors = neighbor_search.find_all_neighbors()?;
 
         // Point 0 should be close to points 1, 3, 4 but not 2
-        let neighbors_0: HashSet<i32> = all_neighbors[0].iter().cloned().collect();
+        let neighbors_0: HashSet<usize> = all_neighbors[0].iter().cloned().collect();
         assert!(neighbors_0.contains(&1)); // Very close
         assert!(neighbors_0.contains(&3)); // Close in one dimension
         assert!(neighbors_0.contains(&4)); // Close in one dimension
@@ -695,13 +703,13 @@ mod tests {
             vec![0.5, 0.5],
         ];
 
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let mut neighbor_search = NeighborSearch::new(tensor_phase_space, 0.12, Some(5))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let mut neighbor_search = NeighborSearch::new(&views, 0.12, Some(5))?;
         let box_neighbors = neighbor_search.find_all_neighbors()?;
 
         // Verify results with manual brute-force calculation
         for i in 0..5 {
-            let found_neighbors: HashSet<i32> = box_neighbors[i].iter().cloned().collect();
+            let found_neighbors: HashSet<usize> = box_neighbors[i].iter().cloned().collect();
 
             // Manual neighbor check
             let mut expected_neighbors = HashSet::new();
@@ -709,7 +717,7 @@ mod tests {
                 if i != j {
                     let distance = neighbor_search.calculate_max_distance(i, j)?;
                     if distance < 0.12 {
-                        expected_neighbors.insert(j as i32);
+                        expected_neighbors.insert(j);
                     }
                 }
             }
@@ -735,8 +743,8 @@ mod tests {
             vec![0.2, 0.2],
         ];
 
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let neighbor_search = NeighborSearch::new(tensor_phase_space, 0.12, Some(5))?;
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let neighbor_search = NeighborSearch::new(&views, 0.12, Some(5))?;
         let candidates = vec![1, 2, 3, 4];
 
         // Vectorized approach
@@ -763,20 +771,22 @@ mod tests {
 
         // All points in same location
         let same_location = vec![vec![1.0, 1.0], vec![1.0, 1.0], vec![1.0, 1.0]];
-        let tensor_phase_space = Tensor::from_slice2(&same_location);
-        let neighbor_search1 = NeighborSearch::new(tensor_phase_space, 0.1, Some(3))?;
+        let same_location_views: Vec<&[f64]> =
+            same_location.iter().map(|row| row.as_slice()).collect();
+        let neighbor_search1 = NeighborSearch::new(&same_location_views, 0.1, Some(3))?;
         assert_eq!(neighbor_search1.get_number_vectors(), 3);
 
         // Points spread across large range
         let wide_spread = vec![vec![-1000.0, -1000.0], vec![0.0, 0.0], vec![1000.0, 1000.0]];
-        let tensor_phase_space = Tensor::from_slice2(&wide_spread);
-        let neighbor_search2 = NeighborSearch::new(tensor_phase_space, 100.0, Some(10))?;
+        let wide_spread_views: Vec<&[f64]> = wide_spread.iter().map(|row| row.as_slice()).collect();
+        let neighbor_search2 = NeighborSearch::new(&wide_spread_views, 100.0, Some(10))?;
         assert_eq!(neighbor_search2.get_number_vectors(), 3);
 
         // Very small radius
         let small_radius_case = vec![vec![0.0, 0.0], vec![0.000001, 0.000001]];
-        let tensor_phase_space = Tensor::from_slice2(&small_radius_case);
-        let neighbor_search3 = NeighborSearch::new(tensor_phase_space, 0.000001, Some(5))?;
+        let small_radius_views: Vec<&[f64]> =
+            small_radius_case.iter().map(|row| row.as_slice()).collect();
+        let neighbor_search3 = NeighborSearch::new(&small_radius_views, 0.000001, Some(5))?;
         assert_eq!(neighbor_search3.get_number_vectors(), 2);
 
         Ok(())
@@ -785,8 +795,8 @@ mod tests {
     #[test]
     fn test_wrapped_position_calculation() -> Result<(), Box<dyn std::error::Error>> {
         let phase_space = vec![vec![0.0, 0.0], vec![1.0, 1.0]];
-        let tensor_phase_space = Tensor::from_slice2(&phase_space);
-        let neighbor_search = NeighborSearch::new(tensor_phase_space, 1.0, Some(3))?; // 3x3 grid
+        let views: Vec<&[f64]> = phase_space.iter().map(|row| row.as_slice()).collect();
+        let neighbor_search = NeighborSearch::new(&views, 1.0, Some(3))?; // 3x3 grid
 
         // Test various wrapped positions
         assert_eq!(neighbor_search.get_wrapped_position(0, 0), 0);

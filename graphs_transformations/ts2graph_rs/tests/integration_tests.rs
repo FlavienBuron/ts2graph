@@ -147,6 +147,7 @@ mod r_comparison_test {
     use rand::rand_core::le;
     use std::cmp::{max, min};
     use std::collections::HashSet;
+    use ts2graph_rs::graph::temporal::recurrence_graph_rs;
 
     use super::*;
     use ts2graph_rs::graph::temporal::recurrence::recurrence_graph_from_slice;
@@ -443,7 +444,7 @@ mod r_comparison_test {
 
             // Get Rust result
             let rust_start = std::time::Instant::now();
-            let rust_result = recurrence_graph_from_slice(
+            let rust_result = recurrence_graph_rs(
                 &config.data,
                 config.radius,
                 config.embedding_dim,

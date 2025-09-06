@@ -1,6 +1,8 @@
 use super::conversions::TensorConverter;
 use crate::graph::temporal::k_hop_graph as k_hop_rs;
 use crate::graph::temporal::{recurrence_graph_rs, tsnet_vg};
+use ndarray::Array2;
+use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArrayDyn, PyUntypedArrayMethods};
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 
 #[pyfunction]
@@ -30,19 +32,51 @@ pub fn k_hop_graph(
 pub fn recurrence_graph(
     py: Python<'_>,
     x: &Bound<'_, PyAny>,
-    radius: f32,
-    embedding_dim: Option<i64>,
-    time_lag: i64,
+    radius: f64,
+    embedding_dim: Option<usize>,
+    time_lag: usize,
 ) -> PyResult<(PyObject, PyObject)> {
-    let x_tensor = TensorConverter::from_torch_tensor(py, x)?;
+    if !x.hasattr("numpy")? {
+        return Err(PyRuntimeError::new_err(
+            "Input must be a torch.Tensor on CPU",
+        ));
+    }
+    let numpy_obj = x.call_method0("numpy")?;
 
-    let net = recurrence_graph_rs(&x_tensor, radius, embedding_dim, time_lag).map_err(|e| {
+    let array = numpy_obj.extract::<PyReadonlyArrayDyn<f64>>()?;
+    let slice = array.as_slice()?;
+    let shape = array.shape();
+
+    // Expect 1D time series
+    if shape.len() != 1 {
+        return Err(PyRuntimeError::new_err(
+            "input must be 1D time series tensor",
+        ));
+    }
+
+    let data = slice.to_vec();
+
+    let net = recurrence_graph_rs(&data, radius, embedding_dim, time_lag).map_err(|e| {
         PyRuntimeError::new_err(format!("Recurrence graph generation failed!: {e}"))
     })?;
 
-    // Convert to Numpy
-    let edge_index_numpy = TensorConverter::tensor_to_numpy(py, &net.edge_index)?;
-    let edge_weight_numpy = TensorConverter::tensor_to_numpy(py, &net.edge_weight)?;
+    if net.edge_index.len() % 2 != 0 {
+        return Err(PyRuntimeError::new_err(
+            "edge_index length is not divisible by 2",
+        ));
+    }
+    let num_edges = net.edge_index.len() / 2;
+
+    let edges_index_array = Array2::from_shape_vec((2, num_edges), net.edge_index.clone())
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to reshape edge_index: {e}")))?;
+
+    let edge_index_numpy: PyObject = edges_index_array
+        .into_pyarray(py)
+        .into_pyobject(py)?
+        .unbind()
+        .into();
+
+    let edge_weight_numpy: PyObject = PyArray1::from_vec(py, net.edge_weight).into();
 
     Ok((edge_index_numpy, edge_weight_numpy))
 }

@@ -3,6 +3,7 @@ mod integration_tests {
     use extendr_api::{List, R, RMatrix};
     use std::{collections::HashMap, fs::File};
     use tch::Tensor;
+    use ts2graph_rs::graph::temporal::Takens;
     use ts2graph_rs::graph::temporal::neighbor_search::NeighborSearch;
 
     // Test structure to hold both R and Rust results
@@ -38,12 +39,23 @@ mod integration_tests {
 
     // Helper function to call R function and extract results
     fn call_r_find_neighbors(
-        takens: &[Vec<f64>],
+        takens: &[&[f64]],
         radius: f64,
         number_boxes: Option<usize>,
     ) -> Result<Vec<Vec<i32>>, Box<dyn std::error::Error>> {
+        if takens.is_empty() {
+            return Err("Takens data is empty".into());
+        }
+
+        let n_rows = takens.len();
+        let n_cols = takens[0].len();
+
+        if !takens.iter().all(|rows| rows.len() == n_cols) {
+            return Err("Takens data has inconsistent row lengths".into());
+        }
+
         // Convert Rust data to R format
-        let takens_r = RMatrix::new_matrix(takens.len(), takens[0].len(), |r, c| takens[r][c]);
+        let takens_r = RMatrix::new_matrix(n_rows, n_cols, |r, c| takens[r][c]);
 
         // Prepare R call parameters
         let result = if let Some(boxes) = number_boxes {
@@ -66,7 +78,7 @@ mod integration_tests {
     }
 
     // Helper function to generate test data
-    fn generate_test_takens(n_points: usize, dimension: usize, seed: u64) -> Vec<Vec<f64>> {
+    fn generate_test_takens(n_points: usize, dimension: usize, seed: u64) -> Takens {
         use rand::{Rng, SeedableRng};
         use rand_chacha::ChaCha8Rng;
 
@@ -82,11 +94,16 @@ mod integration_tests {
             takens.push(point);
         }
 
-        takens
+        Takens {
+            owned_takens: takens,
+        }
     }
 
     // Function to compare two neighbor lists
-    fn compare_neighbor_lists(r_result: &[Vec<i32>], rust_result: &[Vec<i32>]) -> ComparisonResult {
+    fn compare_neighbor_lists(
+        r_result: &[Vec<i32>],
+        rust_result: Vec<Vec<i32>>,
+    ) -> ComparisonResult {
         let mut differences = Vec::new();
         let mut match_count = 0;
         let total_points = r_result.len();
@@ -146,19 +163,23 @@ mod integration_tests {
 
         // Generate small test dataset
         let takens = generate_test_takens(10, 2, 42);
-        let takens_tensor = Tensor::from_slice2(&takens);
+        let takens_views = takens.views();
         let radius = 0.3;
         let number_boxes = None;
 
         // Call R function
-        let r_result = call_r_find_neighbors(&takens, radius, number_boxes)?;
+        let r_result = call_r_find_neighbors(&takens.views(), radius, number_boxes)?;
 
         // Call Rust function
-        let mut rust_finder = NeighborSearch::new(takens_tensor, radius, number_boxes)?;
+        let mut rust_finder = NeighborSearch::new(&takens_views, radius, number_boxes)?;
         let rust_result = rust_finder.find_all_neighbors()?;
+        let rust_result_i32: Vec<Vec<i32>> = rust_result
+            .into_iter()
+            .map(|v| v.into_iter().map(|x| x as i32).collect())
+            .collect();
 
         // Compare results
-        let comparison = compare_neighbor_lists(&r_result, &rust_result);
+        let comparison = compare_neighbor_lists(&r_result, rust_result_i32);
 
         println!("Small dataset test results:");
         println!(
@@ -197,19 +218,23 @@ mod integration_tests {
 
         // Generate medium test dataset
         let takens = generate_test_takens(100, 3, 123);
-        let takens_tensor = Tensor::from_slice2(&takens);
+        let takens_views = takens.views();
         let radius = 0.2;
         let number_boxes = Some(50);
 
         // Call R function
-        let r_result = call_r_find_neighbors(&takens, radius, number_boxes)?;
+        let r_result = call_r_find_neighbors(&takens.views(), radius, number_boxes)?;
 
         // Call Rust function
-        let mut rust_finder = NeighborSearch::new(takens_tensor, radius, number_boxes)?;
+        let mut rust_finder = NeighborSearch::new(&takens_views, radius, number_boxes)?;
         let rust_result = rust_finder.find_all_neighbors()?;
+        let rust_result_i32: Vec<Vec<i32>> = rust_result
+            .into_iter()
+            .map(|v| v.into_iter().map(|x| x as i32).collect())
+            .collect();
 
         // Compare results
-        let comparison = compare_neighbor_lists(&r_result, &rust_result);
+        let comparison = compare_neighbor_lists(&r_result, rust_result_i32);
 
         println!("Medium dataset test results:");
         println!(
@@ -253,7 +278,7 @@ mod integration_tests {
         setup_r_environment()?;
 
         let takens = generate_test_takens(50, 2, 456);
-        let takens_tensor = Tensor::from_slice2(&takens);
+        let takens_views = takens.views();
 
         let radii = vec![0.1, 0.2, 0.3, 0.5];
 
@@ -261,14 +286,18 @@ mod integration_tests {
             println!("Testing radius: {}", radius);
 
             // Call R function
-            let r_result = call_r_find_neighbors(&takens, radius, None)?;
+            let r_result = call_r_find_neighbors(&takens.views(), radius, None)?;
 
             // Call Rust function
-            let mut rust_finder = NeighborSearch::new(takens_tensor.copy(), radius, None)?;
+            let mut rust_finder = NeighborSearch::new(&takens_views, radius, None)?;
             let rust_result = rust_finder.find_all_neighbors()?;
+            let rust_result_i32: Vec<Vec<i32>> = rust_result
+                .into_iter()
+                .map(|v| v.into_iter().map(|x| x as i32).collect())
+                .collect();
 
             // Compare results
-            let comparison = compare_neighbor_lists(&r_result, &rust_result);
+            let comparison = compare_neighbor_lists(&r_result, rust_result_i32);
             let match_rate = comparison.match_count as f64 / comparison.total_points as f64;
 
             println!("  Match rate: {:.2}%", match_rate * 100.0);
@@ -289,14 +318,18 @@ mod integration_tests {
 
         // Test case 1: Very small radius (should have few/no neighbors)
         let takens = generate_test_takens(20, 2, 789);
-        let takens_tensor = Tensor::from_slice2(&takens);
+        let takens_views = takens.views();
         let small_radius = 0.01;
 
-        let r_result = call_r_find_neighbors(&takens, small_radius, None)?;
-        let mut rust_finder = NeighborSearch::new(takens_tensor.copy(), small_radius, None)?;
+        let r_result = call_r_find_neighbors(&takens.views(), small_radius, None)?;
+        let mut rust_finder = NeighborSearch::new(&takens_views, small_radius, None)?;
         let rust_result = rust_finder.find_all_neighbors()?;
+        let rust_result_i32: Vec<Vec<i32>> = rust_result
+            .into_iter()
+            .map(|v| v.into_iter().map(|x| x as i32).collect())
+            .collect();
 
-        let comparison = compare_neighbor_lists(&r_result, &rust_result);
+        let comparison = compare_neighbor_lists(&r_result, rust_result_i32);
         println!(
             "Small radius test - Match rate: {:.2}%",
             100.0 * comparison.match_count as f64 / comparison.total_points as f64
@@ -305,11 +338,15 @@ mod integration_tests {
         // Test case 2: Very large radius (should have many neighbors)
         let large_radius = 2.0;
 
-        let r_result = call_r_find_neighbors(&takens, large_radius, None)?;
-        let mut rust_finder = NeighborSearch::new(takens_tensor, large_radius, None)?;
+        let r_result = call_r_find_neighbors(&takens.views(), large_radius, None)?;
+        let mut rust_finder = NeighborSearch::new(&takens_views, large_radius, None)?;
         let rust_result = rust_finder.find_all_neighbors()?;
+        let rust_result_i32: Vec<Vec<i32>> = rust_result
+            .into_iter()
+            .map(|v| v.into_iter().map(|x| x as i32).collect())
+            .collect();
 
-        let comparison = compare_neighbor_lists(&r_result, &rust_result);
+        let comparison = compare_neighbor_lists(&r_result, rust_result_i32);
         println!(
             "Large radius test - Match rate: {:.2}%",
             100.0 * comparison.match_count as f64 / comparison.total_points as f64
@@ -323,21 +360,25 @@ mod integration_tests {
         setup_r_environment()?;
 
         let takens = generate_test_takens(200, 3, 999);
-        let takens_tensor = Tensor::from_slice2(&takens);
+        let takens_views = takens.views();
         let radius = 0.25;
 
         // Time R function
         let start = std::time::Instant::now();
-        let r_result = call_r_find_neighbors(&takens, radius, None)?;
+        let r_result = call_r_find_neighbors(&takens.views(), radius, None)?;
         let r_duration = start.elapsed();
 
         // Time Rust function
         let start = std::time::Instant::now();
-        let mut rust_finder = NeighborSearch::new(takens_tensor, radius, None)?;
+        let mut rust_finder = NeighborSearch::new(&takens_views, radius, None)?;
         let rust_result = rust_finder.find_all_neighbors()?;
         let rust_duration = start.elapsed();
+        let rust_result_i32: Vec<Vec<i32>> = rust_result
+            .into_iter()
+            .map(|v| v.into_iter().map(|x| x as i32).collect())
+            .collect();
 
-        println!("Performance comparison:");
+        println!("Performance comparison for [200, 3]");
         println!("  R execution time: {:?}", r_duration);
         println!("  Rust execution time: {:?}", rust_duration);
         println!(
@@ -346,7 +387,7 @@ mod integration_tests {
         );
 
         // Verify results are comparable
-        let comparison = compare_neighbor_lists(&r_result, &rust_result);
+        let comparison = compare_neighbor_lists(&r_result, rust_result_i32);
         let match_rate = comparison.match_count as f64 / comparison.total_points as f64;
         println!("  Match rate: {:.2}%", match_rate * 100.0);
 
@@ -372,26 +413,33 @@ mod integration_tests {
 
             // Generate test dataset
             let takens = generate_test_takens(size, dim, 123);
-            let takens_tensor = Tensor::from_slice2(&takens);
+            let takens_views = takens.views();
             let number_boxes = Some(50);
 
             // Time R execution
             let r_start = std::time::Instant::now();
-            let r_result = call_r_find_neighbors(&takens, radius, number_boxes)?;
+            let r_result = call_r_find_neighbors(&takens.views(), radius, number_boxes)?;
             let r_duration = r_start.elapsed();
 
             // Time Rust execution
             let rust_start = std::time::Instant::now();
-            let mut rust_finder = NeighborSearch::new(takens_tensor, radius, number_boxes)?;
+            let mut rust_finder = NeighborSearch::new(&takens_views, radius, number_boxes)?;
             let rust_result = rust_finder.find_all_neighbors()?;
             let rust_duration = rust_start.elapsed();
+            let rust_result_i32: Vec<Vec<i32>> = rust_result
+                .into_iter()
+                .map(|v| v.into_iter().map(|x| x as i32).collect())
+                .collect();
 
             // Compare results
-            let comparison = compare_neighbor_lists(&r_result, &rust_result);
+            let comparison = compare_neighbor_lists(&r_result, rust_result_i32);
             let match_rate = comparison.match_count as f64 / comparison.total_points as f64;
 
             // Output results
-            println!("Performance comparison:");
+            println!(
+                "Performance comparison for size={}, dim={}, radius={:.2} ===",
+                size, dim, radius
+            );
             println!("  R execution time: {:?}", r_duration);
             println!("  Rust execution time: {:?}", rust_duration);
             println!(
