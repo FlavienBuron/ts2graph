@@ -13,8 +13,6 @@ pub fn k_hop_graph(
     bidirectional: bool,
     decay_name: Option<String>,
 ) -> PyResult<(PyObject, PyObject)> {
-    let builtins = PyModule::import(py, "builtins")?;
-    builtins.call_method1("print", ("Test Rust",))?;
     let decay_name_str = decay_name.as_deref();
     let (edge_index, edge_weight) =
         k_hop_rs(time_steps, num_nodes, k, bidirectional, decay_name_str)

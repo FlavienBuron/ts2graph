@@ -82,7 +82,7 @@ LOGFILE="${EXP_DIR}${DATE}-loc-experiments.txt"
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
 KNN_VAL=50
-[ "$DATASET" == "airq_small" ] && KNN_VAL=3
+[[ "$DATASET" == "airq_small" ]] && KNN_VAL=3
 
 declare -A TECHNIQUES=(
     ["zero_0"]=0
@@ -114,7 +114,7 @@ for G in "${!TECHNIQUES[@]}"; do
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
     python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -l $LAYER_TYPE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
-        $( [ "$UNWEIGHTED" -eq 1 ] && echo -ug ) \
+        $( [[ "$UNWEIGHTED" -eq 1 ]] && echo -ug ) \
         -v 0 | tee -a "$LOGFILE"
 done
 
@@ -128,6 +128,6 @@ for LOC in $(seq 0.0 $FRACTION 1.0); do
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_loc_${LOC_FMT}_sl${SELF_LOOP}_${EPOCHS}.json"
     python -u main.py -d $DATASET -sp $FILENAME -sg loc $LOC_FMT -e $EPOCHS -l $LAYER_TYPE \
            -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
-        $( [ "$UNWEIGHTED" -eq 1 ] && echo -ug ) \
+        $( [[ "$UNWEIGHTED" -eq 1 ]] && echo -ug ) \
         -v 0 | tee -a "$LOGFILE"
 done

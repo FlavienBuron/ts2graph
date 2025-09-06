@@ -84,7 +84,7 @@ declare -A TECHNIQUES=(
 )
 
 USE_TEMP=""
-if [ "$USE_TEMPORAL" -eq 1 ]; then
+if [[ "$USE_TEMPORAL" -eq 1 ]]; then
     USE_TEMP="-ut"
 fi
 
@@ -110,7 +110,7 @@ for G in "${!TECHNIQUES[@]}"; do
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
     FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
     python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
-        $( [ "$FULL_DATASET" -eq 1 ] && echo -fd ) \
+        $( [[ "$FULL_DATASET" -eq 1 ]] && echo -fd ) \
          -v 0 | tee -a "$LOGFILE"
 done
 
