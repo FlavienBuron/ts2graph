@@ -46,7 +46,7 @@ def k_hop_graph(
     x: torch.Tensor,
     num_nodes: int = 1,
     k: int = 1,
-    bidirectional: bool = True,
+    bidirectional: bool = False,
     decay: Optional[Callable[[int, int], float]] = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Construct a k-hop temporal graph: t -> {t+1, ..., t+k} over a dataset of shape [T, N, F],
@@ -67,8 +67,8 @@ def k_hop_graph(
 
         max_valid_k = time_steps - 1
         for offset in range(1, min(k, max_valid_k) + 1):
-            src = torch.arange(time_steps - offset)
-            dst = src + offset
+            dst = torch.arange(offset, time_steps)
+            src = dst - offset
 
             src += node_offset
             dst += node_offset
