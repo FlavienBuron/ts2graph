@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from torch_geometric.utils import to_dense_adj
 
 from datasets.dataloaders.graphloader import GraphLoader
-from graphs_transformations.proximity_graphs import from_knn, from_radius
+from graphs_transformations.proximity_graphs import from_geo_nn, from_knn, from_radius
 
 EARTH_RADIUS = 6371.0088
 
@@ -241,7 +241,10 @@ class AirQualityLoader(GraphLoader):
         theta = self.distances.std()
         # adj = np.exp(-(self.distances**2) / (2 * theta**2))
         adj = torch.exp(-torch.square(self.distances / theta))
-        mask = self.distances > threshold if threshold_on_input else adj < threshold
+        dist = (self.distances - self.distances.min()) / (
+            self.distances.max() - self.distances.min()
+        )
+        mask = dist > threshold if threshold_on_input else adj < threshold
         adj[mask] = 0
         if not weighted:
             adj[adj > 0] = 1.0
@@ -253,7 +256,7 @@ class AirQualityLoader(GraphLoader):
 
     def get_knn_graph(
         self,
-        k: int | float,
+        k: float,
         use_corrupted_data: bool = False,
         loop: bool = False,
         cosine: bool = False,
@@ -290,6 +293,21 @@ class AirQualityLoader(GraphLoader):
         edge_index = from_knn(data=data, mask=mask, k=k, loop=loop, cosine=cosine)
         adj = to_dense_adj(edge_index).squeeze()
         return adj
+
+    def get_geo_nn_graph(
+        self,
+        k: int | float,
+        include_self: bool = False,
+        force_symmetric: bool = False,
+        weighted: bool = True,
+    ) -> torch.Tensor:
+        return from_geo_nn(
+            self.distances,
+            k=k,
+            include_self=include_self,
+            force_symmetric=force_symmetric,
+            weighted=weighted,
+        )
 
     def get_radius_graph(
         self,
