@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <p><a href="../../../index.html">&#8678; Go back</a></p>
+    <meta charset="UTF-8" />
+    <title>KNN Experiment Results</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background-color: #111;
+        color: #f0f0f0;
+        margin: 2rem;
+      }
+      h1 {
+        color: #00ccff;
+      }
+      iframe {
+        border: none;
+        width: 100%;
+        height: 500px;
+        margin-bottom: 2rem;
+      }
+      a {
+        font-size: 1.2rem;
+        color: #3ba1c5;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>KNN Experiment Results</h1>
+    <p>
+      This page shows the MAE, MSE, and RMSE values for different <code>k</code> number of neighbors in KNN-based graph
+      techniques, compared with <b>Empty graph</b> and <b>Fully Connected Graph</b>. The vertical line indicates the
+      minimal value, and takes the color of either horizontal lines if those are the minimum (and is placed on either
+      end of the axis). NOTE: the x-axis represent the fraction of the possible values for <code>k</code>. The range of
+      possible value in this case is [0, 35] (k=36 would mean allowing self-loops, which are not used here), thus k=1.0
+      == k=35, k=0.5 == k=18 etc. This is to easily compare techniques that use difference metrics.
+    </p>
+
+    <label for="chartSelect">Choose chart:</label>
+    <select id="chartSelect">
+      <option value="knn_mae.html">MAE</option>
+      <option value="knn_mse.html">MSE</option>
+      <option value="knn_rmse.html">RMSE</option>
+      <option value="knn_mae_change.html">MAE relative</option>
+      <option value="knn_mse_change.html">MSE relative</option>
+      <option value="knn_rmse_change.html">RMSE relative</option>
+    </select>
+
+    <iframe id="chartFrame" src="knn_mae.html"></iframe>
+
+    <script>
+      const chartSelect = document.getElementById("chartSelect");
+      const chartFrame = document.getElementById("chartFrame");
+
+      chartSelect.addEventListener("change", () => {
+        chartFrame.src = chartSelect.value;
+      });
+    </script>
+  </body>
+</html>
