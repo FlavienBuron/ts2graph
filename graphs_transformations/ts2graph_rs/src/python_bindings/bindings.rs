@@ -28,13 +28,14 @@ pub fn k_hop_graph(
 }
 
 #[pyfunction]
-#[pyo3(signature = (x, radius, embedding_dim=None, time_lag=1))]
+#[pyo3(signature = (x, radius, embedding_dim=None, time_lag=1, self_loop=false))]
 pub fn recurrence_graph(
     py: Python<'_>,
     x: &Bound<'_, PyAny>,
     radius: f64,
     embedding_dim: Option<usize>,
     time_lag: usize,
+    self_loop: bool,
 ) -> PyResult<(PyObject, PyObject)> {
     if !x.hasattr("numpy")? {
         return Err(PyRuntimeError::new_err(
@@ -56,9 +57,10 @@ pub fn recurrence_graph(
 
     let data = slice.to_vec();
 
-    let net = recurrence_graph_rs(&data, radius, embedding_dim, time_lag).map_err(|e| {
-        PyRuntimeError::new_err(format!("Recurrence graph generation failed!: {e}"))
-    })?;
+    let net =
+        recurrence_graph_rs(&data, radius, embedding_dim, time_lag, self_loop).map_err(|e| {
+            PyRuntimeError::new_err(format!("Recurrence graph generation failed!: {e}"))
+        })?;
 
     if net.edge_index.len() % 2 != 0 {
         return Err(PyRuntimeError::new_err(

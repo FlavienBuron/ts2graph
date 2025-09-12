@@ -33,9 +33,12 @@ def recurrence_graph_rs(
     radius: float,
     embedding_dim: Optional[int] = None,
     time_lag: int = 1,
+    self_loop: bool = False,
 ):
     x = x.contiguous()
-    edge_index, edge_weight = recurrence_graph(x, radius, embedding_dim, time_lag)
+    edge_index, edge_weight = recurrence_graph(
+        x, radius, embedding_dim, time_lag, self_loop
+    )
 
     edge_index = torch.from_numpy(edge_index).long()
     edge_weight = torch.from_numpy(edge_weight).float()

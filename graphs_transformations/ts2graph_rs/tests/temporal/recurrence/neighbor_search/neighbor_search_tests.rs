@@ -1,8 +1,6 @@
-mod integration_tests {
+mod neighbor_search_tests {
     // use extendr_api::prelude::*;
     use extendr_api::{List, R, RMatrix};
-    use std::{collections::HashMap, fs::File};
-    use tch::Tensor;
     use ts2graph_rs::graph::temporal::Takens;
     use ts2graph_rs::graph::temporal::neighbor_search::NeighborSearch;
 
@@ -476,11 +474,3 @@ mod integration_tests {
         Ok(())
     }
 }
-
-// Cargo.toml dependencies needed:
-/*
-[dev-dependencies]
-extendr-api = { version = "0.6", features = ["ndarray"] }
-rand = "0.8"
-rand_chacha = "0.3"
-*/
