@@ -47,8 +47,8 @@ pub fn recurrence_graph(
 
     // Copy into Vec<f64>
     let data: Vec<f64> = array.iter().copied().collect();
-    let net =
-        recurrence_graph_rs(&data, radius, embedding_dim, time_lag, self_loop).map_err(|e| {
+    let net = recurrence_graph_rs(&data, radius, embedding_dim, time_lag, self_loop, false)
+        .map_err(|e| {
             PyRuntimeError::new_err(format!("Recurrence graph generation failed!: {e}"))
         })?;
 

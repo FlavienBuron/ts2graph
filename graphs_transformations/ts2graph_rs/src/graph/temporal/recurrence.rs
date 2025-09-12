@@ -100,6 +100,7 @@ pub struct RecurrenceMatrixConfig {
     pub time_lag: usize,
     pub radius: f64,
     pub self_loops: bool,
+    pub test: bool,
 }
 
 impl Default for RecurrenceMatrixConfig {
@@ -109,6 +110,7 @@ impl Default for RecurrenceMatrixConfig {
             time_lag: 1,
             radius: 0.1,
             self_loops: false,
+            test: false,
         }
     }
 }
@@ -375,6 +377,37 @@ fn maximum_distance(vec1: &[f64], vec2: &[f64]) -> Result<f64, Box<dyn std::erro
     Ok(max_diff)
 }
 
+fn estimate_phase_space_diameter(takens: &[&[f64]]) -> f64 {
+    if takens.is_empty() {
+        return 0.0;
+    }
+
+    let dim = takens[0].len();
+    let mut min_coords = vec![f64::INFINITY; dim];
+    let mut max_coords = vec![f64::NEG_INFINITY; dim];
+
+    for point in takens {
+        for (i, &coord) in point.iter().enumerate() {
+            min_coords[i] = min_coords[i].min(coord);
+            max_coords[i] = max_coords[i].max(coord);
+        }
+    }
+
+    let diameter = min_coords
+        .iter()
+        .zip(max_coords.iter())
+        .map(|(min, max)| (max - min).powi(2))
+        .sum::<f64>()
+        .sqrt();
+
+    diameter
+}
+
+fn compute_actual_radius(normalized_radius: f64, takens: &[&[f64]]) -> f64 {
+    let diameter = estimate_phase_space_diameter(takens);
+    normalized_radius * diameter
+}
+
 fn compute_recurrence_matrix(
     takens: Option<Vec<&[f64]>>,
     time_series: Option<&[f64]>,
@@ -391,8 +424,14 @@ fn compute_recurrence_matrix(
     } else {
         return Err("Either takens or time_series must be provided".into());
     };
+    let search_radius;
+    if config.test {
+        search_radius = config.radius;
+    } else {
+        search_radius = compute_actual_radius(config.radius, &takens_matrix);
+    }
 
-    let mut searcher = NeighborSearch::new(&takens_matrix, config.radius, None)?;
+    let mut searcher = NeighborSearch::new(&takens_matrix, search_radius, None)?;
     let neighbor_list = searcher.find_all_neighbors()?;
 
     let (edge_index, edge_weight) =
@@ -407,6 +446,7 @@ pub fn recurrence_graph_rs(
     embedding_dim: Option<usize>,
     time_lag: usize,
     self_loops: bool,
+    is_test: bool,
 ) -> Result<TsNet, Box<dyn std::error::Error>> {
     // 1. Determine the embedding dimension
     let embedding_config = EmbeddingConfig {
@@ -429,8 +469,9 @@ pub fn recurrence_graph_rs(
     let rm_config = RecurrenceMatrixConfig {
         radius: radius,
         embedding_dim: dim,
+        time_lag: time_lag,
         self_loops: self_loops,
-        ..Default::default()
+        test: is_test,
     };
 
     let (edge_index, edge_weight) = compute_recurrence_matrix(None, Some(x), rm_config)?;
@@ -485,8 +526,16 @@ pub fn recurrence_graph_withdim(
     embedding_dim: usize,
     time_lag: usize,
     self_loops: bool,
+    is_test: bool,
 ) -> Result<TsNet, Box<dyn std::error::Error>> {
-    let net = recurrence_graph_rs(x, radius, Some(embedding_dim), time_lag, self_loops)?;
+    let net = recurrence_graph_rs(
+        x,
+        radius,
+        Some(embedding_dim),
+        time_lag,
+        self_loops,
+        is_test,
+    )?;
     Ok(net)
 }
 
@@ -714,7 +763,7 @@ mod tests {
     #[test]
     fn test_recurrence_graph_rs_basic() {
         let ts = generate_sine_wave(50, 1.0, 1.0);
-        let result = recurrence_graph_rs(&ts, 0.1, Some(2), 1, false);
+        let result = recurrence_graph_rs(&ts, 0.1, Some(2), 1, false, true);
 
         assert!(result.is_ok());
         let net = result.unwrap();
@@ -730,7 +779,7 @@ mod tests {
     #[test]
     fn test_recurrence_graph_rs_auto_embedding() {
         let ts = generate_sine_wave(30, 1.0, 1.0);
-        let result = recurrence_graph_rs(&ts, 0.2, None, 1, false);
+        let result = recurrence_graph_rs(&ts, 0.2, None, 1, false, true);
 
         assert!(result.is_ok());
         let net = result.unwrap();
@@ -743,7 +792,7 @@ mod tests {
     #[test]
     fn test_recurrence_graph_withdim() {
         let ts = generate_linear_series(20);
-        let result = recurrence_graph_withdim(&ts, 0.5, 3, 2, false);
+        let result = recurrence_graph_withdim(&ts, 0.5, 3, 2, false, true);
 
         assert!(result.is_ok());
         let net = result.unwrap();
@@ -756,12 +805,12 @@ mod tests {
     fn test_recurrence_graph_error_cases() {
         // Empty time series
         let empty_ts: Vec<f64> = vec![];
-        let result = recurrence_graph_rs(&empty_ts, 0.1, Some(2), 1, false);
+        let result = recurrence_graph_rs(&empty_ts, 0.1, Some(2), 1, false, true);
         assert!(result.is_err());
 
         // Very short time series
         let short_ts = vec![1.0, 2.0];
-        let result = recurrence_graph_rs(&short_ts, 0.1, Some(5), 2, false);
+        let result = recurrence_graph_rs(&short_ts, 0.1, Some(5), 2, false, true);
         assert!(result.is_err());
     }
 
@@ -829,6 +878,7 @@ mod tests {
             time_lag: 1,
             radius: 0.5,
             self_loops: false,
+            test: true,
         };
 
         let result = compute_recurrence_matrix(Some(takens_views), None, config);
@@ -848,6 +898,7 @@ mod tests {
             time_lag: 1,
             radius: 0.3,
             self_loops: false,
+            test: true,
         };
 
         let result = compute_recurrence_matrix(None, Some(&ts), config);
@@ -871,7 +922,7 @@ mod tests {
     #[test]
     fn test_constant_time_series() {
         let ts = generate_constant_series(20, 5.0);
-        let result = recurrence_graph_rs(&ts, 0.1, Some(2), 1, false);
+        let result = recurrence_graph_rs(&ts, 0.1, Some(2), 1, false, true);
 
         assert!(result.is_ok());
         let net = result.unwrap();
@@ -882,8 +933,8 @@ mod tests {
     fn test_different_radii() {
         let ts = generate_sine_wave(30, 1.0, 1.0);
 
-        let small_radius = recurrence_graph_rs(&ts, 0.01, Some(2), 1, false).unwrap();
-        let large_radius = recurrence_graph_rs(&ts, 1.0, Some(2), 1, false).unwrap();
+        let small_radius = recurrence_graph_rs(&ts, 0.01, Some(2), 1, false, true).unwrap();
+        let large_radius = recurrence_graph_rs(&ts, 1.0, Some(2), 1, false, true).unwrap();
 
         // Larger radius should generally result in more edges
         // Compare number of actual edges (edge_index.len() / 2)
@@ -894,8 +945,8 @@ mod tests {
     fn test_different_time_lags() {
         let ts = generate_sine_wave(40, 1.0, 1.0);
 
-        let lag1 = recurrence_graph_rs(&ts, 0.2, Some(3), 1, false).unwrap();
-        let lag3 = recurrence_graph_rs(&ts, 0.2, Some(3), 3, false).unwrap();
+        let lag1 = recurrence_graph_rs(&ts, 0.2, Some(3), 1, false, true).unwrap();
+        let lag3 = recurrence_graph_rs(&ts, 0.2, Some(3), 3, false, true).unwrap();
 
         // Both should succeed but with different network structures
         assert_eq!(lag1.time_lag, 1);
@@ -909,7 +960,7 @@ mod tests {
         let ts = generate_sine_wave(50, 1.0, 1.0);
 
         for dim in 1..=5 {
-            let result = recurrence_graph_rs(&ts, 0.2, Some(dim), 1, false);
+            let result = recurrence_graph_rs(&ts, 0.2, Some(dim), 1, false, true);
             assert!(result.is_ok(), "Failed for embedding dimension {}", dim);
 
             let net = result.unwrap();
@@ -920,7 +971,7 @@ mod tests {
     #[test]
     fn test_edge_weights_are_valid() {
         let ts = generate_sine_wave(25, 1.0, 1.0);
-        let net = recurrence_graph_rs(&ts, 0.3, Some(2), 1, false).unwrap();
+        let net = recurrence_graph_rs(&ts, 0.3, Some(2), 1, false, true).unwrap();
 
         // All weights should be positive and finite
         for &weight in &net.edge_weight {
@@ -932,7 +983,7 @@ mod tests {
     #[test]
     fn test_edge_indices_are_valid() {
         let ts = generate_sine_wave(30, 1.0, 1.0);
-        let net = recurrence_graph_rs(&ts, 0.2, Some(2), 1, false).unwrap();
+        let net = recurrence_graph_rs(&ts, 0.2, Some(2), 1, false, true).unwrap();
 
         let takens = Takens::build_takens(&ts, 2, 1).unwrap();
         let max_node = takens.size().0 as i64;
@@ -950,7 +1001,7 @@ mod tests {
     #[test]
     fn test_tsnet_structure() {
         let ts = generate_linear_series(20);
-        let net = recurrence_graph_rs(&ts, 0.5, Some(3), 2, false).unwrap();
+        let net = recurrence_graph_rs(&ts, 0.5, Some(3), 2, false, true).unwrap();
 
         // Verify TsNet structure
         assert_eq!(net.edge_index.len() % 2, 0); // Should have pairs of indices
@@ -970,8 +1021,8 @@ mod tests {
     fn test_reproducibility() {
         let ts = generate_sine_wave(30, 1.0, 1.0);
 
-        let net1 = recurrence_graph_rs(&ts, 0.2, Some(2), 1, false).unwrap();
-        let net2 = recurrence_graph_rs(&ts, 0.2, Some(2), 1, false).unwrap();
+        let net1 = recurrence_graph_rs(&ts, 0.2, Some(2), 1, false, true).unwrap();
+        let net2 = recurrence_graph_rs(&ts, 0.2, Some(2), 1, false, true).unwrap();
 
         // Results should be identical for same parameters
         assert_eq!(net1.edge_index, net2.edge_index);
@@ -982,7 +1033,7 @@ mod tests {
     #[test]
     fn test_edge_index_format() {
         let ts = generate_sine_wave(20, 1.0, 1.0);
-        let net = recurrence_graph_rs(&ts, 0.3, Some(2), 1, false).unwrap();
+        let net = recurrence_graph_rs(&ts, 0.3, Some(2), 1, false, true).unwrap();
 
         // edge_index should contain flattened pairs (src1, dst1, src2, dst2, ...)
         assert_eq!(net.edge_index.len() % 2, 0);

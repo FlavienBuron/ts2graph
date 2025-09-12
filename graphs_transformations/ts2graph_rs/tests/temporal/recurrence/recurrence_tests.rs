@@ -430,7 +430,7 @@ mod recurrence_tests {
             call_r_tsnet(&x, radius, embedding_dim, time_lag)?;
 
         // Call Rust function
-        let rust_result = recurrence_graph_rs(&x, radius, embedding_dim, time_lag, false)?;
+        let rust_result = recurrence_graph_rs(&x, radius, embedding_dim, time_lag, false, true)?;
 
         // Compare results
         let comparison = compare_recurrence_graphs(
@@ -512,7 +512,8 @@ mod recurrence_tests {
                 call_r_tsnet(&x, radius, embedding_dim, time_lag)?;
 
             // Call Rust function
-            let rust_result = recurrence_graph_rs(&x, radius, embedding_dim, time_lag, false)?;
+            let rust_result =
+                recurrence_graph_rs(&x, radius, embedding_dim, time_lag, false, true)?;
 
             // Compare results
             let comparison = compare_recurrence_graphs(
@@ -559,7 +560,7 @@ mod recurrence_tests {
 
             let (r_edges, r_weights, r_embedding_dim, r_time_lag, r_radius) =
                 call_r_tsnet(&x, radius, Some(3), 1)?;
-            let rust_result = recurrence_graph_rs(&x, radius, Some(3), 1, false)?;
+            let rust_result = recurrence_graph_rs(&x, radius, Some(3), 1, false, true)?;
 
             let comparison = compare_recurrence_graphs(
                 r_edges,
@@ -591,7 +592,7 @@ mod recurrence_tests {
 
             let (r_edges, r_weights, r_embedding_dim, r_time_lag, r_radius) =
                 call_r_tsnet(&x, 0.3, Some(dim), 1)?;
-            let rust_result = recurrence_graph_rs(&x, 0.3, Some(dim), 1, false)?;
+            let rust_result = recurrence_graph_rs(&x, 0.3, Some(dim), 1, false, true)?;
 
             let comparison = compare_recurrence_graphs(
                 r_edges,
@@ -630,7 +631,7 @@ mod recurrence_tests {
         // Test with automatic embedding dimension estimation
         let (r_edges, r_weights, r_embedding_dim, r_time_lag, r_radius) =
             call_r_tsnet(&x, radius, None, time_lag)?;
-        let rust_result = recurrence_graph_rs(&x, radius, None, time_lag, false)?;
+        let rust_result = recurrence_graph_rs(&x, radius, None, time_lag, false, true)?;
 
         let comparison = compare_recurrence_graphs(
             r_edges,
@@ -686,7 +687,7 @@ mod recurrence_tests {
 
         // Time Rust function
         let start = std::time::Instant::now();
-        let rust_result = recurrence_graph_rs(&x, radius, embedding_dim, time_lag, false)?;
+        let rust_result = recurrence_graph_rs(&x, radius, embedding_dim, time_lag, false, true)?;
         let rust_duration = start.elapsed();
 
         let comparison = compare_recurrence_graphs(
@@ -726,7 +727,7 @@ mod recurrence_tests {
 
         // Test case 1: Very small time series
         let x_small = generate_test_timeseries(20, "random", 111);
-        let rust_result = recurrence_graph_rs(&x_small, 0.5, Some(2), 1, false)?;
+        let rust_result = recurrence_graph_rs(&x_small, 0.5, Some(2), 1, false, true)?;
         println!(
             "Small series (n=20) produced {} edges",
             rust_result.edge_index.len() / 2
@@ -734,14 +735,14 @@ mod recurrence_tests {
 
         // Test case 2: Very sparse graph (small radius)
         let x = generate_test_timeseries(50, "random", 222);
-        let rust_result = recurrence_graph_rs(&x, 0.01, Some(2), 1, false)?;
+        let rust_result = recurrence_graph_rs(&x, 0.01, Some(2), 1, false, true)?;
         println!(
             "Sparse graph (r=0.01) produced {} edges",
             rust_result.edge_index.len() / 2
         );
 
         // Test case 3: Very dense graph (large radius)
-        let rust_result = recurrence_graph_rs(&x, 2.0, Some(2), 1, false)?;
+        let rust_result = recurrence_graph_rs(&x, 2.0, Some(2), 1, false, true)?;
         println!(
             "Dense graph (r=2.0) produced {} edges",
             rust_result.edge_index.len() / 2
@@ -774,7 +775,8 @@ mod recurrence_tests {
 
             // Time Rust execution
             let rust_start = std::time::Instant::now();
-            let rust_result = recurrence_graph_rs(&x, radius, embedding_dim, time_lag, false)?;
+            let rust_result =
+                recurrence_graph_rs(&x, radius, embedding_dim, time_lag, false, true)?;
             let rust_duration = rust_start.elapsed();
 
             let comparison = compare_recurrence_graphs(
