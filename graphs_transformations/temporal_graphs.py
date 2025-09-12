@@ -35,6 +35,7 @@ def recurrence_graph_rs(
     time_lag: int = 1,
     self_loop: bool = False,
 ):
+    print("Using Rust Recurrence graph")
     x = x.contiguous()
     edge_index, edge_weight = recurrence_graph(
         x, radius, embedding_dim, time_lag, self_loop
