@@ -36,13 +36,8 @@ def recurrence_graph_rs(
     self_loop: bool = False,
 ):
     x = x.contiguous()
-    # Convert torch tensor -> numpy before calling recurrence_graph
-    if isinstance(x, torch.Tensor):
-        x_np = x.detach().cpu().numpy()
-    else:
-        x_np = x  # already numpy
     edge_index, edge_weight = recurrence_graph(
-        x_np, radius, embedding_dim, time_lag, self_loop
+        x, radius, embedding_dim, time_lag, self_loop
     )
 
     edge_index = torch.from_numpy(edge_index).long()
