@@ -31,32 +31,22 @@ pub fn k_hop_graph(
 #[pyo3(signature = (x, radius, embedding_dim=None, time_lag=1, self_loop=false))]
 pub fn recurrence_graph(
     py: Python<'_>,
-    x: &Bound<'_, PyAny>,
+    x: PyReadonlyArrayDyn<f64>,
     radius: f64,
     embedding_dim: Option<usize>,
     time_lag: usize,
     self_loop: bool,
 ) -> PyResult<(PyObject, PyObject)> {
-    if !x.hasattr("numpy")? {
+    // Extract slice and shape
+    let array = x.as_array();
+    if array.ndim() != 1 {
         return Err(PyRuntimeError::new_err(
-            "Input must be a torch.Tensor on CPU",
-        ));
-    }
-    let numpy_obj = x.call_method0("numpy")?;
-
-    let array = numpy_obj.extract::<PyReadonlyArrayDyn<f64>>()?;
-    let slice = array.as_slice()?;
-    let shape = array.shape();
-
-    // Expect 1D time series
-    if shape.len() != 1 {
-        return Err(PyRuntimeError::new_err(
-            "input must be 1D time series tensor",
+            "input must be 1D time series array",
         ));
     }
 
-    let data = slice.to_vec();
-
+    // Copy into Vec<f64>
+    let data: Vec<f64> = array.iter().copied().collect();
     let net =
         recurrence_graph_rs(&data, radius, embedding_dim, time_lag, self_loop).map_err(|e| {
             PyRuntimeError::new_err(format!("Recurrence graph generation failed!: {e}"))
