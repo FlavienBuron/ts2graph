@@ -139,7 +139,11 @@ pub fn estimate_embedding_dim(
     let mean: f64 = time_series.iter().copied().sum::<f64>() / time_series_len as f64;
     let variance: f64 =
         time_series.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / time_series_len as f64;
-    let std_dev = variance.sqrt();
+    let std_dev = if variance == 0.0 {
+        1.0
+    } else {
+        variance.sqrt()
+    };
 
     let mut ts: Vec<f64> = time_series.iter().map(|&x| (x - mean) / std_dev).collect();
 
