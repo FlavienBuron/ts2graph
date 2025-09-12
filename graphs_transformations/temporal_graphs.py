@@ -45,7 +45,7 @@ def recurrence_graph_rs(
     else:
         raise TypeError("x must be a torch.Tensor or np.ndarray")
 
-    print(f"{x_np.shape=}")
+    x_np = np.ravel(x_np).astype(np.float64)
     edge_index, edge_weight = recurrence_graph(
         x_np, radius, embedding_dim, time_lag, self_loop
     )
