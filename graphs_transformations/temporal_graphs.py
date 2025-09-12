@@ -42,7 +42,7 @@ def recurrence_graph_rs(
     else:
         x_np = x  # already numpy
     edge_index, edge_weight = recurrence_graph(
-        x, radius, embedding_dim, time_lag, self_loop
+        x_np, radius, embedding_dim, time_lag, self_loop
     )
 
     edge_index = torch.from_numpy(edge_index).long()
