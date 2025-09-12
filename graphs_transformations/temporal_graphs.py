@@ -1,5 +1,6 @@
 from typing import Callable, Optional
 
+import numpy as np
 import torch
 from ts2graph_rs import k_hop_graph as khgrs
 from ts2graph_rs import recurrence_graph
@@ -36,11 +37,13 @@ def recurrence_graph_rs(
     self_loop: bool = False,
 ):
     x = x.contiguous()
-    # Convert torch tensor -> numpy before calling recurrence_graph
+    # Ensure CPU and 1D float64 NumPy array
     if isinstance(x, torch.Tensor):
-        x_np = x.detach().cpu().numpy()
+        x_np = x.detach().cpu().numpy().astype(np.float64)
+    elif isinstance(x, np.ndarray):
+        x_np = x.astype(np.float64)
     else:
-        x_np = x  # already numpy
+        raise TypeError("x must be a torch.Tensor or np.ndarray")
     edge_index, edge_weight = recurrence_graph(
         x_np, radius, embedding_dim, time_lag, self_loop
     )
