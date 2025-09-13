@@ -94,7 +94,7 @@ TIME_LAGS=$(awk -v max=$BATCH_SIZE '
 for LAG in $TIME_LAGS; do
     for RADIUS in $(seq 0.0 $FRACTION 1.0); do
         printf -v RAD "%.2f" "$RADIUS"
-        echo "Running: -g rn $RAD -e $EPOCHS" | tee -a "$LOGFILE"
+        echo "Running: -g rn $RAD $LAG -e $EPOCHS" | tee -a "$LOGFILE"
         TIMESTAMP=$(date +%y%m%d_%H%M%S)
         FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_rec_${RAD}_sl${SELF_LOOP}_${EPOCHS}.json"
         python -u main.py -d $DATASET -sp $FILENAME -tg rec $RAD $LAG -e $EPOCHS \
