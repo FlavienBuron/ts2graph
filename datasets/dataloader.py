@@ -3,11 +3,11 @@ from datasets.dataloaders.graphloader import GraphLoader
 from datasets.dataloaders.synthetic import SyntheticLoader
 
 
-def get_dataset(dataset_name: str) -> GraphLoader:
+def get_dataset(dataset_name: str, normalization_type=None) -> GraphLoader:
     if dataset_name == "synthetic":
         return SyntheticLoader()
     if "air" in dataset_name:
         small = "small" in dataset_name
-        return AirQualityLoader(small=small)
+        return AirQualityLoader(small=small, normalization_type=normalization_type)
     else:
         return SyntheticLoader()

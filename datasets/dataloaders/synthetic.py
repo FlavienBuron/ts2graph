@@ -52,7 +52,31 @@ class SyntheticLoader(GraphLoader):
     def corrupt(self, missing_type="perc"):
         pass
 
-    def get_similarity_knn(self, k=5):
+    def get_geolocation_graph(
+        self,
+        threshold: float = 0.1,
+        threshold_on_input: bool = False,
+        include_self: bool = False,
+        force_symmetric: bool = False,
+    ):
+        pass
+
+    def get_knn_graph(
+        self,
+        k: int,
+        use_corrupted_data: bool = False,
+        loop: bool = False,
+        cosine: bool = False,
+    ):
+        pass
+
+    def get_radius_graph(
+        self,
+        radius: int,
+        use_corrupted_data: bool = False,
+        loop: bool = False,
+        cosine: bool = False,
+    ):
         pass
 
     @property
@@ -65,5 +89,7 @@ class SyntheticLoader(GraphLoader):
     def n_exogenous(self) -> int:
         return self.vel.size(-1) if self.use_exogenous else 0
 
-    def get_dataloader(self, shuffle: bool = False, batch_size: int = 8) -> DataLoader:
+    def get_dataloader(
+        self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
+    ) -> DataLoader:
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)

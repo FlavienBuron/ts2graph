@@ -1,3 +1,7 @@
+import inspect
+from time import perf_counter
+from typing import Callable, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,59 +13,142 @@ class STGI(nn.Module):
         self,
         in_dim,
         hidden_dim,
-        out_dim,
-        lstm_hidden_dim,
         num_layers,
-        model_type: str = "GCNConv",
+        layer_type: str = "GCNConv",
+        use_spatial: bool = True,
+        use_temporal: bool = False,
+        temporal_graph_fn: Optional[Callable] = None,
         **kwargs,
     ):
         super(STGI, self).__init__()
 
-        if not hasattr(pyg_nn, model_type):
-            raise ValueError(f"Model type '{model_type}' not found in torch_geometric")
+        if not hasattr(pyg_nn, layer_type):
+            raise ValueError(f"Model type '{layer_type}' not found in torch_geometric")
 
-        ModelClass = getattr(pyg_nn, model_type)
+        ModelClass = getattr(pyg_nn, layer_type)
+        self.use_spatial = use_spatial
+        self.use_temporal = use_temporal
+        self.temporal_graph_fn = temporal_graph_fn
 
-        self.layer1 = ModelClass(in_dim, hidden_dim, **kwargs)
-        self.layer2 = ModelClass(hidden_dim, out_dim, **kwargs)
+        if not use_spatial and not use_temporal:
+            print(
+                "WARNING: neither spatial not temporal aspects are set to be used. Defaulting to using spatial only"
+            )
+            use_spatial = True
 
-        # Temporal Bi-GRU
-        self.lstm = nn.LSTM(
-            out_dim,
-            lstm_hidden_dim,
-            num_layers,
-            batch_first=True,
-            bidirectional=True,
-            proj_size=0,
-        )
+        out_dim = in_dim
 
-        # Decoder (MLP for imputation)
-        self.decoder = nn.Linear(
-            lstm_hidden_dim * 2, in_dim
-        )  # *2 for bidirectional GRU
+        if use_spatial:
+            print("Building Spatial Block in STGI")
+            self.gnn_layers = self._build_gnn_layers(
+                ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
+            )
 
-    def forward(self, x, edge_index, mask):
+        if use_temporal:
+            print("Building Temporal Block in STGI")
+            self.temp_gnn_layers = self._build_gnn_layers(
+                ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
+            )
+
+    def _build_gnn_layers(
+        self,
+        ModelClass,
+        in_dim: int,
+        hidden_dim: int,
+        out_dim: int,
+        num_layers: int,
+        **kwargs,
+    ) -> nn.ModuleList:
+        """Helper method to build GNN layers"""
+
+        layers = nn.ModuleList()
+        init_signature = inspect.signature(ModelClass.__init__)
+        kwargs = {k: v for k, v in kwargs.items() if k in init_signature.parameters}
+
+        if num_layers == 1:
+            layers.append(ModelClass(in_dim, out_dim, **kwargs))
+        else:
+            layers.append(ModelClass(in_dim, hidden_dim, **kwargs))
+            for _ in range(num_layers - 2):
+                layers.append(ModelClass(hidden_dim, hidden_dim, **kwargs))
+            layers.append(ModelClass(hidden_dim, out_dim, **kwargs))
+
+        return layers
+
+    def forward(
+        self,
+        x,
+        mask,
+        spatial_edge_index,
+        spatial_edge_weight,
+        **kwargs,
+    ):
         """
         x: (batch_size, time_steps, num_nodes, feature_dim)
         edge_index: Graph edges (from adjacency matrix)
-        mask: Binary mask (1 = observed, 0 = missing)
+        edge_weight: Graph edges weights (from adjacency matrix)
         """
-        time_steps, num_nodes, feature_dim = x.shape
+        time_steps, num_nodes, features = x.shape
+        device = x.device
         ori_x = x.detach().clone()
-        x = x.reshape(-1, feature_dim)
-        x = F.relu(self.layer1(x, edge_index))
-        x = F.relu(self.layer2(x, edge_index))
-        x = x.reshape(time_steps, num_nodes, -1)
+        temporal_graph_time = 0.0
 
-        # Apply Bi-GRU for temporal modeling
-        # Output shape: (batch_size, time_steps, num_nodes, lstm_hidden_dim * 2)
-        x, _ = self.lstm(x)
+        # === Spatial GNN ===
+        if self.use_spatial:
+            spatial_outputs = []
 
-        # Decode missing values
-        # Shape: (batch_size, time_steps, num_nodes, feature_dim)
-        imputed_x = self.decoder(x)
+            for t in range(time_steps):
+                x_t = x[t]
+                for i, gnn_layer in enumerate(self.gnn_layers):
+                    if isinstance(gnn_layer, pyg_nn.GCNConv):
+                        x_t = gnn_layer(x_t, spatial_edge_index, spatial_edge_weight)
+                    else:
+                        x_t = gnn_layer(x_t, spatial_edge_index)
+                    if i < len(self.gnn_layers) - 1:
+                        x_t = F.relu(x_t)
+                spatial_outputs.append(x_t)
 
-        # Compute the batch MSE
-        x_loss = torch.sum(mask * (imputed_x - ori_x) ** 2) / (torch.sum(mask) + 1e-8)
-        x_final = torch.where(mask.bool(), ori_x, imputed_x)
-        return x_final, x_loss
+            # Stack to shape (time, nodes, out_dim)
+            x = torch.stack(spatial_outputs, dim=0)
+
+        if self.use_spatial and self.use_temporal:
+            x[mask] = ori_x[mask]
+
+        # === Temporal GNN ===
+        if self.use_temporal:
+            temporal_outputs = []
+
+            for node_idx in range(num_nodes):
+                # Get the time series for this node: shape (T, F)
+                x_node = x[:, node_idx, :]
+                temporal_graph_start = perf_counter()
+                if self.temporal_graph_fn is not None:
+                    temporal_edge_index, temporal_edge_weight = self.temporal_graph_fn(
+                        x=x_node
+                    )
+                else:
+                    temporal_edge_index = torch.empty((2, 0), dtype=torch.long)
+                    temporal_edge_weight = torch.empty((0,), dtype=torch.float)
+                temporal_graph_end = perf_counter()
+                temporal_graph_time = temporal_graph_end - temporal_graph_start
+                # Apply temporal GNN layers
+                for i, temp_gnn_layers in enumerate(self.temp_gnn_layers):
+                    x_node = temp_gnn_layers(
+                        x_node, temporal_edge_index, temporal_edge_weight
+                    )
+                    if i < len(self.temp_gnn_layers) - 1:
+                        x_node = F.relu(x_node)
+                temporal_outputs.append(x_node)
+
+            # Stack to shape (time, nodes, out_dim)
+            x = torch.stack(temporal_outputs, dim=1)
+
+        # x = self.layer_norm(x)
+        x = torch.tanh(x)
+
+        if torch.isnan(x).any():
+            print("NaNs detected in imputed_x")
+            print("Stats:", x.min(), x.max(), x.mean())
+            raise ValueError("NaNs in model output")
+
+        return x, temporal_graph_time
