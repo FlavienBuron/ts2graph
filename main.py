@@ -6,11 +6,11 @@ from argparse import ArgumentParser, Namespace
 from functools import partial
 from time import perf_counter
 from typing import Callable, Optional
-from yaml
 
 import numpy as np
 import torch
 import torch.nn as nn
+import yaml
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
@@ -21,7 +21,6 @@ from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torch_geometric.utils import dense_to_sparse
-import yaml
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
@@ -784,11 +783,8 @@ def run(args: Namespace) -> None:
 
     if args.downstream_task:
         gnn_model = None
-        spatial_edge_index, spatial_edge_weight = dense_to_sparse(
-            spatial_adj_matrix
-        )
+        spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
         if model == "stgi":
-
             gnn_model = STGI(
                 in_dim=1,
                 hidden_dim=args.hidden_dim,
@@ -800,7 +796,7 @@ def run(args: Namespace) -> None:
                 add_self_loops=False,
             )
         elif model == "grin":
-            with open("./downstream/imputation/GRIN/config.yaml", 'r') as f:
+            with open("./downstream/imputation/GRIN/config.yaml", "r") as f:
                 config_args = yaml.safe_load(f)
             for key, value in config_args.items():
                 setattr(args, key, value)
