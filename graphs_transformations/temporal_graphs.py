@@ -35,6 +35,7 @@ def recurrence_graph_rs(
     time_lag: int = 1,
     self_loop: bool = False,
 ):
+    print("Using recurrence_graph_rs")
     x = x.contiguous()
     # Ensure CPU and 1D float64 NumPy array
     if isinstance(x, torch.Tensor):
