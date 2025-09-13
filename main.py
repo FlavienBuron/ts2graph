@@ -6,6 +6,7 @@ from argparse import ArgumentParser, Namespace
 from functools import partial
 from time import perf_counter
 from typing import Callable, Optional
+from yaml
 
 import numpy as np
 import torch
@@ -20,9 +21,11 @@ from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torch_geometric.utils import dense_to_sparse
+import yaml
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
+from downstream.imputation.GRIN.grin import GRINet
 from downstream.imputation.STGI import STGI
 from graphs_transformations.temporal_graphs import k_hop_graph
 from graphs_transformations.ts2net import Ts2Net
@@ -46,6 +49,13 @@ def parse_args() -> Namespace:
         type=str,
         help="The device to use",
         default="cuda" if torch.cuda.is_available() else "cpu",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        help="Which model should be used for the task",
+        choices=["stgi", "grin"],
+        default="stgi",
     )
     parser.add_argument(
         "--save_path",
@@ -707,6 +717,7 @@ def run(args: Namespace) -> None:
     # test = np.random.rand(10, 100)
     print("#" * 100)
     print(args)
+    model = args.model
     device = args.device
     stgi_mode = args.mode
     if stgi_mode.lower() in ["st"]:
@@ -772,28 +783,57 @@ def run(args: Namespace) -> None:
             save_graph_characteristics(spatial_adj_matrix, save_path)
 
     if args.downstream_task:
-        spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
-
-        stgi = STGI(
-            in_dim=1,
-            hidden_dim=args.hidden_dim,
-            num_layers=args.layer_num,
-            layer_type=args.layer_type,
-            use_spatial=use_spatial,
-            use_temporal=use_temporal,
-            temporal_graph_fn=temporal_graph_fn,
-            add_self_loops=False,
+        gnn_model = None
+        spatial_edge_index, spatial_edge_weight = dense_to_sparse(
+            spatial_adj_matrix
         )
+        if model == "stgi":
 
-        stgi.to(device)
-        geo_optim = Adam(stgi.parameters(), lr=args.learning_rate)
-        stgi = train_imputer(
-            stgi,
+            gnn_model = STGI(
+                in_dim=1,
+                hidden_dim=args.hidden_dim,
+                num_layers=args.layer_num,
+                layer_type=args.layer_type,
+                use_spatial=use_spatial,
+                use_temporal=use_temporal,
+                temporal_graph_fn=temporal_graph_fn,
+                add_self_loops=False,
+            )
+        elif model == "grin":
+            with open("./downstream/imputation/GRIN/config.yaml", 'r') as f:
+                config_args = yaml.safe_load(f)
+            for key, value in config_args.items():
+                setattr(args, key, value)
+            gnn_model = GRINet(
+                adj=spatial_adj_matrix.cpu().numpy(),
+                d_in=1,
+                d_hidden=args.d_hidden,
+                d_ff=args.d_ff,
+                ff_dropout=args.ff_dropout,
+                n_layers=args.n_layers,
+                kernel_size=args.kernel_size,
+                decoder_order=args.decoder_order,
+                global_att=args.global_att,
+                d_u=args.d_u,
+                d_emb=args.d_emb,
+                layer_norm=args.layer_norm,
+                merge=args.merge,
+                impute_only_holes=args.impute_only_holes,
+            )
+        else:
+            raise ValueError(f"Unsupported model {model}")
+
+        assert gnn_model is not None, "Model instantiation failed"
+
+        gnn_model.to(device)
+        optim = Adam(gnn_model.parameters(), lr=args.learning_rate)
+        gnn_model = train_imputer(
+            gnn_model,
             dataset,
             dataloader,
             spatial_edge_index,
             spatial_edge_weight,
-            geo_optim,
+            optim,
             metrics,
             args.epochs,
             args.iter_num,
