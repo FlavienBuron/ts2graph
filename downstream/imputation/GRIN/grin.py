@@ -50,6 +50,7 @@ class GRINet(nn.Module):
         )
 
     def forward(self, x, mask=None, u=None, **kwargs):
+        x = x.unsqueeze(0)
         # x: [batches, steps, nodes, channels] -> [batches, channels, nodes, steps]
         x = rearrange(x, "b s n c -> b c n s")
         if mask is not None:
