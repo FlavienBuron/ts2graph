@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
 from einops import rearrange
-from gcrnn import GCGRUCell
-from spatial_attention import SpatialAttention
-from spatial_conv import SpatialConvOrderK
 from torch.autograd import Variable
+
+from .gcrnn import GCGRUCell
+from .spatial_attention import SpatialAttention
+from .spatial_conv import SpatialConvOrderK
 
 
 def reverse_tensor(tensor=None, axis=-1):
