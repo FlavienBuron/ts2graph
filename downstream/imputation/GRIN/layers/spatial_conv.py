@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from ... import epsilon
+epsilon = 1e-6
 
 
 class SpatialConvOrderK(nn.Module):
@@ -40,7 +40,7 @@ class SpatialConvOrderK(nn.Module):
             for i in range(k - 1):
                 ak = torch.matmul(ak, a.T)
                 if not include_self:
-                    ak.fill_diagonal_(0.)
+                    ak.fill_diagonal_(0.0)
                 supp_k.append(ak)
         return support + supp_k
 
@@ -52,13 +52,13 @@ class SpatialConvOrderK(nn.Module):
         else:
             squeeze = False
         out = [x] if self.include_self else []
-        if (type(support) is not list):
+        if type(support) is not list:
             support = [support]
         for a in support:
-            x1 = torch.einsum('ncvl,wv->ncwl', (x, a)).contiguous()
+            x1 = torch.einsum("ncvl,wv->ncwl", (x, a)).contiguous()
             out.append(x1)
             for k in range(2, self.order + 1):
-                x2 = torch.einsum('ncvl,wv->ncwl', (x1, a)).contiguous()
+                x2 = torch.einsum("ncvl,wv->ncwl", (x1, a)).contiguous()
                 out.append(x2)
                 x1 = x2
 
