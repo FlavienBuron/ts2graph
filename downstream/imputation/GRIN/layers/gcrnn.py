@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from spatial_conv import SpatialConvOrderK
+
+from .spatial_conv import SpatialConvOrderK
 
 
 class GCGRUCell(nn.Module):
