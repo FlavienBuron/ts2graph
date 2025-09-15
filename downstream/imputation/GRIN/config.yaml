@@ -1,0 +1,12 @@
+d_hidden: 64
+d_ff: 128
+ff_dropout: 0.1
+n_layers: 2
+kernel_size: 2
+decoder_order: 1
+global_att: false
+d_u: 0
+d_emb: 8
+layer_norm: true
+merge: mlp
+impute_only_holes: true
