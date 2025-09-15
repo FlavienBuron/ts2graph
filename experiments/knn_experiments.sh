@@ -12,6 +12,7 @@ NUM_NODES=36
 FRACTION=0.05
 LAYER_TYPE="GCNConv"
 FULL_DATASET=0
+MODEL="STGI"
 
 
 while [[ $# -gt 0 ]]; do
@@ -22,6 +23,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dataset)
             DATASET="$2"
+            shift 2
+            ;;
+        --model)
+            MODEL="$2"
             shift 2
             ;;
         --layer_type)
@@ -76,7 +81,7 @@ fi
 
 DATE=$(date +%y%m%d)
 
-EXP_DIR="./experiments/results/knn/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}/"
+EXP_DIR="./experiments/results/${MODEL}/knn/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}/"
 mkdir -p "${EXP_DIR}/"
 LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
 
@@ -107,10 +112,10 @@ for G in "${!TECHNIQUES[@]}"; do
             SELF_LOOP=${G#one_}
         fi
 
-    echo "Running: -g $G $V -e $EPOCHS" | tee -a "$LOGFILE"
+    echo "Running: $MODEL -g $G $V -e $EPOCHS" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -l $LAYER_TYPE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${MODEL}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_${BASE_G}_${V}_sl${SELF_LOOP}_${EPOCHS}.json"
+    python -u main.py --model $MODEL -d $DATASET -sp $FILENAME -sg "$BASE_G" "$V" -e "$EPOCHS" -l $LAYER_TYPE -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
         $( [[ "$FULL_DATASET" -eq 1 ]] && echo -fd ) \
         -v 0 | tee -a "$LOGFILE"
 done
@@ -118,10 +123,10 @@ done
 SELF_LOOP=$ORIGINAL
 
 for K in $(seq 0.0 $FRACTION 1.0); do
-    echo "Running: -g knn $K -e $EPOCHS -l $LAYER_TYPE" | tee -a "$LOGFILE"
+    echo "Running: $MODEL -g knn $K -e $EPOCHS -l $LAYER_TYPE" | tee -a "$LOGFILE"
     TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_knn_${K}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -sg knn $K -e $EPOCHS -l $LAYER_TYPE \
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${MODEL}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_knn_${K}_sl${SELF_LOOP}_${EPOCHS}.json"
+    python -u main.py --model $MODEL -d $DATASET -sp $FILENAME -sg knn $K -e $EPOCHS -l $LAYER_TYPE \
            -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
         $( [[ "$FULL_DATASET" -eq 1 ]] && echo -fd ) \
          -v 0 | tee -a "$LOGFILE"
