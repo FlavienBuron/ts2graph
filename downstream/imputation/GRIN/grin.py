@@ -1,3 +1,5 @@
+from time import perf_counter
+
 import torch
 from einops import rearrange
 from torch import nn
@@ -50,6 +52,7 @@ class GRINet(nn.Module):
         )
 
     def forward(self, x, mask=None, u=None, **kwargs):
+        total_imputation_time = 0.0
         x = x.unsqueeze(0)
         # x: [batches, steps, nodes, channels] -> [batches, channels, nodes, steps]
         x = rearrange(x, "b s n c -> b c n s")
@@ -61,18 +64,22 @@ class GRINet(nn.Module):
             u = rearrange(u, "b s n c -> b c n s")
 
         # imputation: [batches, channels, nodes, steps] prediction: [4, batches, channels, nodes, steps]
+        imputation_start = perf_counter()
         imputation, prediction = self.bigrill(
             x, self.adj, mask=mask, u=u, cached_support=self.training
         )
+        imputation_end = perf_counter()
+        total_imputation_time = imputation_end - imputation_start
         # In evaluation stage impute only missing values
         if self.impute_only_holes and not self.training:
             imputation = torch.where(mask, x, imputation)
         # out: [batches, channels, nodes, steps] -> [batches, steps, nodes, channels]
         imputation = torch.transpose(imputation, -3, -1)
         prediction = torch.transpose(prediction, -3, -1)
-        if self.training:
-            return imputation, prediction
-        return imputation
+
+        imputation = imputation.squeeze(0)
+
+        return imputation, total_imputation_time
 
     @staticmethod
     def add_model_specific_args(parser):
