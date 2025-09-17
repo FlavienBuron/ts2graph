@@ -716,7 +716,7 @@ def run(args: Namespace) -> None:
     # test = np.random.rand(10, 100)
     print("#" * 100)
     print(args)
-    model = args.model
+    model = args.model.lower()
     device = args.device
     stgi_mode = args.mode
     if stgi_mode.lower() in ["st"]:
