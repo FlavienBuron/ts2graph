@@ -784,6 +784,7 @@ def run(args: Namespace) -> None:
     if args.downstream_task:
         gnn_model = None
         spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
+        print(f"Running using model {args.model}")
         if model == "stgi":
             gnn_model = STGI(
                 in_dim=1,
