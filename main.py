@@ -509,9 +509,9 @@ def impute_missing_data(
             imputed_data = torch.cat(imputed_batches, dim=0)
             dataset.update_data(imputed_data)
             del imputed_data
-        for param in model.parameters():
-            if param.grad is None:
-                print(f"Gradient is None for param: {param}")
+        # for param in model.parameters():
+        #     if param.grad is None:
+        #         print(f"Gradient is None for param: {param}")
         metrics.update(
             {
                 "phase": "impute",
