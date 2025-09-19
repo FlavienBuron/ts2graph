@@ -807,7 +807,7 @@ def run(args: Namespace) -> None:
                 d_hidden=args.d_hidden,
                 d_ff=args.d_ff,
                 ff_dropout=args.ff_dropout,
-                n_layers=args.n_layers,
+                n_layers=args.num_layers,
                 kernel_size=args.kernel_size,
                 decoder_order=args.decoder_order,
                 global_att=args.global_att,
