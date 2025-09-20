@@ -150,6 +150,12 @@ def parse_args() -> Namespace:
         default=128,
     )
     parser.add_argument(
+        "--shuffle_batch",
+        "-sb",
+        action="store_true",
+        help="whether the batches should be shuffled",
+    )
+    parser.add_argument(
         "--epochs",
         "-e",
         type=int,
@@ -185,7 +191,7 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--unweighted_graph",
         "-ug",
-        action="store_false",
+        action="store_true",
         help="should the selected graph be weighted, if available",
     )
     parser.add_argument(
@@ -613,7 +619,7 @@ def get_spatial_graph(
         adj_matrix = dataset.get_geolocation_graph(
             threshold=parameter,
             include_self=args.self_loop,
-            weighted=args.unweighted_graph,
+            weighted=not args.unweighted_graph,
         )
         end = perf_counter()
     elif "zero" in technique:
@@ -738,7 +744,7 @@ def run(args: Namespace) -> None:
 
     # dataset.corrupt(missing_type="perc", missing_size=50)
     dataloader = dataset.get_dataloader(
-        use_corrupted_data=False, shuffle=False, batch_size=args.batch_size
+        use_corrupted_data=False, shuffle=args.shuffle_batch, batch_size=args.batch_size
     )
     assert not torch.isnan(dataset.original_data[dataset.validation_mask]).any(), (
         "Missing values present under evaluation mask (run)"
