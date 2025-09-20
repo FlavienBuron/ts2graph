@@ -33,7 +33,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --shuffle)
             SHUFFLE=1
-            shift 2
+            shift
             ;;
         --model)
             MODEL="$2"
