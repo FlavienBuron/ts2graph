@@ -111,7 +111,7 @@ class AirQualityLoader(GraphLoader):
             working_mask = self.missing_mask
         working_points = working_mask.numel()
 
-        if method == "monthly":
+        if method == "month":
             if self.validation_mask is not None:
                 print("Using predefined validation mask")
                 self.train_mask = working_mask & ~self.validation_mask
