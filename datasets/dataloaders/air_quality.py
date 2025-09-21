@@ -356,10 +356,15 @@ class AirQualityLoader(GraphLoader):
         """
         Compute the geographical distance between coordinates points
         """
+
+        _AVG_EARTH_RADIUS_KM = 6371.0088
+
         coords_array = coords.to_numpy()
         if to_rad:
             coords_array = np.radians(coords_array)
-        dist = torch.from_numpy(haversine_distances(coords_array)).float()
+        dist = torch.from_numpy(
+            haversine_distances(coords_array) * _AVG_EARTH_RADIUS_KM
+        ).float()
         return dist
 
     def get_dataloader(
