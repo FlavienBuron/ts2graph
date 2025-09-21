@@ -59,7 +59,6 @@ class AirQualityLoader(GraphLoader):
         if small:
             path = os.path.join(self.dataset_path, "small36.h5")
             eval_mask = pd.DataFrame(pd.read_hdf(path, "eval_mask"))
-            print(f"{eval_mask.shape=}")
         else:
             path = os.path.join(self.dataset_path, "full437.h5")
             eval_mask = None
@@ -117,7 +116,7 @@ class AirQualityLoader(GraphLoader):
                 print("Using predefined validation mask")
                 self.train_mask = working_mask & ~self.validation_mask
 
-                train_points = torch.sum(self.train_mask).item()
+                train_points = torch.sum(~self.train_mask).item()
                 val_points = torch.sum(self.validation_mask).item()
                 missing = total_points - (train_points + val_points)
 
@@ -128,7 +127,7 @@ class AirQualityLoader(GraphLoader):
                     f"Validation is {val_points / total_points:.2f} of total. {val_points / working_points:.2f} of non-missing"
                 )
                 print(
-                    f"Original missing values: {torch.sum(self.missing_mask) / total_points}; Actual missing values: {missing / total_points}"
+                    f"Original missing values: {torch.sum(~self.missing_mask) / total_points:.2f}; Actual missing values: {missing / total_points:.2f}"
                 )
 
                 assert not torch.isnan(
