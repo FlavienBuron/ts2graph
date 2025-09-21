@@ -15,7 +15,7 @@ class GraphLoader(Dataset, ABC):
         self.current_data: torch.Tensor  # The working copy, used during training
         self.missing_mask: torch.Tensor
         self.train_mask: torch.Tensor
-        self.validation_mask: torch.Tensor
+        self.validation_mask: torch.Tensor | None
         self.distances = None
         self.corrupt_data: torch.Tensor = torch.empty(
             0,
@@ -49,6 +49,9 @@ class GraphLoader(Dataset, ABC):
     def reset_current_data(self) -> None:
         """Reset the current data to the initial missing data state"""
         self.current_data = self.missing_data.clone()
+
+    def mask_months(self, mask, timestamps, holdout_months=[3, 6, 9, 12]):
+        pass
 
     @abstractmethod
     def corrupt(self, missing_type: str = "perc"):

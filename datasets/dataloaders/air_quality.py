@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -53,27 +53,31 @@ class AirQualityLoader(GraphLoader):
             test_mask = self.train_mask[index, :]
         return missing_data, missing_mask, ori_data.nan_to_num_(0.0), test_mask
 
-    def load_raw(self, small: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def load_raw(
+        self, small: bool = False
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, Union[pd.DataFrame, None]]:
         if small:
             path = os.path.join(self.dataset_path, "small36.h5")
+            eval_mask = pd.DataFrame(pd.read_hdf(path, "eval_mask"))
         else:
             path = os.path.join(self.dataset_path, "full437.h5")
+            eval_mask = None
         data = pd.DataFrame(pd.read_hdf(path, key="pm25"))
         stations = pd.DataFrame(pd.read_hdf(path, key="stations"))
-        return data, stations
+        return data, stations, eval_mask
 
     def load(
         self, small: bool = False, normalization_type=None
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        data, stations = self.load_raw(small=small)
+        data, stations, eval_mask = self.load_raw(small=small)
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
         data = torch.from_numpy(data.to_numpy()).float()
         data = data.unsqueeze(-1)
-        # n_steps = data.shape[0]
-        # time_indices = torch.arange(n_steps, dtype=data.dtype).view(n_steps, 1, 1)
-        # time_indices = time_indices / (n_steps - 1)
-        # data = torch.cat([data, time_indices.expand(-1, data.shape[1], -1)], dim=-1)
+        if eval_mask is not None:
+            eval_mask = torch.from_numpy(eval_mask.to_numpy())
+            eval_mask = eval_mask.unsqueeze(-1)
+        self.validation_mask = eval_mask
         mask = torch.where(data.isnan(), False, True)
         assert torch.isnan(data[~mask]).all(), (
             "non-missing values found under missing values mask"
@@ -87,6 +91,7 @@ class AirQualityLoader(GraphLoader):
         validation_percent: float = 0.2,
         cols: List = [],
         time_blocks: int = 5,
+        method: str = "month",
     ):
         """
         Split the data into training and validation sets using random blocks.
@@ -95,6 +100,7 @@ class AirQualityLoader(GraphLoader):
             train_percent: Percentage of non-missing values held-out for training
             validation_percent: Percentage of non-missing values held-out for validation/evaluation
         """
+        total_points = self.original_data.numel()
         if len(cols) > 0:
             mask_cols = torch.zeros(self.original_data.shape[1], dtype=torch.bool)
             mask_cols[cols] = True
@@ -103,6 +109,30 @@ class AirQualityLoader(GraphLoader):
             )
         else:
             working_mask = self.missing_mask
+        working_points = working_mask.numel()
+
+        if method == "monthly":
+            if self.validation_mask is not None:
+                print("Using predefined validation mask")
+                self.train_mask = working_mask & ~self.validation_mask
+
+                train_points = torch.sum(self.train_mask | self.missing_mask).item()
+                val_points = torch.sum(self.validation_mask | self.missing_mask).item()
+
+                print(
+                    f"Train is {train_points / total_points:.2f} of total. {train_points / working_points:.2f} of non-missing"
+                )
+                print(
+                    f"Validation is {val_points / total_points:.2f} of total. {val_points / working_points:.2f} of non-missing"
+                )
+
+                assert not torch.isnan(
+                    self.original_data[self.validation_mask]
+                ).any(), "Missing values found under evaluation mask (second pass)"
+                assert not torch.isnan(self.original_data[self.train_mask]).any(), (
+                    "Missing values found under evaluation mask (second pass)"
+                )
+            return
 
         rows, _, _ = self.original_data.shape
         train_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
@@ -371,7 +401,7 @@ class AirQualityLoader(GraphLoader):
         self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
-        self.split(train_percent=0.2, validation_percent=0.2)
+        self.split(train_percent=0.2, validation_percent=0.2, method="month")
         self.missing_data = torch.where(self.train_mask, 0.0, self.missing_data)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
