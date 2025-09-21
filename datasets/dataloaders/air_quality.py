@@ -24,13 +24,13 @@ class AirQualityLoader(GraphLoader):
         nan_method="mean",
     ):
         self.dataset_path = dataset_path
+        self.validation_mask = None
         self.original_data, self.missing_mask, self.distances = self.load(
             small=small, normalization_type="min_max"
         )
         self.missing_data = torch.empty_like(self.original_data)
         if replace_nan:
             self._replace_nan(nan_method)
-        self.validation_mask = torch.zeros_like(self.original_data).bool()
         self.corrupt_data = torch.empty_like(self.original_data)
         self.corrupt_mask = torch.empty_like(self.original_data)
         self.use_corrupted_data = False
@@ -78,9 +78,7 @@ class AirQualityLoader(GraphLoader):
         if eval_mask is not None:
             eval_mask = torch.from_numpy(eval_mask.to_numpy()).bool()
             eval_mask = eval_mask.unsqueeze(-1)
-            print(f"2.{torch.sum(eval_mask).item()=}")
         self.validation_mask = eval_mask
-        print(f"3.{torch.sum(self.validation_mask).item()=}")
         mask = torch.where(data.isnan(), False, True)
         assert torch.isnan(data[~mask]).all(), (
             "non-missing values found under missing values mask"
