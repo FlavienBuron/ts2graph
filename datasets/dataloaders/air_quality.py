@@ -113,7 +113,9 @@ class AirQualityLoader(GraphLoader):
 
         if method == "month":
             if self.validation_mask is not None:
-                print("Using predefined validation mask")
+                print(
+                    f"Using predefined validation mask, {torch.sum(self.validation_mask).item()=}"
+                )
                 self.train_mask = working_mask & ~self.validation_mask
 
                 train_points = torch.sum(self.train_mask | self.missing_mask).item()
