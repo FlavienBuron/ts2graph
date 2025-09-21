@@ -59,6 +59,7 @@ class AirQualityLoader(GraphLoader):
         if small:
             path = os.path.join(self.dataset_path, "small36.h5")
             eval_mask = pd.DataFrame(pd.read_hdf(path, "eval_mask"))
+            print(f"{eval_mask.shape=}")
         else:
             path = os.path.join(self.dataset_path, "full437.h5")
             eval_mask = None
@@ -77,6 +78,7 @@ class AirQualityLoader(GraphLoader):
         if eval_mask is not None:
             eval_mask = torch.from_numpy(eval_mask.to_numpy())
             eval_mask = eval_mask.unsqueeze(-1)
+            print(f"2.{eval_mask.shape=}")
         self.validation_mask = eval_mask
         mask = torch.where(data.isnan(), False, True)
         assert torch.isnan(data[~mask]).all(), (
