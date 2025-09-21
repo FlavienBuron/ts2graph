@@ -76,9 +76,9 @@ class AirQualityLoader(GraphLoader):
         data = torch.from_numpy(data.to_numpy()).float()
         data = data.unsqueeze(-1)
         if eval_mask is not None:
-            eval_mask = torch.from_numpy(eval_mask.to_numpy())
+            eval_mask = torch.from_numpy(eval_mask.to_numpy()).float()
             eval_mask = eval_mask.unsqueeze(-1)
-            print(f"2.{eval_mask.shape=}")
+            print(f"2.{torch.sum(self.validation_mask).item()=}")
         self.validation_mask = eval_mask
         mask = torch.where(data.isnan(), False, True)
         assert torch.isnan(data[~mask]).all(), (
