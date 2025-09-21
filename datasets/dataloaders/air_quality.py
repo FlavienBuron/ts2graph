@@ -119,14 +119,18 @@ class AirQualityLoader(GraphLoader):
                 )
                 self.train_mask = working_mask & ~self.validation_mask
 
-                train_points = torch.sum(self.train_mask | self.missing_mask).item()
-                val_points = torch.sum(self.validation_mask | self.missing_mask).item()
+                train_points = torch.sum(self.train_mask).item()
+                val_points = torch.sum(self.validation_mask).item()
+                missing = total_points - (train_points + val_points)
 
                 print(
                     f"Train is {train_points / total_points:.2f} of total. {train_points / working_points:.2f} of non-missing"
                 )
                 print(
                     f"Validation is {val_points / total_points:.2f} of total. {val_points / working_points:.2f} of non-missing"
+                )
+                print(
+                    f"Original missing values: {torch.sum(self.missing_mask) / total_points}; Actual missing values: {missing / total_points}"
                 )
 
                 assert not torch.isnan(
