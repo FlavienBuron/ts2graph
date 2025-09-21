@@ -80,6 +80,7 @@ class AirQualityLoader(GraphLoader):
             eval_mask = eval_mask.unsqueeze(-1)
             print(f"2.{torch.sum(eval_mask).item()=}")
         self.validation_mask = eval_mask
+        print(f"3.{torch.sum(self.validation_mask).item()=}")
         mask = torch.where(data.isnan(), False, True)
         assert torch.isnan(data[~mask]).all(), (
             "non-missing values found under missing values mask"
