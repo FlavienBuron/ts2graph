@@ -109,7 +109,7 @@ class AirQualityLoader(GraphLoader):
             )
         else:
             working_mask = self.missing_mask
-        working_points = working_mask.numel()
+        working_points = torch.sum(working_mask).item()
 
         if method == "month":
             if self.validation_mask is not None:
