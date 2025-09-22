@@ -87,7 +87,7 @@ class AirQualityLoader(GraphLoader):
 
     def split(
         self,
-        train_percent: float = 0.2,
+        test_percent: float = 0.2,
         validation_percent: float = 0.2,
         cols: List = [],
         time_blocks: int = 5,
@@ -116,10 +116,14 @@ class AirQualityLoader(GraphLoader):
                 print("Using predefined validation mask")
                 working_mask = working_mask & ~self.validation_mask
 
+                orig_valid_points = torch.sum(self.missing_mask).item()
+                post_val_points = torch.sum(working_mask).item()
+                test_percent = test_percent * (orig_valid_points / post_val_points)
+
                 self.test_mask = self.sample_mask_by_time(
                     data=self.original_data,
                     valid_mask=working_mask,
-                    percent=train_percent,
+                    percent=test_percent,
                     time_blocks=time_blocks,
                 )
 
@@ -153,7 +157,7 @@ class AirQualityLoader(GraphLoader):
         val_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
 
         total_valid_points = torch.sum(working_mask).item()
-        target_train_points = int(total_valid_points * train_percent)
+        target_train_points = int(total_valid_points * test_percent)
         target_val_points = int(total_valid_points * validation_percent)
 
         time_segments = torch.linspace(0, rows, time_blocks + 1).long()
@@ -258,7 +262,7 @@ class AirQualityLoader(GraphLoader):
             f"Target Val. Percentage: {validation_percent:.2f}, Achieved: {val_final_percentage:.2f}"
         )
         print(
-            f"Target Val. Percentage: {train_percent:.2f}, Achieved: {train_final_percentage:.2f}"
+            f"Target Val. Percentage: {test_percent:.2f}, Achieved: {train_final_percentage:.2f}"
         )
 
         assert not torch.isnan(self.original_data[val_mask]).any(), (
@@ -473,7 +477,7 @@ class AirQualityLoader(GraphLoader):
         self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
-        self.split(train_percent=0.2, validation_percent=0.2, method="month")
+        self.split(test_percent=0.2, validation_percent=0.2, method="month")
         self.missing_data = torch.where(self.test_mask, 0.0, self.missing_data)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
