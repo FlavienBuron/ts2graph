@@ -45,12 +45,12 @@ class AirQualityLoader(GraphLoader):
             missing_data = self.corrupt_data[index, :]
             ori_data = self.original_data[index, :]
             missing_mask = self.corrupt_mask[index, :]
-            test_mask = self.train_mask[index, :]
+            test_mask = self.test_mask[index, :]
         else:
             missing_data = self.current_data[index, :]
             ori_data = self.original_data[index, :]
             missing_mask = self.missing_mask[index, :]
-            test_mask = self.train_mask[index, :]
+            test_mask = self.test_mask[index, :]
         return missing_data, missing_mask, ori_data.nan_to_num_(0.0), test_mask
 
     def load_raw(
@@ -114,14 +114,21 @@ class AirQualityLoader(GraphLoader):
         if method == "month":
             if self.validation_mask is not None:
                 print("Using predefined validation mask")
-                self.train_mask = working_mask & ~self.validation_mask
+                working_mask = working_mask & ~self.validation_mask
 
-                train_points = torch.sum(~self.train_mask).item()
+                self.test_mask = self.sample_mask_by_time(
+                    data=self.original_data,
+                    valid_mask=working_mask,
+                    percent=train_percent,
+                    time_blocks=time_blocks,
+                )
+
+                test_points = torch.sum(self.test_mask).item()
                 val_points = torch.sum(self.validation_mask).item()
-                missing = total_points - (train_points + val_points)
+                missing = total_points - (test_points + val_points)
 
                 print(
-                    f"Train is {train_points / total_points:.2f} of total. {train_points / working_points:.2f} of non-missing"
+                    f"Test is {test_points / total_points:.2f} of total. {test_points / working_points:.2f} of non-missing"
                 )
                 print(
                     f"Validation is {val_points / total_points:.2f} of total. {val_points / working_points:.2f} of non-missing"
@@ -133,10 +140,11 @@ class AirQualityLoader(GraphLoader):
                 assert not torch.isnan(
                     self.original_data[self.validation_mask]
                 ).any(), "Missing values found under evaluation mask (second pass)"
-                assert not torch.isnan(self.original_data[self.train_mask]).any(), (
+                assert not torch.isnan(self.original_data[self.test_mask]).any(), (
                     "Missing values found under evaluation mask (second pass)"
                 )
             return
+        # TODO: Train split should contains a fraction of the non-missing + not-validation data. Currently is just all the rest
 
         rows, _, _ = self.original_data.shape
         train_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
@@ -262,7 +270,65 @@ class AirQualityLoader(GraphLoader):
         )
 
         self.validation_mask = val_mask.bool()
-        self.train_mask = train_mask.bool()
+        self.test_mask = train_mask.bool()
+
+    def sample_mask_by_time(
+        self,
+        data: torch.Tensor,
+        valid_mask: torch.Tensor,
+        percent: float,
+        time_blocks: int,
+        rng: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        """
+        Sample a boolean mask of `percent` of the True entries in `valid_mask`,
+        stratified across `time_blocks` along dim 0.
+        """
+        assert 0 <= percent <= 1, "percent must be in [0,1]"
+        rows, cols, feats = data.shape
+        mask_out = torch.zeros_like(data, dtype=torch.bool)
+
+        total_valid = torch.sum(valid_mask).item()
+        target_points = int(total_valid * percent)
+        if target_points == 0 or total_valid == 0:
+            return mask_out
+
+        time_segments = torch.linspace(0, rows, time_blocks + 1).long()
+        current_points = 0
+
+        for block in range(time_blocks):
+            start_row = time_segments[block].item()
+            end_row = time_segments[block + 1].item()
+
+            seg_mask = valid_mask[start_row:end_row]
+            valid_count = torch.sum(seg_mask).item()
+            if valid_count == 0:
+                continue
+
+            block_target = int(valid_count / total_valid * target_points)
+            if block_target == 0:
+                continue
+
+            valid_idx = torch.nonzero(seg_mask)
+            perm = torch.randperm(len(valid_idx), generator=rng)
+            chosen = valid_idx[perm[:block_target]]
+            chosen[:, 0] += start_row  # shift back to global row coords
+            mask_out[chosen[:, 0], chosen[:, 1], chosen[:, 2]] = True
+            current_points += block_target
+
+        # second pass if rounding undershot
+        if current_points < target_points:
+            remaining = target_points - current_points
+            remaining_idx = torch.nonzero(valid_mask & ~mask_out)
+            if len(remaining_idx) > 0:
+                perm = torch.randperm(len(remaining_idx), generator=rng)
+                chosen = remaining_idx[perm[:remaining]]
+                mask_out[chosen[:, 0], chosen[:, 1], chosen[:, 2]] = True
+
+        # Optional sanity check
+        assert not torch.isnan(data[mask_out]).any(), "Selected NaNs"
+
+        return mask_out
 
     def get_geolocation_graph(
         self,
@@ -296,7 +362,7 @@ class AirQualityLoader(GraphLoader):
         cosine: bool = False,
         full_dataset: bool = False,
     ) -> torch.Tensor:
-        train_mask = self.train_mask.any((1, 2))
+        train_mask = self.test_mask.any((1, 2))
 
         if use_corrupted_data:
             data_tensor = (
@@ -351,7 +417,7 @@ class AirQualityLoader(GraphLoader):
         cosine: bool = False,
         full_dataset: bool = False,
     ) -> torch.Tensor:
-        train_mask = self.train_mask.any((1, 2))
+        train_mask = self.test_mask.any((1, 2))
 
         if use_corrupted_data:
             data_tensor = (
@@ -406,10 +472,10 @@ class AirQualityLoader(GraphLoader):
     ) -> DataLoader:
         self.use_corrupted_data = use_corrupted_data
         self.split(train_percent=0.2, validation_percent=0.2, method="month")
-        self.missing_data = torch.where(self.train_mask, 0.0, self.missing_data)
+        self.missing_data = torch.where(self.test_mask, 0.0, self.missing_data)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
-        self.missing_mask = self.missing_mask & ~self.validation_mask & ~self.train_mask
+        self.missing_mask = self.missing_mask & ~self.validation_mask & ~self.test_mask
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
 
     def shape(self):

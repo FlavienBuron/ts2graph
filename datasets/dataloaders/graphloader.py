@@ -14,7 +14,7 @@ class GraphLoader(Dataset, ABC):
         self.missing_data: torch.Tensor  # The original data with the missing values
         self.current_data: torch.Tensor  # The working copy, used during training
         self.missing_mask: torch.Tensor
-        self.train_mask: torch.Tensor
+        self.test_mask: torch.Tensor
         self.validation_mask: torch.Tensor | None
         self.distances = None
         self.corrupt_data: torch.Tensor = torch.empty(

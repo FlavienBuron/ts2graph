@@ -252,7 +252,7 @@ def train_imputer(
             # create a collection to hold batch data references temporatily
             batch_references = []
 
-            for i, (batch_data, batch_mask, batch_ori, batch_train_mask) in enumerate(
+            for i, (batch_data, batch_mask, batch_ori, batch_test_mask) in enumerate(
                 dataloader
             ):
                 batch_references.append((batch_data.clone(), batch_mask.clone()))
@@ -290,13 +290,13 @@ def train_imputer(
                     )
                     batch_temp_graph_times.append(temp_graph_time)
                     # imputed_data = imputed_data.squeeze(-1)
-                    train_mask_cpu = batch_train_mask.cpu().bool()
+                    test_mask_cpu = batch_test_mask.cpu().bool()
                     # print(
                     #     f"{torch.isnan(imputed_data).any()=} {torch.isnan(batch_ori).any()}"
                     # )
                     batch_loss = mse_loss(
-                        imputed_data[train_mask_cpu],
-                        batch_ori[train_mask_cpu],
+                        imputed_data[test_mask_cpu],
+                        batch_ori[test_mask_cpu],
                         reduction="mean",
                     )
                     batch_loss.backward()
