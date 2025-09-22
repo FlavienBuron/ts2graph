@@ -125,7 +125,7 @@ class AirQualityLoader(GraphLoader):
 
                 test_points = torch.sum(self.test_mask).item()
                 val_points = torch.sum(self.validation_mask).item()
-                missing = total_points - (test_points + val_points)
+                missing = torch.sum(self.missing_mask).item() + test_points + val_points
 
                 print(
                     f"Test is {test_points / total_points:.2f} of total. {test_points / working_points:.2f} of non-missing"
