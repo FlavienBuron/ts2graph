@@ -15,7 +15,7 @@ class GraphLoader(Dataset, ABC):
         self.current_data: torch.Tensor  # The working copy, used during training
         self.missing_mask: torch.Tensor
         self.test_mask: torch.Tensor
-        self.validation_mask: torch.Tensor | None
+        self.validation_mask: torch.Tensor
         self.distances = None
         self.corrupt_data: torch.Tensor = torch.empty(
             0,
@@ -71,7 +71,12 @@ class GraphLoader(Dataset, ABC):
 
     @abstractmethod
     def get_dataloader(
-        self, use_corrupted_data: bool, shuffle: bool, batch_size: int
+        self,
+        test_percent: float = 0.2,
+        total_missing_percent: float = 0.4,
+        mask_pattern: str = "default",
+        shuffle: bool = False,
+        batch_size: int = 128,
     ) -> Any:
         pass
 

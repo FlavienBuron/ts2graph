@@ -744,7 +744,11 @@ def run(args: Namespace) -> None:
 
     # dataset.corrupt(missing_type="perc", missing_size=50)
     dataloader = dataset.get_dataloader(
-        use_corrupted_data=False, shuffle=args.shuffle_batch, batch_size=args.batch_size
+        test_percent=0.2,
+        total_missing_percent=0.4,
+        mask_pattern="default",
+        shuffle=args.shuffle_batch,
+        batch_size=args.batch_size,
     )
     assert not torch.isnan(dataset.original_data[dataset.validation_mask]).any(), (
         "Missing values present under evaluation mask (run)"

@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -19,14 +19,14 @@ class AirQualityLoader(GraphLoader):
         self,
         dataset_path: str = "./datasets/data/air_quality/",
         small: bool = False,
-        normalization_type=None,
+        normalization_type: str = "min_max",
         replace_nan=True,
         nan_method="mean",
     ):
         self.dataset_path = dataset_path
-        self.validation_mask = None
+        self.validation_mask = torch.tensor([])
         self.original_data, self.missing_mask, self.distances = self.load(
-            small=small, normalization_type="min_max"
+            small=small, normalization_type=normalization_type
         )
         self.missing_data = torch.empty_like(self.original_data)
         if replace_nan:
@@ -55,19 +55,19 @@ class AirQualityLoader(GraphLoader):
 
     def load_raw(
         self, small: bool = False
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, Union[pd.DataFrame, None]]:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         if small:
             path = os.path.join(self.dataset_path, "small36.h5")
             eval_mask = pd.DataFrame(pd.read_hdf(path, "eval_mask"))
         else:
             path = os.path.join(self.dataset_path, "full437.h5")
-            eval_mask = None
+            eval_mask = pd.DataFrame({})
         data = pd.DataFrame(pd.read_hdf(path, key="pm25"))
         stations = pd.DataFrame(pd.read_hdf(path, key="stations"))
         return data, stations, eval_mask
 
     def load(
-        self, small: bool = False, normalization_type=None
+        self, small: bool = False, normalization_type: str = "min_max"
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         data, stations, eval_mask = self.load_raw(small=small)
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
@@ -77,7 +77,7 @@ class AirQualityLoader(GraphLoader):
         if eval_mask is not None:
             eval_mask = torch.from_numpy(eval_mask.to_numpy()).bool()
             eval_mask = eval_mask.unsqueeze(-1)
-        self.validation_mask = eval_mask
+            self.validation_mask = eval_mask
         mask = torch.where(data.isnan(), False, True)
         assert torch.isnan(data[~mask]).all(), (
             "non-missing values found under missing values mask"
@@ -87,18 +87,20 @@ class AirQualityLoader(GraphLoader):
 
     def split(
         self,
+        mask_pattern: str = "default",
         test_percent: float = 0.2,
-        validation_percent: float = 0.2,
+        total_missing_percent: float = 0.2,
         cols: List = [],
         time_blocks: int = 5,
-        method: str = "month",
     ):
         """
         Split the data into training and validation sets using random blocks.
 
         Args:
-            train_percent: Percentage of non-missing values held-out for training
-            validation_percent: Percentage of non-missing values held-out for validation/evaluation
+            mask_pattern: The pattern of missing values to be created. Choice: [default, blackout]
+            test_percent: Percentage of non-missing values held-out for training (loss)
+            total_missing_percent: Percentage of non-missing values held-out for both training and validation.
+                                    If equal to training hold-out both are the same
         """
         total_points = self.original_data.numel()
         if len(cols) > 0:
@@ -111,7 +113,7 @@ class AirQualityLoader(GraphLoader):
             working_mask = self.missing_mask
         working_points = torch.sum(working_mask).item()
 
-        if method == "month":
+        if mask_pattern == "default":
             if self.validation_mask is not None:
                 print("Using predefined validation mask")
                 working_mask = working_mask & ~self.validation_mask
@@ -149,134 +151,53 @@ class AirQualityLoader(GraphLoader):
                 assert not torch.isnan(self.original_data[self.test_mask]).any(), (
                     "Missing values found under evaluation mask (second pass)"
                 )
-            return
-        # TODO: Train split should contains a fraction of the non-missing + not-validation data. Currently is just all the rest
+        elif mask_pattern == "blackout":
+            print(
+                f"Creating a blackout mask covering {total_missing_percent * 100}% of the rows"
+            )
+            self.test_mask, self.validation_mask = self.split_blackout(
+                valid_mask=working_mask,
+                test_frac=test_percent,
+                total_missing=total_missing_percent,
+            )
 
-        rows, _, _ = self.original_data.shape
-        train_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
-        val_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
+        elif mask_pattern == "mcar":
+            print(
+                f"Creating a MCAR mask covering {total_missing_percent * 100}% of non-missing data"
+            )
+            self.test_mask, self.validation_mask = self.split_mcar(
+                valid_mask=working_mask,
+                test_frac=test_percent,
+                total_missing=total_missing_percent,
+            )
+        else:
+            raise ValueError("Provide a valid mask pattern")
 
-        total_valid_points = torch.sum(working_mask).item()
-        target_train_points = int(total_valid_points * test_percent)
-        target_val_points = int(total_valid_points * validation_percent)
+        if self.test_mask is None or self.validation_mask is None:
+            raise ValueError("Test mask or validation mask shouldn't be None")
 
-        time_segments = torch.linspace(0, rows, time_blocks + 1).long()
-
-        current_train_points = 0
-        current_val_points = 0
-
-        for block in range(time_blocks):
-            start_row = time_segments[block].item()
-            end_row = time_segments[block + 1].item()
-
-            segment_mask = working_mask[start_row:end_row]
-            valid_count = torch.sum(segment_mask).item()
-
-            # Calculate how many points to sample for this segment
-            # Proportional to the number of valid points in the segment
-            if total_valid_points > 0:
-                val_block_points = int(
-                    valid_count / total_valid_points * target_val_points
-                )
-                train_block_points = int(
-                    valid_count / total_valid_points * target_train_points
-                )
-            else:
-                val_block_points = 0
-                train_block_points = 0
-
-            # Get indices of valid points in the segment
-            valid_indices = torch.nonzero(segment_mask)
-            if len(valid_indices) == 0:
-                continue
-
-            # Sample points
-            sample_size = min(train_block_points, len(valid_indices))
-            if sample_size > 0:
-                perm = torch.randperm(len(valid_indices))
-                selected = valid_indices[perm[:sample_size]]
-
-                selected[:, 0] += start_row
-                train_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
-
-                current_train_points += sample_size
-
-            remaining_segment_mask = segment_mask.clone()
-            segment_train_mask = train_mask[start_row:end_row]
-            remaining_segment_mask = segment_mask & (~segment_train_mask)
-
-            remaining_indices = torch.nonzero(remaining_segment_mask)
-            val_sample_size = min(val_block_points, len(remaining_indices))
-            if val_sample_size > 0:
-                perm = torch.randperm(len(remaining_indices))
-                selected = remaining_indices[perm[:val_sample_size]]
-                selected[:, 0] += start_row
-                val_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
-                current_val_points += val_sample_size
-
-        assert not torch.isnan(self.original_data[val_mask]).any(), (
-            "Missing values found under evaluation mask (first pass)"
-        )
-
-        assert not torch.isnan(self.original_data[val_mask]).any(), (
-            "Missing values found under evaluation mask (first pass)"
-        )
-
-        # Second pass, adjust to the target
-        if current_train_points < target_train_points:
-            remaining_points = target_train_points - current_train_points
-
-            remaining_valid = working_mask & (~train_mask) & (~val_mask)
-            remaining_indices = torch.nonzero(remaining_valid)
-
-            if len(remaining_indices) > 0:
-                sample_size = min(remaining_points, len(remaining_indices))
-                perm = torch.randperm(len(remaining_indices))
-                selected = remaining_indices[perm[:sample_size]]
-                train_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
-
-                current_train_points += sample_size
-
-        if current_val_points < target_val_points:
-            remaining_points = target_val_points - current_val_points
-
-            remaining_valid = working_mask & (~train_mask) & (~val_mask)
-            remaining_indices = torch.nonzero(remaining_valid)
-
-            if len(remaining_indices) > 0:
-                sample_size = min(remaining_points, len(remaining_indices))
-                perm = torch.randperm(len(remaining_indices))
-                selected = remaining_indices[perm[:sample_size]]
-                val_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
-
-                current_val_points += sample_size
-
-        val_final_percentage = (
-            (current_val_points / total_valid_points) if total_valid_points > 0 else 0
-        )
-        train_final_percentage = (
-            (current_train_points / total_valid_points) if total_valid_points > 0 else 0
-        )
+        test_points = torch.sum(self.test_mask).item()
+        val_points = torch.sum(self.validation_mask).item()
+        missing = torch.sum(~self.missing_mask).item() + test_points + val_points
 
         print(
-            f"Target Val. Percentage: {validation_percent:.2f}, Achieved: {val_final_percentage:.2f}"
+            f"Test is {test_points / total_points:.2f} of total. {test_points / working_points:.2f} of non-missing"
         )
         print(
-            f"Target Val. Percentage: {test_percent:.2f}, Achieved: {train_final_percentage:.2f}"
+            f"Validation is {val_points / total_points:.2f} of total. {val_points / working_points:.2f} of non-missing"
+        )
+        print(
+            f"Original missing values: {torch.sum(~self.missing_mask) / total_points:.2f}; Actual missing values: {missing / total_points:.2f}"
         )
 
-        assert not torch.isnan(self.original_data[val_mask]).any(), (
+        assert not torch.isnan(self.original_data[self.validation_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
         )
-        assert not torch.isnan(self.original_data[train_mask]).any(), (
+        assert not torch.isnan(self.original_data[self.test_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
         )
-        assert not torch.logical_and(train_mask, val_mask).any(), (
-            "Train and validation masks overlap"
-        )
-
-        self.validation_mask = val_mask.bool()
-        self.test_mask = train_mask.bool()
+        self.validation_mask = self.validation_mask.bool()
+        self.test_mask = self.test_mask.bool()
 
     def sample_mask_by_time(
         self,
@@ -335,6 +256,168 @@ class AirQualityLoader(GraphLoader):
         assert not torch.isnan(data[mask_out]).any(), "Selected NaNs"
 
         return mask_out
+
+    def split_mcar(
+        self,
+        valid_mask: torch.Tensor,
+        test_frac: float = 0.2,
+        total_missing: float = 0.4,
+        time_blocks: int = 5,
+        rng: torch.Generator | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Split data into train and eval MCAR masks (random missing points, stratified by time).
+
+        Args:
+            data: Tensor of shape [T, N, F]
+            valid_mask: Boolean mask, same shape as data (True if observed).
+            test_frac: Fraction of total valid entries to mask for training.
+            total_missing: Total fraction of valid entries to mask (train + eval).
+            time_blocks: Number of time segments to stratify sampling.
+            rng: Optional torch.Generator for reproducibility.
+
+        Returns:
+            train_mask, eval_mask (boolean tensors)
+        """
+        assert 0 <= test_frac <= total_missing <= 1.0, (
+            "Must have 0 <= train_frac <= total_missing <= 1"
+        )
+
+        rows, cols, feats = self.original_data.shape
+        total_valid = torch.sum(valid_mask).item()
+        target_total = int(total_valid * total_missing)
+        target_train = int(total_valid * test_frac)
+        target_eval = target_total - target_train
+
+        train_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
+        eval_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
+
+        # Edge case: if train == total → eval = train
+        if target_eval == 0:
+            if target_train == 0 or total_valid == 0:
+                return train_mask, train_mask
+            # Fall back to single sampling
+            chosen = torch.nonzero(valid_mask)
+            perm = torch.randperm(len(chosen), generator=rng)
+            selected = chosen[perm[:target_train]]
+            train_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
+            return train_mask, train_mask.clone()
+
+        # Split timeline into blocks
+        time_segments = torch.linspace(0, rows, time_blocks + 1).long()
+
+        current_train = 0
+        current_eval = 0
+
+        for block in range(time_blocks):
+            start_row = time_segments[block].item()
+            end_row = time_segments[block + 1].item()
+            seg_mask = valid_mask[start_row:end_row]
+            valid_count = torch.sum(seg_mask).item()
+            if valid_count == 0:
+                continue
+
+            # Block quotas
+            block_train = int(valid_count / total_valid * target_train)
+            block_eval = int(valid_count / total_valid * target_eval)
+
+            valid_idx = torch.nonzero(seg_mask)
+            if len(valid_idx) == 0:
+                continue
+            perm = torch.randperm(len(valid_idx), generator=rng)
+
+            # Train samples
+            if block_train > 0:
+                chosen = valid_idx[perm[:block_train]]
+                chosen[:, 0] += start_row
+                train_mask[chosen[:, 0], chosen[:, 1], chosen[:, 2]] = True
+                current_train += block_train
+
+            # Eval samples
+            if block_eval > 0:
+                chosen = valid_idx[perm[block_train : block_train + block_eval]]
+                chosen[:, 0] += start_row
+                eval_mask[chosen[:, 0], chosen[:, 1], chosen[:, 2]] = True
+                current_eval += block_eval
+
+        # Second pass if rounding undershot
+        if current_train < target_train:
+            remaining = target_train - current_train
+            remaining_idx = torch.nonzero(valid_mask & ~(train_mask | eval_mask))
+            if len(remaining_idx) > 0:
+                perm = torch.randperm(len(remaining_idx), generator=rng)
+                chosen = remaining_idx[perm[:remaining]]
+                train_mask[chosen[:, 0], chosen[:, 1], chosen[:, 2]] = True
+
+        if current_eval < target_eval:
+            remaining = target_eval - current_eval
+            remaining_idx = torch.nonzero(valid_mask & ~(train_mask | eval_mask))
+            if len(remaining_idx) > 0:
+                perm = torch.randperm(len(remaining_idx), generator=rng)
+                chosen = remaining_idx[perm[:remaining]]
+                eval_mask[chosen[:, 0], chosen[:, 1], chosen[:, 2]] = True
+
+        # Sanity checks
+        assert not torch.isnan(self.original_data[train_mask | eval_mask]).any(), (
+            "Selected NaNs"
+        )
+        assert not (train_mask & eval_mask).any(), "Train and eval masks overlap"
+
+        return train_mask, eval_mask
+
+    def split_blackout(
+        self,
+        valid_mask: torch.Tensor,
+        test_frac: float = 0.2,
+        total_missing: float = 0.4,
+        start_percent: float = 0.05,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Split data into train and eval blackout masks.
+        Each is a contiguous block of rows (time steps).
+
+        Args:
+            data: Tensor of shape [T, N, F]
+            valid_mask: Boolean mask, same shape as data (True if observed).
+            test_frac: Fraction of total rows to blackout for testing during training.
+            total_missing: Total fraction (train + eval) to blackout.
+            start_percent: Earliest possible blackout start fraction.
+
+        Returns:
+            train_mask, eval_mask
+        """
+        assert 0 <= test_frac <= total_missing <= 1.0, (
+            "Must have 0 <= test_frac <= total_missing <= 1"
+        )
+
+        T = self.original_data.shape[0]
+        blackout_len = int(T * total_missing)
+        train_len = int(T * test_frac)
+        val_len = blackout_len - train_len
+
+        start_min = int(T * start_percent)
+        start_max = max(start_min, T - blackout_len)
+        start_idx = torch.randint(start_min, start_max + 1, (1,)).item()
+        end_idx = start_idx + blackout_len
+
+        # Initialize masks
+        train_mask = torch.zeros_like(valid_mask, dtype=torch.bool)
+        eval_mask = torch.zeros_like(valid_mask, dtype=torch.bool)
+
+        # Assign blackout segments
+        if train_len > 0:
+            train_mask[start_idx : start_idx + train_len, :, :] = True
+        if val_len > 0:
+            eval_mask[start_idx + train_len : end_idx, :, :] = True
+        else:
+            # Special case: train == total → eval = train
+            eval_mask = train_mask.clone()
+
+        # Ensure blackout only applies where data was originally valid
+        train_mask = train_mask & valid_mask
+        eval_mask = eval_mask & valid_mask
+
+        return train_mask, eval_mask
 
     def get_geolocation_graph(
         self,
@@ -474,10 +557,20 @@ class AirQualityLoader(GraphLoader):
         return dist
 
     def get_dataloader(
-        self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
+        self,
+        test_percent: float = 0.2,
+        total_missing_percent: float = 0.4,
+        mask_pattern: str = "default",
+        shuffle: bool = False,
+        batch_size: int = 128,
     ) -> DataLoader:
-        self.use_corrupted_data = use_corrupted_data
-        self.split(test_percent=0.2, validation_percent=0.2, method="month")
+        self.split(
+            mask_pattern=mask_pattern,
+            test_percent=test_percent,
+            total_missing_percent=total_missing_percent,
+        )
+        if self.validation_mask is None:
+            raise ValueError("Validation mask should not be None after split")
         self.missing_data = torch.where(self.test_mask, 0.0, self.missing_data)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
@@ -525,7 +618,7 @@ class AirQualityLoader(GraphLoader):
 
         self.corrupt_data = (data - min) / (max - min)
 
-    def _normalize(self, data, mask, type=None) -> torch.Tensor:
+    def _normalize(self, data, mask, type: str = "min_max") -> torch.Tensor:
         if type == "min_max":
             min = data[mask].min()
             max = data[mask].max()
