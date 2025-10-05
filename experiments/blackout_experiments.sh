@@ -120,7 +120,7 @@ declare -A TECHNIQUES=(
 
 for M in $(seq 0.3 $FRACTION 0.90); do
     
-    FRACTION_INT=$(echo "$M * 100 / 1" | bc)
+    FRACTION_INT=$(awk "BEGIN {print int($FRACTION * 100)}")
     # Loop through fixed graphs techniques
     for G in "${!TECHNIQUES[@]}"; do
         V=${TECHNIQUES[$G]}
