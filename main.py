@@ -761,7 +761,7 @@ def run(args: Namespace) -> None:
     # dataset.corrupt(missing_type="perc", missing_size=50)
     dataloader = dataset.get_dataloader(
         test_percent=args.test_percent,
-        total_missing_percent=total_missing_percent,
+        total_missing_percent=float(total_missing_percent),
         mask_pattern=missing_pattern,
         shuffle=args.shuffle_batch,
         batch_size=args.batch_size,
