@@ -202,7 +202,7 @@ def parse_args() -> Namespace:
     )
     parser.add_argument(
         "--test_percent",
-        "-tf",
+        "-tp",
         type=float,
         default=0.2,
         help="The fraction of the hold-out used during the training backpropagation",
