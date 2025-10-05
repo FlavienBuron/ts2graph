@@ -2,7 +2,7 @@
 
 . .venv/bin/activate
 
-EPOCHS=30
+EPOCHS=50
 BATCH_SIZE=128
 HIDDEN_DIM=32
 LAYER_NUMBER=1
@@ -80,7 +80,7 @@ fi
 
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
-        LR=0.007
+        LR=0.0015
     elif [[ "$LAYER_NUMBER" -eq 2 ]]; then
         LR=0.0004
     else

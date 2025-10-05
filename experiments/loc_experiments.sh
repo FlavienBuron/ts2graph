@@ -2,7 +2,8 @@
 
 . .venv/bin/activate
 
-EPOCHS=30
+EPOCHS=50
+BATCH_SIZE=128
 UNWEIGHTED=0
 HIDDEN_DIM=32
 LAYER_NUMBER=1
@@ -14,7 +15,7 @@ NUM_NODES=36
 FRACTION=0.05
 LAYER_TYPE="GCNConv"
 MODEL="stgi"
-SHIFFLE=0
+SHUFFLE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -83,7 +84,7 @@ fi
 
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
-        LR=0.003
+        LR=0.0015
     elif [[ "$LAYER_NUMBER" -eq 2 ]]; then
         LR=0.0004
     else
