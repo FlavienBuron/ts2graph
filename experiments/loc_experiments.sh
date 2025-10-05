@@ -13,6 +13,8 @@ DATASET="airq_small"
 NUM_NODES=36
 FRACTION=0.05
 LAYER_TYPE="GCNConv"
+MODEL="stgi"
+SHIFFLE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -81,7 +83,7 @@ fi
 
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
-        LR=0.007
+        LR=0.003
     elif [[ "$LAYER_NUMBER" -eq 2 ]]; then
         LR=0.0004
     else
