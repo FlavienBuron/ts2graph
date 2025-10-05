@@ -16,7 +16,7 @@ from sklearn.metrics import (
     mean_squared_error,
     root_mean_squared_error,
 )
-from torch.nn.functional import mse_loss
+from torch.nn.functional import huber_loss
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
@@ -294,10 +294,11 @@ def train_imputer(
                     # print(
                     #     f"{torch.isnan(imputed_data).any()=} {torch.isnan(batch_ori).any()}"
                     # )
-                    batch_loss = mse_loss(
+                    batch_loss = huber_loss(
                         imputed_data[test_mask_cpu],
                         batch_ori[test_mask_cpu],
                         reduction="mean",
+                        delta=1.0,
                     )
                     batch_loss.backward()
                     optimizer.step()
