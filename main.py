@@ -210,7 +210,7 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--missing_pattern",
         "-mp",
-        nargs="2",
+        nargs=2,
         default=["default", 0.4],
         help="The desired missing pattern and fraction to be added to the data as the test and validation mask",
     )
