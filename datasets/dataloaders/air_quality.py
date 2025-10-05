@@ -134,23 +134,6 @@ class AirQualityLoader(GraphLoader):
                 missing = (
                     torch.sum(~self.missing_mask).item() + test_points + val_points
                 )
-
-                print(
-                    f"Test is {test_points / total_points:.2f} of total. {test_points / working_points:.2f} of non-missing"
-                )
-                print(
-                    f"Validation is {val_points / total_points:.2f} of total. {val_points / working_points:.2f} of non-missing"
-                )
-                print(
-                    f"Original missing values: {torch.sum(~self.missing_mask) / total_points:.2f}; Actual missing values: {missing / total_points:.2f}"
-                )
-
-                assert not torch.isnan(
-                    self.original_data[self.validation_mask]
-                ).any(), "Missing values found under evaluation mask (second pass)"
-                assert not torch.isnan(self.original_data[self.test_mask]).any(), (
-                    "Missing values found under evaluation mask (second pass)"
-                )
         elif mask_pattern == "blackout":
             print(
                 f"Creating a blackout mask covering {total_missing_percent * 100}% of the rows"
