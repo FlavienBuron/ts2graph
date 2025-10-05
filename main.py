@@ -200,6 +200,20 @@ def parse_args() -> Namespace:
         action="store_true",
         help="should the graph be made using train+test data, if applicable",
     )
+    parser.add_argument(
+        "--test_percent",
+        "-tf",
+        type=float,
+        default=0.2,
+        help="The fraction of the hold-out used during the training backpropagation",
+    )
+    parser.add_argument(
+        "--missing_pattern",
+        "-mp",
+        nargs="2",
+        default=["default", 0.4],
+        help="The desired missing pattern and fraction to be added to the data as the test and validation mask",
+    )
     args = parser.parse_args()
     return args
 
@@ -742,11 +756,13 @@ def run(args: Namespace) -> None:
     if args.batch_size == 0:
         args.batch_size = dataset.original_data.shape[0]
 
+    missing_pattern, total_missing_percent = args.missing_pattern
+
     # dataset.corrupt(missing_type="perc", missing_size=50)
     dataloader = dataset.get_dataloader(
-        test_percent=0.2,
-        total_missing_percent=0.4,
-        mask_pattern="default",
+        test_percent=args.test_percent,
+        total_missing_percent=total_missing_percent,
+        mask_pattern=missing_pattern,
         shuffle=args.shuffle_batch,
         batch_size=args.batch_size,
     )
