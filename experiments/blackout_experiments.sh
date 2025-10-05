@@ -118,6 +118,8 @@ declare -A TECHNIQUES=(
     ["one_0"]=0
 )
 
+ORIGINAL=$SELF_LOOP
+
 for M in $(seq 0.3 $FRACTION 0.90); do
     
     FRACTION_INT=$(awk "BEGIN {print int($FRACTION * 100)}")
