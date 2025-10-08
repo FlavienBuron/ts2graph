@@ -17,12 +17,6 @@ class GraphLoader(Dataset, ABC):
         self.test_mask: torch.Tensor
         self.validation_mask: torch.Tensor
         self.distances = None
-        self.corrupt_data: torch.Tensor = torch.empty(
-            0,
-        )
-        self.corrupt_mask: torch.Tensor = torch.empty(
-            0,
-        )
 
     def update_data(self, new_data: Tensor) -> None:
         """
@@ -51,10 +45,6 @@ class GraphLoader(Dataset, ABC):
         self.current_data = self.missing_data.clone()
 
     def mask_months(self, mask, timestamps, holdout_months=[3, 6, 9, 12]):
-        pass
-
-    @abstractmethod
-    def corrupt(self, missing_type: str = "perc"):
         pass
 
     @abstractmethod
