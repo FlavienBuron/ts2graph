@@ -350,7 +350,7 @@ class AirQualityLoader(GraphLoader):
         test_frac: float = 0.2,
         total_missing: float = 0.4,
         start_percent: float = 0.05,
-        end_blackout: bool = False,
+        end_blackout: bool = True,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Split data into train and eval blackout masks.
