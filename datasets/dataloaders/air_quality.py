@@ -581,7 +581,7 @@ class AirQualityLoader(GraphLoader):
                 # print(f"NaNs in means?: {torch.isnan(means).any()}")
                 means = means.nan_to_num(0.0)
                 self.missing_data = torch.where(
-                    self.missing_mask, self.original_data, means
+                    self.missing_mask, means, self.original_data
                 )
         elif method == "zero":
             self.missing_data = self.original_data.nan_to_num(nan=0.0)
