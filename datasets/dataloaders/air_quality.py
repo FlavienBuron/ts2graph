@@ -70,7 +70,7 @@ class AirQualityLoader(GraphLoader):
             eval_mask = eval_mask.unsqueeze(-1)
             self.validation_mask = eval_mask
         mask = torch.where(data.isnan(), True, False)
-        assert torch.isnan(data[~mask]).all(), (
+        assert torch.isnan(data[mask]).all(), (
             "non-missing values found under missing values mask"
         )
         data = self._normalize(data, mask, normalization_type)
