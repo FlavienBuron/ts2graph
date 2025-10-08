@@ -35,7 +35,7 @@ class GraphLoader(Dataset, ABC):
             new_data = new_data.cpu()
 
         # Only update missing values
-        self.current_data[~self.missing_mask] = new_data[~self.missing_mask]
+        self.current_data[self.missing_mask] = new_data[self.missing_mask]
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
