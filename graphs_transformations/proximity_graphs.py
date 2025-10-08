@@ -13,7 +13,7 @@ def from_knn(
     cosine=False,
 ) -> torch.Tensor:
     means = data.nanmean(dim=1, keepdim=True)
-    data = torch.where(mask, data, means)
+    data = torch.where(mask, means, data)
 
     # Step 2: Check for invalid values
     if torch.isnan(data).any() or torch.isinf(data).any():
