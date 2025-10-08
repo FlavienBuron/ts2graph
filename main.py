@@ -327,6 +327,8 @@ def train_imputer(
                             print(f"Batch loss: {batch_loss:.4e}")
                         batch_loss.backward()
                         optimizer.step()
+                    else:
+                        batch_loss = torch.tensor(0.0)
 
                 with torch.no_grad():
                     # replace the missing data in the batch with the imputed data
