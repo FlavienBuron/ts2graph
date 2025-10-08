@@ -134,6 +134,7 @@ class AirQualityLoader(GraphLoader):
             print(
                 f"Creating a blackout mask covering {total_missing_percent * 100}% of the rows"
             )
+            working_mask = ~self.missing_mask
             self.test_mask, self.validation_mask = self.split_blackout(
                 valid_mask=working_mask,
                 test_frac=test_percent,
