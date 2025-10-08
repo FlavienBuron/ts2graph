@@ -318,25 +318,15 @@ def train_imputer(
                     masked_data = imputed_data[test_mask_cpu]
                     masked_ori = batch_ori[test_mask_cpu]
                     if masked_data.numel() > 0:
-                        print(
-                            "imputed_data stats:",
-                            masked_data[test_mask_cpu].min(),
-                            masked_data[test_mask_cpu].max(),
+                        batch_loss = mse_loss(
+                            masked_data,
+                            masked_ori,
+                            reduction="mean",
                         )
-                        print(
-                            "batch_ori stats:",
-                            masked_ori[test_mask_cpu].min(),
-                            masked_ori[test_mask_cpu].max(),
-                        )
-                    batch_loss = mse_loss(
-                        imputed_data[test_mask_cpu],
-                        batch_ori[test_mask_cpu],
-                        reduction="mean",
-                    )
-                    if verbose:
-                        print(f"Batch loss: {batch_loss:.4e}")
-                    batch_loss.backward()
-                    optimizer.step()
+                        if verbose:
+                            print(f"Batch loss: {batch_loss:.4e}")
+                        batch_loss.backward()
+                        optimizer.step()
 
                 with torch.no_grad():
                     # replace the missing data in the batch with the imputed data
