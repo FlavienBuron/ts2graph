@@ -31,9 +31,6 @@ class AirQualityLoader(GraphLoader):
         self.missing_data = torch.empty_like(self.original_data)
         if replace_nan:
             self._replace_nan(nan_method)
-        self.corrupt_data = torch.empty_like(self.original_data)
-        self.corrupt_mask = torch.empty_like(self.original_data)
-        self.use_corrupted_data = False
 
     def __len__(self) -> int:
         return self.original_data.shape[0]
@@ -41,16 +38,10 @@ class AirQualityLoader(GraphLoader):
     def __getitem__(
         self, index: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        if self.use_corrupted_data:
-            missing_data = self.corrupt_data[index, :]
-            ori_data = self.original_data[index, :]
-            missing_mask = self.corrupt_mask[index, :]
-            test_mask = self.test_mask[index, :]
-        else:
-            missing_data = self.current_data[index, :]
-            ori_data = self.original_data[index, :]
-            missing_mask = self.missing_mask[index, :]
-            test_mask = self.test_mask[index, :]
+        missing_data = self.current_data[index, :]
+        ori_data = self.original_data[index, :]
+        missing_mask = self.missing_mask[index, :]
+        test_mask = self.test_mask[index, :]
         return missing_data, missing_mask, ori_data.nan_to_num_(0.0), test_mask
 
     def load_raw(
@@ -78,7 +69,7 @@ class AirQualityLoader(GraphLoader):
             eval_mask = torch.from_numpy(eval_mask.to_numpy()).bool()
             eval_mask = eval_mask.unsqueeze(-1)
             self.validation_mask = eval_mask
-        mask = torch.where(data.isnan(), False, True)
+        mask = torch.where(data.isnan(), True, False)
         assert torch.isnan(data[~mask]).all(), (
             "non-missing values found under missing values mask"
         )
@@ -106,11 +97,11 @@ class AirQualityLoader(GraphLoader):
         if len(cols) > 0:
             mask_cols = torch.zeros(self.original_data.shape[1], dtype=torch.bool)
             mask_cols[cols] = True
-            working_mask = self.missing_mask & mask_cols.unsqueeze(0).expand_as(
+            working_mask = ~self.missing_mask & mask_cols.unsqueeze(0).expand_as(
                 self.missing_mask
             )
         else:
-            working_mask = self.missing_mask
+            working_mask = ~self.missing_mask
         working_points = torch.sum(working_mask).item()
 
         if mask_pattern == "default":
@@ -118,7 +109,7 @@ class AirQualityLoader(GraphLoader):
                 print("Using predefined validation mask")
                 working_mask = working_mask & ~self.validation_mask
 
-                orig_valid_points = torch.sum(self.missing_mask).item()
+                orig_valid_points = torch.sum(~self.missing_mask).item()
                 post_val_points = torch.sum(working_mask).item()
                 test_percent = test_percent * (orig_valid_points / post_val_points)
 
@@ -128,11 +119,16 @@ class AirQualityLoader(GraphLoader):
                     percent=test_percent,
                     time_blocks=time_blocks,
                 )
-
-                test_points = torch.sum(self.test_mask).item()
-                val_points = torch.sum(self.validation_mask).item()
-                missing = (
-                    torch.sum(~self.missing_mask).item() + test_points + val_points
+            else:
+                # if no predefined validation mask → create one with same logic
+                self.test_mask = self.sample_mask_by_time(
+                    data=self.original_data,
+                    valid_mask=working_mask,
+                    percent=test_percent,
+                    time_blocks=time_blocks,
+                )
+                self.validation_mask = torch.zeros_like(
+                    self.test_mask, dtype=torch.bool
                 )
         elif mask_pattern == "blackout":
             print(
@@ -161,7 +157,7 @@ class AirQualityLoader(GraphLoader):
 
         test_points = torch.sum(self.test_mask).item()
         val_points = torch.sum(self.validation_mask).item()
-        missing = torch.sum(~self.missing_mask).item() + test_points + val_points
+        missing = torch.sum(self.missing_mask).item() + test_points + val_points
 
         print(
             f"Test is {test_points / total_points:.2f} of total. {test_points / working_points:.2f} of non-missing"
@@ -170,7 +166,7 @@ class AirQualityLoader(GraphLoader):
             f"Validation is {val_points / total_points:.2f} of total. {val_points / working_points:.2f} of non-missing"
         )
         print(
-            f"Original missing values: {torch.sum(~self.missing_mask) / total_points:.2f}; Actual missing values: {missing / total_points:.2f}"
+            f"Original missing values: {torch.sum(self.missing_mask) / total_points:.2f}; Actual missing values: {missing / total_points:.2f}"
         )
 
         assert not torch.isnan(self.original_data[self.validation_mask]).any(), (
@@ -354,6 +350,7 @@ class AirQualityLoader(GraphLoader):
         test_frac: float = 0.2,
         total_missing: float = 0.4,
         start_percent: float = 0.05,
+        end_blackout: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Split data into train and eval blackout masks.
@@ -378,10 +375,14 @@ class AirQualityLoader(GraphLoader):
         train_len = int(T * test_frac)
         val_len = blackout_len - train_len
 
-        start_min = int(T * start_percent)
-        start_max = max(start_min, T - blackout_len)
-        start_idx = torch.randint(start_min, start_max + 1, (1,)).item()
-        end_idx = start_idx + blackout_len
+        if end_blackout:
+            start_idx = T - blackout_len
+        else:
+            start_min = int(T * start_percent)
+            start_max = max(start_min, T - blackout_len)
+            start_idx = torch.randint(start_min, start_max + 1, (1,)).item()
+        print(f"Blackout start at row {start_idx}")
+        end_idx = min(start_idx + blackout_len, T)
 
         # Initialize masks
         train_mask = torch.zeros_like(valid_mask, dtype=torch.bool)
@@ -429,35 +430,24 @@ class AirQualityLoader(GraphLoader):
     def get_knn_graph(
         self,
         k: float,
-        use_corrupted_data: bool = False,
         loop: bool = False,
         cosine: bool = False,
         full_dataset: bool = False,
     ) -> torch.Tensor:
-        train_mask = self.test_mask.any((1, 2))
+        total_missing_masK = self.missing_mask | self.test_mask | self.validation_mask
 
-        if use_corrupted_data:
-            data_tensor = (
-                self.corrupt_data
-                if full_dataset
-                else self.corrupt_data[train_mask, :, :]
-            )
-            mask_tensor = (
-                self.corrupt_mask
-                if full_dataset
-                else self.corrupt_mask[train_mask, :, :]
-            )
-        else:
-            data_tensor = (
-                self.original_data
-                if full_dataset
-                else self.original_data[train_mask, :, :]
-            )
-            mask_tensor = (
-                self.missing_mask
-                if full_dataset
-                else self.missing_mask[train_mask, :, :]
-            )
+        available_rows = (~total_missing_masK).any(dim=(1, 2))
+
+        data_tensor = (
+            self.original_data
+            if full_dataset
+            else self.original_data[available_rows, :, :]
+        )
+        mask_tensor = (
+            self.missing_mask
+            if full_dataset
+            else self.missing_mask[available_rows, :, :]
+        )
 
         data = data_tensor.permute(1, 0, 2).reshape(self.original_data.shape[1], -1)
         mask = mask_tensor.permute(1, 0, 2).reshape(self.original_data.shape[1], -1)
@@ -484,35 +474,24 @@ class AirQualityLoader(GraphLoader):
     def get_radius_graph(
         self,
         radius: float,
-        use_corrupted_data: bool = False,
         loop: bool = False,
         cosine: bool = False,
         full_dataset: bool = False,
     ) -> torch.Tensor:
-        train_mask = self.test_mask.any((1, 2))
+        total_missing_masK = self.missing_mask | self.test_mask | self.validation_mask
 
-        if use_corrupted_data:
-            data_tensor = (
-                self.corrupt_data
-                if full_dataset
-                else self.corrupt_data[train_mask, :, :]
-            )
-            mask_tensor = (
-                self.corrupt_mask
-                if full_dataset
-                else self.corrupt_mask[train_mask, :, :]
-            )
-        else:
-            data_tensor = (
-                self.original_data
-                if full_dataset
-                else self.original_data[train_mask, :, :]
-            )
-            mask_tensor = (
-                self.missing_mask
-                if full_dataset
-                else self.missing_mask[train_mask, :, :]
-            )
+        available_rows = (~total_missing_masK).any(dim=(1, 2))
+
+        data_tensor = (
+            self.original_data
+            if full_dataset
+            else self.original_data[available_rows, :, :]
+        )
+        mask_tensor = (
+            self.missing_mask
+            if full_dataset
+            else self.missing_mask[available_rows, :, :]
+        )
 
         data = data_tensor.permute(1, 0, 2).reshape(self.original_data.shape[1], -1)
         mask = mask_tensor.permute(1, 0, 2).reshape(self.original_data.shape[1], -1)
@@ -562,44 +541,6 @@ class AirQualityLoader(GraphLoader):
 
     def shape(self):
         return self.original_data.shape
-
-    def corrupt(self, missing_type="perc", missing_size=20):
-        """
-        Add missing data to the dataset according to the specified missing pattern
-        Args:
-            missing_type (str): Denotes the type of missing pattern to apply. Currently only
-                missing percentage is available
-        """
-        print(
-            "WARNING: Air Quality dataset already contains missing data. This may change"
-            "the results compared to other studies using this dataset "
-        )
-        if missing_type == "perc":
-            self.missing_percentage(missing_size)
-        else:
-            pass
-
-    def missing_percentage(self, missing_percent: int = 20):
-        data_length, _ = self.original_data.shape
-        missing_start = data_length * 5 // 100
-        missing_length = data_length * missing_percent // 100
-        missing_data = self.original_data
-        missing_data[missing_start : missing_start + missing_length, 0] = torch.nan
-        mask = torch.ones_like(missing_data)
-        mask.masked_fill_(torch.isnan(self.original_data), 0.0)
-        self.corrupt_mask = mask
-        missing_data.nan_to_num_(nan=0.0)
-        self.corrupt_data = missing_data
-
-    def _normalize_corrupt(self):
-        data = self.corrupt_data
-        mask = self.corrupt_data
-        # mean = data[mask].mean()
-        # std = data[mask].std()
-        min = data[mask].min()
-        max = data[mask].max()
-
-        self.corrupt_data = (data - min) / (max - min)
 
     def _normalize(self, data, mask, type: str = "min_max") -> torch.Tensor:
         if type == "min_max":

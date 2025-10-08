@@ -12,9 +12,8 @@ def from_knn(
     loop=False,
     cosine=False,
 ) -> torch.Tensor:
-    if torch.isnan(data).any():
-        means = data.nanmean(dim=1, keepdim=True)
-        data = torch.where(mask, data, means)
+    means = data.nanmean(dim=1, keepdim=True)
+    data = torch.where(mask, data, means)
 
     # Step 2: Check for invalid values
     if torch.isnan(data).any() or torch.isinf(data).any():
@@ -86,9 +85,8 @@ def from_radius(
     loop=False,
     cosine=False,
 ) -> torch.Tensor:
-    if torch.isnan(data).any():
-        means = data.nanmean(dim=1, keepdim=True)
-        data = torch.where(mask, data, means)
+    means = data.nanmean(dim=1, keepdim=True)
+    data = torch.where(mask, data, means)
 
     radius = get_percentile_radius(
         data=data, mask=mask, percentile=radius, cosine=cosine
