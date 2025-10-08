@@ -554,16 +554,17 @@ class AirQualityLoader(GraphLoader):
         return self.original_data.shape
 
     def _normalize(self, data, mask, type: str = "min_max") -> torch.Tensor:
+        observed = ~mask
         if type == "min_max":
-            min = data[mask].min()
-            max = data[mask].max()
+            min_val = data[observed].min()
+            max_val = data[observed].max()
 
-            return (data - min) / (max - min)
+            return (data - min_val) / ((max_val - min_val) + 1e-6)
         elif type == "std":
-            mean = data[mask].min()
-            std = data[mask].std()
+            mean_val = data[observed].min()
+            std_val = data[observed].std()
 
-            return (data - mean) / (std + 1e-8)
+            return (data - mean_val) / (std_val + 1e-8)
         else:
             return data
 
