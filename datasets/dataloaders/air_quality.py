@@ -401,6 +401,13 @@ class AirQualityLoader(GraphLoader):
         train_mask = train_mask & valid_mask
         eval_mask = eval_mask & valid_mask
 
+        assert not (train_mask & ~valid_mask).any(), (
+            "Train blackout overlaps invalid data"
+        )
+        assert not (eval_mask & ~valid_mask).any(), (
+            "Eval blackout overlaps invalid data"
+        )
+
         return train_mask, eval_mask
 
     def get_geolocation_graph(
