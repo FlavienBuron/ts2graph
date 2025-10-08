@@ -547,7 +547,7 @@ class AirQualityLoader(GraphLoader):
         self.missing_data = torch.where(self.test_mask, 0.0, self.missing_data)
         self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
-        self.missing_mask = self.missing_mask & ~self.validation_mask & ~self.test_mask
+        self.missing_mask = self.missing_mask | self.validation_mask | self.test_mask
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
 
     def shape(self):
