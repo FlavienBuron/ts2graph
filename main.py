@@ -309,6 +309,12 @@ def train_imputer(
                     # print(
                     #     f"{torch.isnan(imputed_data).any()=} {torch.isnan(batch_ori).any()}"
                     # )
+                    assert not torch.isnan(imputed_data[test_mask_cpu]).any(), (
+                        "found NaNs in imputed data"
+                    )
+                    assert not torch.isnan(batch_ori[test_mask_cpu]).any(), (
+                        "found NaNs in batch original_data"
+                    )
                     batch_loss = mse_loss(
                         imputed_data[test_mask_cpu],
                         batch_ori[test_mask_cpu],
