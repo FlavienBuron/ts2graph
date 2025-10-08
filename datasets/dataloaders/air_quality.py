@@ -398,8 +398,8 @@ class AirQualityLoader(GraphLoader):
             eval_mask = train_mask.clone()
 
         # Ensure blackout only applies where data was originally valid
-        train_mask = train_mask & valid_mask
-        eval_mask = eval_mask & valid_mask
+        train_mask = train_mask & ~valid_mask
+        eval_mask = eval_mask & ~valid_mask
 
         return train_mask, eval_mask
 
