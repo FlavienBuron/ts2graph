@@ -102,6 +102,9 @@ class AirQualityLoader(GraphLoader):
             )
         else:
             working_mask = ~self.missing_mask
+            assert not torch.isnan(self.original_data[working_mask]).any(), (
+                "NaNs found in working mask"
+            )
         working_points = torch.sum(working_mask).item()
 
         if mask_pattern == "default":
