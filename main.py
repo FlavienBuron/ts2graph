@@ -269,6 +269,7 @@ def train_imputer(
             for i, (batch_data, batch_mask, batch_ori, batch_test_mask) in enumerate(
                 dataloader
             ):
+                batch_mask = ~batch_mask
                 batch_references.append((batch_data.clone(), batch_mask.clone()))
 
                 optimizer.zero_grad()
@@ -445,6 +446,7 @@ def impute_missing_data(
         for _ in range(num_iteration):
             imputed_batches = []
             for batch_data, batch_mask, _, _ in dataloader:
+                batch_mask = ~batch_mask
                 sum_ls_before += compute_laplacian_smoothness(
                     batch_data, spatial_edge_index, spatial_edge_weight
                 )
