@@ -320,6 +320,8 @@ def train_imputer(
                         batch_ori[test_mask_cpu],
                         reduction="mean",
                     )
+                    if verbose:
+                        print(f"Batch loss: {batch_loss:.4e}")
                     batch_loss.backward()
                     optimizer.step()
 
