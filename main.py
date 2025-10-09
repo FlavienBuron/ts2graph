@@ -244,7 +244,6 @@ def train_imputer(
     verbose: bool = True,
 ):
     nb_batches = len(dataloader)
-    batch_size = dataloader.batch_size if dataloader.batch_size else 1
     model.train()
     train_metrics = []
 
@@ -263,14 +262,10 @@ def train_imputer(
             iteration_imputed_data = []
             batch_losses = []
 
-            # create a collection to hold batch data references temporatily
-            batch_references = []
-
             for i, (batch_data, batch_mask, batch_ori, batch_test_mask) in enumerate(
                 dataloader
             ):
-                batch_mask = ~batch_mask
-                batch_references.append((batch_data.clone(), batch_mask.clone()))
+                observed_mask = ~batch_mask
 
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
@@ -286,20 +281,20 @@ def train_imputer(
                         batch_data.detach(),
                         spatial_edge_index,
                         spatial_edge_weight,
-                        mask=batch_mask,
+                        mask=observed_mask,
                     )
                     sum_eds_before_masked += compute_edge_difference_smoothness(
                         batch_data.detach(),
                         spatial_edge_index,
                         spatial_edge_weight,
-                        mask=batch_mask,
+                        mask=observed_mask,
                     )
 
                     # Imputation step
                     imputed_data, temp_graph_time = model(
                         # x=batch_data.unsqueeze(2).to(device),
                         x=batch_data.to(device),
-                        mask=batch_mask.to(device),
+                        mask=observed_mask.to(device),
                         spatial_edge_index=spatial_edge_index.to(device),
                         spatial_edge_weight=spatial_edge_weight.to(device),
                     )
@@ -334,12 +329,10 @@ def train_imputer(
                     # replace the missing data in the batch with the imputed data
                     # imputed_batch = batch_data.clone()
                     imputed_data = imputed_data.cpu()
-                    missing_mask_cpu = batch_mask.cpu().bool()
+                    observed_mask_cpu = observed_mask.cpu().bool()
 
-                    # print(f"{imputed_batch[~missing_mask_cpu]}")
-                    # print(f"{imputed_data[~missing_mask_cpu]}")
-                    imputed_data[missing_mask_cpu] = (
-                        batch_data[missing_mask_cpu].detach().clone()
+                    imputed_data[observed_mask_cpu] = (
+                        batch_data[observed_mask_cpu].detach().clone()
                     )
 
                     iteration_imputed_data.append(imputed_data)
@@ -355,13 +348,13 @@ def train_imputer(
                         imputed_data.detach(),
                         spatial_edge_index,
                         spatial_edge_weight,
-                        mask=batch_mask,
+                        mask=observed_mask,
                     )
                     sum_eds_after_masked += compute_edge_difference_smoothness(
                         imputed_data.detach(),
                         spatial_edge_index,
                         spatial_edge_weight,
-                        mask=batch_mask,
+                        mask=observed_mask,
                     )
 
                     batch_losses.append(batch_loss.item())
@@ -370,7 +363,13 @@ def train_imputer(
                         f"Batch {i}/{nb_batches} loss: {batch_loss.item():.4e}",
                         end="\r",
                     )
-                del batch_data, batch_mask, imputed_data, missing_mask_cpu
+                del (
+                    batch_data,
+                    batch_mask,
+                    imputed_data,
+                    observed_mask,
+                    observed_mask_cpu,
+                )
 
             with torch.no_grad():
                 iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)
@@ -384,7 +383,7 @@ def train_imputer(
                     f"Iteration {iter + 1}/{num_iteration} loss {iter_loss:.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss:.4e}",
                 )
             dataset.update_data(iteration_imputed_data)
-            del iteration_imputed_data, batch_losses, batch_references
+            del iteration_imputed_data, batch_losses
         mean_loss = epoch_loss / (nb_batches * num_iteration)
         dataset.reset_current_data()
         train_metrics.append(
@@ -454,12 +453,12 @@ def impute_missing_data(
         sum_imputed_eds_before = 0.0
         sum_imputed_eds_after = 0.0
         temp_graph_times = []
-        batch_size = dataloader.batch_size if dataloader.batch_size else 1
         nb_batches = len(dataloader)
         for _ in range(num_iteration):
             imputed_batches = []
-            for batch_data, batch_mask, _, _ in dataloader:
-                batch_mask = ~batch_mask
+            for batch_data, batch_missing_mask, _, _ in dataloader:
+                batch_missing_mask = ~batch_missing_mask
+                batch_observed_mask = ~batch_missing_mask
                 sum_ls_before += compute_laplacian_smoothness(
                     batch_data, spatial_edge_index, spatial_edge_weight
                 )
@@ -471,42 +470,40 @@ def impute_missing_data(
                     batch_data.detach(),
                     spatial_edge_index,
                     spatial_edge_weight,
-                    mask=batch_mask,
+                    mask=batch_observed_mask,
                 )
                 sum_eds_before_masked += compute_edge_difference_smoothness(
                     batch_data.detach(),
                     spatial_edge_index,
                     spatial_edge_weight,
-                    mask=batch_mask,
+                    mask=batch_observed_mask,
                 )
                 sum_imputed_ls_before += compute_laplacian_smoothness(
                     batch_data.detach(),
                     spatial_edge_index,
                     spatial_edge_weight,
-                    mask=~batch_mask,
+                    mask=batch_missing_mask,
                 )
                 sum_imputed_eds_before += compute_edge_difference_smoothness(
                     batch_data.detach(),
                     spatial_edge_index,
                     spatial_edge_weight,
-                    mask=~batch_mask,
+                    mask=batch_missing_mask,
                 )
 
                 imputed_data, temp_graph_time = model(
                     # batch_data.unsqueeze(2).to(device),
                     x=batch_data.to(device),
-                    mask=batch_mask.to(device),
+                    mask=batch_observed_mask.to(device),
                     spatial_edge_index=spatial_edge_index.to(device),
                     spatial_edge_weight=spatial_edge_weight.to(device),
                 )
                 temp_graph_times.append(temp_graph_time)
-                # imputed_data = imputed_data.squeeze(-1)
-                # imputed_batch = batch_data.clone().detach().cpu()
-                mask_cpu = batch_mask.cpu().bool()
-                # print(f"{imputed_batch[~mask_cpu]}")
-                # print(f"{imputed_data[~mask_cpu]}")
+                observed_mask_cpu = batch_observed_mask.cpu().bool()
 
-                imputed_data[mask_cpu] = batch_data[mask_cpu].detach().clone()
+                imputed_data[observed_mask_cpu] = (
+                    batch_data[observed_mask_cpu].detach().clone()
+                )
 
                 imputed_batches.append(imputed_data)
 
@@ -514,7 +511,7 @@ def impute_missing_data(
                     imputed_data,
                     spatial_edge_index,
                     spatial_edge_weight,
-                    mask=batch_mask,
+                    mask=batch_observed_mask,
                 )
                 sum_ls_after += compute_laplacian_smoothness(
                     imputed_data, spatial_edge_index, spatial_edge_weight
@@ -526,27 +523,24 @@ def impute_missing_data(
                     imputed_data,
                     spatial_edge_index,
                     spatial_edge_weight,
-                    mask=batch_mask,
+                    mask=batch_observed_mask,
                 )
                 sum_imputed_ls_after += compute_laplacian_smoothness(
                     imputed_data,
                     spatial_edge_index,
                     spatial_edge_weight,
-                    mask=~batch_mask,
+                    mask=batch_missing_mask,
                 )
                 sum_imputed_eds_after += compute_laplacian_smoothness(
                     imputed_data,
                     spatial_edge_index,
                     spatial_edge_weight,
-                    mask=~batch_mask,
+                    mask=batch_missing_mask,
                 )
 
             imputed_data = torch.cat(imputed_batches, dim=0)
             dataset.update_data(imputed_data)
             del imputed_data
-        # for param in model.parameters():
-        #     if param.grad is None:
-        #         print(f"Gradient is None for param: {param}")
         metrics.update(
             {
                 "phase": "impute",
