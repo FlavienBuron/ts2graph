@@ -143,7 +143,7 @@ class STGI(nn.Module):
             x = torch.stack(temporal_outputs, dim=1)
 
         # x = self.layer_norm(x)
-        x = torch.tanh(x)
+        # x = torch.tanh(x)
 
         if torch.isnan(x).any():
             print("NaNs detected in imputed_x")
