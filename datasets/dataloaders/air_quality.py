@@ -51,8 +51,8 @@ class AirQualityLoader(GraphLoader):
             else (self._mask & ~self.validation_mask)
         )
 
-    def __len__(self) -> int:
-        return self.original_data.shape[0]
+    # def __len__(self) -> int:
+    #     return self.original_data.shape[0]
 
     def __getitem__(
         self, index: int
