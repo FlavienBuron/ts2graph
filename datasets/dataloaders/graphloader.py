@@ -45,7 +45,7 @@ class GraphLoader(Dataset, ABC):
         self.delay = 0
         self.stride = 1
 
-        self._indices = np.arange(self.data.shape[0] - self.sample_span + 1)[
+        self._indices = np.arange(self.df.shape[0] - self.sample_span + 1)[
             :: self.stride
         ]
 
