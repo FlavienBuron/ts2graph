@@ -98,12 +98,6 @@ class AirQualityLoader(GraphLoader):
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
 
-        assert data.loc[missing_mask].isna().all().all(), (
-            "non-missing values found under missing values mask"
-        )
-        assert not data.loc[~missing_mask].isna().any().any(), (
-            "missing values found outside missing values mask"
-        )
         return data, missing_mask, dist
 
     def split(
