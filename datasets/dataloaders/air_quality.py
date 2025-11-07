@@ -20,17 +20,36 @@ class AirQualityLoader(GraphLoader):
         dataset_path: str = "./datasets/data/air_quality/",
         small: bool = False,
         normalization_type: str = "min_max",
-        replace_nan=True,
-        nan_method="mean",
+        impute_nans: bool = False,
+        nan_method: str = "mean",
+        freq: str = "60T",
+        masked_sensors: list | None = None,
     ):
         self.dataset_path = dataset_path
-        self.validation_mask = torch.tensor([])
-        self.original_data, self.missing_mask, self.distances = self.load(
-            small=small, normalization_type=normalization_type
+
+        self.test_months = [3, 6, 9, 12]
+        self.infer_eval_from = "next"
+
+        data, missing_mask, distances = self.load(
+            impute_nans=impute_nans,
+            small=small,
+            masked_sensors=masked_sensors,
         )
-        self.missing_data = torch.empty_like(self.original_data)
-        if replace_nan:
-            self._replace_nan(nan_method)
+        self.distances = distances
+        self.masked_sensors = (
+            list(masked_sensors) if masked_sensors is not None else list()
+        )
+        super().__init__(
+            dataframe=data, missing_mask=missing_mask, freq=freq, aggr="nearest"
+        )
+
+    @property
+    def training_mask(self):
+        return (
+            self._mask
+            if self.validation_mask is None
+            else (self._mask & ~self.validation_mask)
+        )
 
     def __len__(self) -> int:
         return self.original_data.shape[0]
@@ -46,35 +65,46 @@ class AirQualityLoader(GraphLoader):
 
     def load_raw(
         self, small: bool = False
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
         if small:
             path = os.path.join(self.dataset_path, "small36.h5")
             eval_mask = pd.DataFrame(pd.read_hdf(path, "eval_mask"))
         else:
             path = os.path.join(self.dataset_path, "full437.h5")
-            eval_mask = pd.DataFrame({})
+            eval_mask = None
         data = pd.DataFrame(pd.read_hdf(path, key="pm25"))
         stations = pd.DataFrame(pd.read_hdf(path, key="stations"))
         return data, stations, eval_mask
 
     def load(
-        self, small: bool = False, normalization_type: str = "min_max"
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        self,
+        impute_nans: bool = True,
+        small: bool = False,
+        masked_sensors: list | None = None,
+    ) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame]:
         data, stations, eval_mask = self.load_raw(small=small)
+        missing_mask = np.isnan(data.values).astype("bool")  # 1=missing, 0=observed
+        if eval_mask is None:
+            eval_mask = self._infer_mask(data)
+        eval_mask = eval_mask.values.astype("bool")
+        if masked_sensors is not None:
+            eval_mask[:masked_sensors] = np.where(
+                missing_mask[:, masked_sensors], True, False
+            )
+        self.validation_mask = eval_mask
+        if impute_nans:
+            data = data.fillna(self._compute_mean(data))
+
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
-        data = torch.from_numpy(data.to_numpy()).float()
-        data = data.unsqueeze(-1)
-        if eval_mask is not None:
-            eval_mask = torch.from_numpy(eval_mask.to_numpy()).bool()
-            eval_mask = eval_mask.unsqueeze(-1)
-            self.validation_mask = eval_mask
-        mask = torch.where(data.isnan(), True, False)
-        assert torch.isnan(data[mask]).all(), (
+
+        assert data.loc[missing_mask].isna().all().all(), (
             "non-missing values found under missing values mask"
         )
-        data = self._normalize(data, mask, normalization_type)
-        return data, mask, dist
+        assert not data.loc[~missing_mask].isna().any().any(), (
+            "missing values found outside missing values mask"
+        )
+        return data, missing_mask, dist
 
     def split(
         self,
@@ -414,6 +444,79 @@ class AirQualityLoader(GraphLoader):
 
         return train_mask, eval_mask
 
+    def grin_splitter(
+        self,
+        val_len: float = 1.0,
+        in_sample: bool = False,
+        window: int = 0,
+    ):
+        nontest_idxs, test_idxs = self._disjoint_months(
+            months=self.test_months, sync_mode="horizon"
+        )
+        if in_sample:
+            train_idxs = np.arange(len(self))
+            val_months = [(m - 1) % 12 for m in self.test_months]
+            _, val_idxs = self._disjoint_months(months=val_months, sync_mode="horizon")
+        else:
+            val_len = (
+                int(val_len * len(nontest_idxs)) if val_len < 1.0 else val_len
+            ) // len(self.test_months)
+            # get indices of first day of each testing month
+            delta_idxs = np.diff(test_idxs)
+            end_month_idxs = test_idxs[1:][
+                np.flatnonzero(delta_idxs > delta_idxs.min())
+            ]
+            if len(end_month_idxs) < len(self.test_months):
+                end_month_idxs = np.insert(end_month_idxs, 0, test_idxs[0])
+            # expand month indices
+            month_val_idxs = [
+                np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs
+            ]
+            val_idxs = np.concatenate(month_val_idxs) % len(self)
+            # remove overlapping indices from training set
+            ovl_idxs, _ = self.overlapping_indices(
+                nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
+            )
+            train_idxs = nontest_idxs[~ovl_idxs]
+        return train_idxs, val_idxs, test_idxs
+
+    def _disjoint_months(
+        self,
+        months: List = [],
+        sync_mode: str = "window",
+    ):
+        idxs = np.arange(len(self))
+        if sync_mode == "window":
+            start, end = 0, self.window - 1
+        elif sync_mode == "horizon":
+            horizon_offset = self.horizon_offset
+            start, end = horizon_offset, horizon_offset + horizon_offset - 1
+        else:
+            raise ValueError(
+                f"Invalid sync mode type: {sync_mode}. Expected 'window' or 'horizon'"
+            )
+        if self.index is not None:
+            # after idxs
+            start_in_months = np.isin(self.index[self._indices + start].month, months)
+            end_in_months = np.isin(self.index[self._indices + end].month, months)
+            idxs_in_months = start_in_months & end_in_months
+            after_idxs = idxs[idxs_in_months]
+
+            # before idxs
+            months_before = np.setdiff1d(np.arange(1, 13), months)
+            start_in_months = np.isin(
+                self.index[self._indices + start].month, months_before
+            )
+            end_in_months = np.isin(
+                self.index[self._indices + end].month, months_before
+            )
+            idxs_in_months = start_in_months & end_in_months
+            prev_idxs = idxs[idxs_in_months]
+
+            return prev_idxs, after_idxs
+        else:
+            raise ValueError
+
     def get_geolocation_graph(
         self,
         threshold: float = 0.1,
@@ -514,20 +617,19 @@ class AirQualityLoader(GraphLoader):
 
     def _geographical_distance(
         self, coords: pd.DataFrame, to_rad: bool = True
-    ) -> torch.Tensor:
+    ) -> pd.DataFrame:
         """
         Compute the geographical distance between coordinates points
         """
 
         _AVG_EARTH_RADIUS_KM = 6371.0088
 
-        coords_array = coords.to_numpy()
+        coords_pairs = coords.values
         if to_rad:
-            coords_array = np.radians(coords_array)
-        dist = torch.from_numpy(
-            haversine_distances(coords_array) * _AVG_EARTH_RADIUS_KM
-        ).float()
-        return dist
+            coords_pairs = np.vectorize(np.radians)(coords_pairs)
+        dist = haversine_distances(coords_pairs) * _AVG_EARTH_RADIUS_KM
+        dist_df = pd.DataFrame(dist, coords.index, coords.index)
+        return dist_df
 
     def get_dataloader(
         self,
@@ -549,9 +651,6 @@ class AirQualityLoader(GraphLoader):
         self.current_data = self.missing_data.clone()
         self.missing_mask = self.missing_mask | self.validation_mask | self.test_mask
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
-
-    def shape(self):
-        return self.original_data.shape
 
     def _normalize(self, data, mask, type: str = "min_max") -> torch.Tensor:
         observed = ~mask
@@ -585,3 +684,55 @@ class AirQualityLoader(GraphLoader):
                 )
         elif method == "zero":
             self.missing_data = self.original_data.nan_to_num(nan=0.0)
+
+    def _infer_mask(self, data: pd.DataFrame) -> pd.DataFrame:
+        observed_mask = data.isna().astype("uint8")
+        eval_mask = pd.DataFrame(index=data.index, columns=data.columns, data=0).astype(
+            "uint8"
+        )
+        if self.infer_eval_from == "previous":
+            offset = -1
+        elif self.infer_eval_from == "next":
+            offset = 1
+        else:
+            raise ValueError("infer_eval_mask can only be one of ['previous', 'next']")
+        months = sorted(set(zip(data.index.year, data.index.month)))
+        length = len(months)
+        for i in range(length):
+            j = (i + offset) % length
+            year_i, month_i = months[i]
+            year_j, month_j = months[j]
+            mask_j = observed_mask[
+                (data.index.year == year_j) & (data.index.month == month_j)
+            ]
+            mask_i = mask_j.shift(
+                1, pd.DateOffset(months=12 * (year_i - year_j) + (month_i - month_j))
+            )
+            mask_i = mask_i[~mask_i.index.duplicated(keep="first")]
+            mask_i = mask_i[np.isin(mask_i.index, data.index)]
+            eval_mask.loc[mask_i.index] = (
+                ~mask_i.loc[mask_i.index] & data.loc[mask_i.index]
+            )
+        return eval_mask
+
+    def _compute_mean(self, data: pd.DataFrame) -> pd.DataFrame:
+        data_mean = data.copy()
+        condition0 = [
+            data_mean.index.year,
+            data_mean.index.isocalendar().week,
+            data_mean.index.hour,
+        ]
+        condition1 = [
+            data_mean.index.year,
+            data_mean.index.month,
+            data_mean.index.hour,
+        ]
+        conditions = [condition0, condition1, condition1[1:], condition1[2:]]
+        while data_mean.isna().values.sum() and len(conditions):
+            nan_mean = data_mean.groupby(conditions[0]).transform(np.nanmean)
+            data_mean = data_mean.fillna(nan_mean)
+            conditions = conditions[1:]
+        if data_mean.isna().values.sum():
+            data_mean = data_mean.fillna(method="ffill")
+            data_mean = data_mean.fillna(method="bfill")
+        return data_mean

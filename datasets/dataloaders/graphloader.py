@@ -1,13 +1,38 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from ast import Tuple
+from typing import Any, Dict, List
 
+import numpy as np
+import pandas as pd
 import torch
+from einops import rearrange
 from torch import Tensor
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
+from torch_geometric.typing import torch_cluster
+
+from datasets.scalers.min_max_scaler import MinMaxScaler
+from datasets.scalers.standard_scaler import StandardScaler
 
 
 class GraphLoader(Dataset, ABC):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        dataframe: pd.DataFrame,
+        missing_mask: np.ndarray,
+        freq: str | None = None,
+        aggr: str = "sum",
+    ) -> None:
+        self._exogenous_keys = dict()
+        self._reserved_signature = {"data", "trend", "x", "y"}
+
+        # reproduce 'pd_dataset' class from GRIN
+        self._store_pandas_data(
+            dataframe=dataframe,
+            mask=missing_mask,
+            freq=freq,
+            aggr=aggr,
+        )
+
         self.original_data: (
             torch.Tensor
         )  # The original data with/without missing values. Static
@@ -15,8 +40,245 @@ class GraphLoader(Dataset, ABC):
         self.current_data: torch.Tensor  # The working copy, used during training
         self.missing_mask: torch.Tensor
         self.test_mask: torch.Tensor
-        self.validation_mask: torch.Tensor
         self.distances = None
+
+        self.horizon = 24
+        self.window = 24
+        self.delay = 0
+        self.stride = 1
+
+        self._indices = np.arange(self.data.shape[0] - self.sample_span + 1)[
+            :: self.stride
+        ]
+
+        self.scaler = None
+
+    @property
+    def has_mask(self):
+        return self._mask is not None
+
+    @property
+    def shape(self):
+        return self.df.values.shape
+
+    @property
+    def mask(self):
+        if self.has_mask:
+            return self._mask
+        return np.zeros_like(self.shape).astype("bool")
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value: torch.Tensor):
+        assert value is not None
+        self._data = self._check_input(value)
+
+    @property
+    def trend(self):
+        return self._trend
+
+    @trend.setter
+    def trend(self, value):
+        self._trend = self._check_input(value)
+
+    @property
+    def horizon_offset(self):
+        return self.window + self.delay
+
+    @property
+    def sample_span(self):
+        return max(self.horizon_offset + self.horizon, self.window)
+
+    @property
+    def preprocess(self):
+        return (self.trend is not None) or (self.scaler is not None)
+
+    @property
+    def n_steps(self):
+        return self.data.shape[0]
+
+    @property
+    def d_in(self): # changed from n_channels
+        return self.data.shape[-1]
+
+    @property
+    def d_out(self):
+        return self.horizon
+
+    @property
+    def n_nodes(self):
+        return self.data.shape[1]
+
+    @property
+    def indices(self):
+        return self._indices
+
+    @property
+    def signature(self):
+        attrs = []
+        if self.window > 0:
+            attrs.append("x")
+            for attr in self._exo_window_keys:
+                attrs.append(attr if attr not in self._exo_common_keys else (attr+"_window"))
+        for attr in self._exo_horizon_keys:
+            attrs.append(attr if attr not in self._exo_common_keys alse (attr + "_horizon"))
+        attrs.append("y")
+        attrs = tuple(attrs)
+        preprocess = []
+        if self.trend is not None:
+            preprocess.append("trend")
+        if self.scaler is not None:
+            preprocess.extend(self.scaler.params())
+        preprocess = tuple(preprocess)
+        return dict(data=attrs, preprocessing=preprocess)
+
+    @property
+    def _exo_window_keys(self):
+        return {k for k, v in self._exogenous_keys.items() if v["for_window"]}
+
+    @property
+    def _exo_horizon_keys(self):
+        return {k for k, v in self._exogenous_keys.items() if v["for_horizon"]}
+
+    @property
+    def _exo_common_keys(self):
+        return self._exo_window_keys.intersection(self._exo_horizon_keys)
+
+    def get(self, item: int, preprocess: bool = False):
+        idx = self._indices[item]
+        res, transfrom = dict(), dict()
+        if self.window > 0:
+            res["x"] = self.data[idx : idx + self.window]
+            for attr in self._exo_window_keys:
+                key = attr if attr not in self._exo_common_keys else (attr + "_window")
+                res[key] = getattr(self, attr)[idx : idx + self.window]
+        for attr in self._exo_horizon_keys:
+            key = attr if attr not in self._exo_common_keys else (attr + "_horizon")
+            res[key] = getattr(self, attr)[idx + self.horizon_offset : idx + self.horizon_offset + self.horizon]
+        res["y"] = self.data[
+            idx + self.horizon_offset : idx + self.horizon_offset + self.horizon
+        ]
+        if preprocess:
+            if self.trend is not None:
+                y_trend = self.trend[
+                    idx + self.horizon_offset : idx + self.horizon_offset + self.horizon
+                ]
+                res["y"] = res["y"] - y_trend
+                transfrom["trend"] = y_trend
+                if "x" in res:
+                    res["x"] = res["x"] - self.trend[idx : idx + self.window]
+            if self.scaler is not None:
+                transfrom.update(self.scaler.params())
+                if "x" in res:
+                    res["x"] = self.scaler.transfrom(res["x"])
+
+        res["x"] = torch.where(res["mask"], res["x"], torch.zeros_like(res["x"]))
+
+        return res, transfrom
+
+    def _store_pandas_data(
+        self,
+        dataframe: pd.DataFrame,
+        mask: np.ndarray,
+        freq: str | None = "60T",
+        aggr: str = "sum",
+    ):
+        self.df = dataframe
+        self.index = pd.to_datetime(dataframe.index)
+
+        idx = sorted(self.df.index)
+        self.start = idx[0]
+        self.end = idx[-1]
+
+        self._mask: np.ndarray = mask
+
+        if freq is not None:
+            self._resample(freq=freq, aggr=aggr)
+        else:
+            self.freq = dataframe.index.inferred_freq
+            self._resample(self.freq, aggr=aggr)
+
+        assert "T" in self.freq
+        self.sample_per_day = int(60 / int(self.freq[:-1]) * 24)
+
+    def _store_spatiotemporal_data(
+        self,
+        data: np.ndarray,
+        index: np.ndarray,
+        freq: str | pd.DatetimeIndex | None = None,
+        exogenous: dict | None = None,
+        trend=None,
+        scaler=None,
+        window: int = 24,
+        horizon: int = 24,
+        delay: int = 0,
+        stride: int = 1,
+    ):
+        data_array, self.index = self.as_numpy(return_idx=True)
+        self.data = torch.tensor(data_array)
+        if exogenous is not None:
+            for name, value in exogenous.items():
+                self._add_exogenous(value, name, for_window=True, for_horizon=False)
+        try:
+            freq = freq or self.index or self.index.inferred_freq
+            self.freq = pd.tseries.frequencies.to_offset(freq)
+        except AttributeError:
+            self.freq = None
+
+        self.window = window
+        self.delay = delay
+        self.horizon = horizon
+        self.stride = stride
+        self._indices = np.arange(self.data.shape[0] - self.sample_span + 1)[
+            :: self.stride
+        ]
+        self.trend = trend
+        self.scaler = scaler
+
+
+    def _resample(self, freq: str, aggr: str):
+        resampler = self.df.resample(freq)
+        if aggr == "sum":
+            self.df = resampler.sum()
+        elif aggr == "mean":
+            self.df = resampler.mean()
+        elif aggr == "nearest":
+            self.df = resampler.nearest()
+        else:
+            raise ValueError(f"{aggr} is not a valid aggregation method")
+
+        if self.has_mask:
+            resampler = pd.DataFrame(self._mask, index=self.df.index).resample(freq)
+            self._mask = resampler.min().to_numpy()
+        self.freq = freq
+
+    def _check_input(self, data: torch.Tensor):
+        if data is None:
+            raise ValueError("Data input for dataset should not be None")
+        data = self.check_dim(data)
+        data = data.clone().detach()
+        if torch.is_floating_point(data):
+            return data.float()
+        elif data.dtype in [
+            torch.int,
+            torch.int8,
+            torch.int16,
+            torch.int32,
+            torch.int64,
+        ]:
+            return data.int()
+        return data
+
+    def dataframe(self) -> pd.DataFrame:
+        return self.df.copy()
+
+    def as_numpy(self, return_idx: bool = False):
+        if return_idx:
+            return self.df.values, self.df.index
+        return self.df.values, None
 
     def update_data(self, new_data: Tensor) -> None:
         """
@@ -44,8 +306,18 @@ class GraphLoader(Dataset, ABC):
         """Reset the current data to the initial missing data state"""
         self.current_data = self.missing_data.clone()
 
-    def mask_months(self, mask, timestamps, holdout_months=[3, 6, 9, 12]):
-        pass
+    def _add_exogenous(
+        self, exo_data, name: str, for_window: bool = True, for_horizon: bool = False
+    ):
+        suffix_idx = -7 if "window" in name else -8
+        name = name[:suffix_idx]
+        for_window = suffix_idx == -7
+        for_horizon = suffix_idx == -8
+        exo_data = self._check_input(exo_data)
+        setattr(self, name, exo_data)
+        self._exogenous_keys[name] = dict(
+            for_window=for_window, for_horizon=for_horizon
+        )
 
     @abstractmethod
     def get_knn_graph(self, k: float, *args, **kwargs) -> Any:
@@ -71,9 +343,174 @@ class GraphLoader(Dataset, ABC):
         pass
 
     @abstractmethod
-    def __len__(self) -> int:
+    def load_raw(self) -> Any:
         pass
 
-    @abstractmethod
-    def __getitem__(self, index: int) -> Any:
-        pass
+    def __len__(self) -> int:
+        return len(self._indices)
+
+    def __getitem__(self, item: int) -> Any:
+        return self.get(item, self.preprocess)
+
+    def __contains__(self, item):
+        return item in self._exogenous_keys
+
+    @staticmethod
+    def check_dim(data: torch.Tensor):
+        dim = data.ndim
+        if dim == 3:
+            return data
+        elif data.ndim == 2:
+            return rearrange(data, "s (n f) -> s n f", f=1)
+        elif data.ndim == 1:
+            return rearrange(data, "(s n f) -> s n f", n=1, f=1)
+        else:
+            raise ValueError(f"Invalid data dimensions {data.shape}")
+
+    def expand_indices(self, indices=None, unique=False) -> Dict:
+        ds_indices = dict.fromkeys(
+            [time for time in ["window", "horizon"] if getattr(self, time) > 0]
+        )
+        indices = np.arange(len(self._indices)) if indices is None else indices
+        if "window" in ds_indices:
+            window_idxs = [
+                np.arange(idx, idx + self.window) for idx in self._indices[indices]
+            ]
+            ds_indices["window"] = np.concatenate(window_idxs)
+        if "horizon" in ds_indices:
+            horizon_idxs = [
+                np.arange(
+                    idx + self.horizon_offset, idx + self.horizon_offset + self.horizon
+                )
+                for idx in self._indices[indices]
+            ]
+            ds_indices["horizon"] = np.concatenate(horizon_idxs)
+        if unique:
+            ds_indices = {
+                k: np.unique(v) for k, v in ds_indices.items() if v is not None
+            }
+        return ds_indices
+
+    def expand_and_merge_indices(self, indices) -> np.ndarray:
+        ds_indices = dict.fromkeys(
+            [time for time in ["window", "horizon"] if getattr(self, time) > 0]
+        )
+        indices = np.arange(len(self._indices)) if indices is None else indices
+        if "window" in ds_indices:
+            window_idxs = [
+                np.arange(idx, idx + self.window) for idx in self._indices[indices]
+            ]
+            ds_indices["window"] = np.concatenate(window_idxs)
+        if "horizon" in ds_indices:
+            horizon_idxs = [
+                np.arange(
+                    idx + self.horizon_offset, idx + self.horizon_offset + self.horizon
+                )
+                for idx in self._indices[indices]
+            ]
+            ds_indices["horizon"] = np.concatenate(horizon_idxs)
+        ds_indices = np.unique(np.hstack([v for v in ds_indices.values() if v is not None]))
+        return ds_indices
+
+
+
+    def overlapping_indices(
+        self, idxs1, idxs2, sync_mode="window", as_mask=False
+    ) -> tuple[np.ndarray, np.ndarray]:
+        assert sync_mode in ["window", "horizon"], (
+            "sync_mode can only be 'window' or 'horizon'"
+        )
+        timestamp1 = self.data_timestamps(idxs1, flatten=False)[sync_mode]
+        timestamp2 = self.data_timestamps(idxs2, flatten=False)[sync_mode]
+        common_timestamps = np.intersect1d(np.unique(timestamp1), np.unique(timestamp2))
+        is_overlapping = lambda sample: np.any(np.isin(sample, common_timestamps))
+        m1 = np.apply_along_axis(is_overlapping, 1, timestamp1)
+        m2 = np.apply_along_axis(is_overlapping, 1, timestamp2)
+        if as_mask:
+            return m1, m2
+        return np.sort(idxs1[m1]), np.sort(idxs2[m2])
+
+    def data_timestamps(self, indices=None, flatten=True) -> Dict:
+        ds_indices = self.expand_indices(indices, unique=False)
+        ds_timestamp = {k: self.index[v] for k, v in ds_indices.items()}
+        if not flatten:
+            ds_timestamp = {
+                k: np.array(v).reshape(-1, getattr(self, k))
+                for k, v in ds_timestamp.items()
+            }
+        return ds_timestamp
+
+    ########## Datamodule ##########
+    def setup(
+        self,
+        scale: bool = True,
+        scaling_axis: str = "global",
+        scaling_type: str = "minmax",
+        scale_exogenous: List = [],
+        train_indices: List = [],
+        val_indices: List = [],
+        test_indices: List = [],
+        batch_size: int = 64,
+        sample_per_epoch: int = 0,
+    ):
+        self._has_setup_fit = False
+
+        self.train_set = Subset(self, train_indices)
+        self.val_set = Subset(self, val_indices)
+        self.test_set = Subset(self, test_indices)
+
+        self.scale = scale
+        self.scaling_type = scaling_type
+        self.scaling_axis = scaling_axis
+        self.scale_exogenous = scale_exogenous
+        self.batch_size = batch_size
+        self.sample_per_epoch = sample_per_epoch
+
+        if self.scale:
+            scaling_axes = self.get_scaling_axes(self.scaling_axis)
+            train = self.data[self.train_slice]
+            train_mask = self._mask[self.train_slice]
+            scaler = self.get_scaler()(axis=scaling_axes)
+            scaler.fit(x=train, mask=train_mask, keepdims=True)
+            self.scaler = scaler.to_torch()
+
+            if len(self.scale_exogenous) > 0:
+                for label in self.scale_exogenous:
+                    exo = getattr(self, label)
+                    scaler = self.get_scaler()(axis=scaling_axes)
+                    scaler.fit(exo[self.train_slice], keepdims=True)
+                    scaler = scaler.to_torch()
+                    setattr(self, label, scaler.transform(exo))
+
+    @property
+    def train_slice(self):
+        return self.expand_and_merge_indices(self.train_set.indices)
+
+    @property
+    def val_slice(self):
+        return self.expand_and_merge_indices(self.val_set.indices)
+
+    @property
+    def test_slice(self):
+        return self.expand_and_merge_indices(self.test_set.indices)
+
+    def get_scaling_axes(self, dim: str = "global"):
+        scaling_axis = tuple()
+        if dim == "global":
+            scaling_axis = (0, 1, 2)
+        elif dim == "channels":
+            scaling_axis = (0, 1)
+        elif dim == "nodes":
+            scaling_axis = (0,)
+        else:
+            raise ValueError(f"Scaling axis '{dim}' is not valid")
+
+        return scaling_axis
+
+    def get_scaler(self):
+        if self.scaling_type == "std":
+            return StandardScaler
+        elif self.scaling_type == "minmax":
+            return MinMaxScaler
+        else:
+            raise NotImplementedError
