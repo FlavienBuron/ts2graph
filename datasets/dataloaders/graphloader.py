@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from ast import Tuple
 from typing import Any, Dict, List
 
 import numpy as np
@@ -8,7 +7,6 @@ import torch
 from einops import rearrange
 from torch import Tensor
 from torch.utils.data import Dataset, Subset
-from torch_geometric.typing import torch_cluster
 
 from datasets.scalers.min_max_scaler import MinMaxScaler
 from datasets.scalers.standard_scaler import StandardScaler
@@ -101,7 +99,7 @@ class GraphLoader(Dataset, ABC):
         return self.data.shape[0]
 
     @property
-    def d_in(self): # changed from n_channels
+    def d_in(self):  # changed from n_channels
         return self.data.shape[-1]
 
     @property
@@ -122,9 +120,13 @@ class GraphLoader(Dataset, ABC):
         if self.window > 0:
             attrs.append("x")
             for attr in self._exo_window_keys:
-                attrs.append(attr if attr not in self._exo_common_keys else (attr+"_window"))
+                attrs.append(
+                    attr if attr not in self._exo_common_keys else (attr + "_window")
+                )
         for attr in self._exo_horizon_keys:
-            attrs.append(attr if attr not in self._exo_common_keys alse (attr + "_horizon"))
+            attrs.append(
+                attr if attr not in self._exo_common_keys else (attr + "_horizon")
+            )
         attrs.append("y")
         attrs = tuple(attrs)
         preprocess = []
@@ -157,7 +159,9 @@ class GraphLoader(Dataset, ABC):
                 res[key] = getattr(self, attr)[idx : idx + self.window]
         for attr in self._exo_horizon_keys:
             key = attr if attr not in self._exo_common_keys else (attr + "_horizon")
-            res[key] = getattr(self, attr)[idx + self.horizon_offset : idx + self.horizon_offset + self.horizon]
+            res[key] = getattr(self, attr)[
+                idx + self.horizon_offset : idx + self.horizon_offset + self.horizon
+            ]
         res["y"] = self.data[
             idx + self.horizon_offset : idx + self.horizon_offset + self.horizon
         ]
@@ -237,7 +241,6 @@ class GraphLoader(Dataset, ABC):
         ]
         self.trend = trend
         self.scaler = scaler
-
 
     def _resample(self, freq: str, aggr: str):
         resampler = self.df.resample(freq)
@@ -409,10 +412,10 @@ class GraphLoader(Dataset, ABC):
                 for idx in self._indices[indices]
             ]
             ds_indices["horizon"] = np.concatenate(horizon_idxs)
-        ds_indices = np.unique(np.hstack([v for v in ds_indices.values() if v is not None]))
+        ds_indices = np.unique(
+            np.hstack([v for v in ds_indices.values() if v is not None])
+        )
         return ds_indices
-
-
 
     def overlapping_indices(
         self, idxs1, idxs2, sync_mode="window", as_mask=False

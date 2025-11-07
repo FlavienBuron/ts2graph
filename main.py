@@ -10,28 +10,22 @@ from typing import Callable, Optional
 import numpy as np
 import torch
 import torch.nn as nn
-import yaml
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
     root_mean_squared_error,
 )
 from torch.nn.functional import mse_loss
-from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
-from torch_geometric.utils import dense_to_sparse
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
-from downstream.imputation.GRIN.grin import GRINet
-from downstream.imputation.STGI import STGI
 from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
     compute_laplacian_smoothness,
-    save_graph_characteristics,
 )
 
 random.seed(42)
@@ -742,139 +736,8 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 
 
 def run(args: Namespace) -> None:
-    # test = np.random.rand(10, 100)
-    print("#" * 100)
-    print(args)
-    model = args.model.lower()
-    device = args.device
-    stgi_mode = args.mode
-    if stgi_mode.lower() in ["st"]:
-        use_spatial = True
-        use_temporal = True
-    elif stgi_mode.lower() in ["t"]:
-        use_spatial = False
-        use_temporal = True
-    else:
-        use_spatial = True
-        use_temporal = False
-
-    print(f"{use_spatial=} {use_temporal=}")
-
     dataset = get_dataset(args.dataset)
-
-    if args.batch_size == 0:
-        args.batch_size = dataset.original_data.shape[0]
-
-    missing_pattern, total_missing_percent = args.missing_pattern
-
-    # dataset.corrupt(missing_type="perc", missing_size=50)
-    dataloader = dataset.get_dataloader(
-        test_percent=args.test_percent,
-        total_missing_percent=float(total_missing_percent),
-        mask_pattern=missing_pattern,
-        shuffle=args.shuffle_batch,
-        batch_size=args.batch_size,
-    )
-    assert not torch.isnan(dataset.original_data[dataset.validation_mask]).any(), (
-        "Missing values present under evaluation mask (run)"
-    )
-    spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
-    temporal_graph_technique = args.temporal_graph_technique[0]
-    temporal_graph_params = args.temporal_graph_technique[1:]
-    spatial_graph_param = float(spatial_graph_param)
-
-    metrics = {}
-    metrics.update(vars(args))
-
-    spatial_graph_time = 0.0
-    if use_spatial:
-        spatial_adj_matrix, spatial_graph_time = get_spatial_graph(
-            spatial_graph_technique, spatial_graph_param, dataset, args
-        )
-    else:
-        spatial_adj_matrix = torch.tensor([[]])
-
-    if use_temporal:
-        temporal_graph_fn = get_temporal_graph_function(
-            temporal_graph_technique,
-            temporal_graph_params,
-        )
-    else:
-        temporal_graph_fn = get_temporal_graph_function(
-            "",
-            temporal_graph_params,
-        )
-
-    metrics.update({"spatial_graph_time": spatial_graph_time})
-
-    if args.graph_stats:
-        save_stats_path = args.save_path
-        if use_spatial:
-            save_path = os.path.join(
-                save_stats_path,
-                f"{args.dataset}_{spatial_graph_technique}_{spatial_graph_param}",
-            )
-            save_graph_characteristics(spatial_adj_matrix, save_path)
-
-    if args.downstream_task:
-        gnn_model = None
-        spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
-        print(f"Running using model {args.model}")
-        if model == "stgi":
-            gnn_model = STGI(
-                in_dim=1,
-                hidden_dim=args.hidden_dim,
-                num_layers=args.layer_num,
-                layer_type=args.layer_type,
-                use_spatial=use_spatial,
-                use_temporal=use_temporal,
-                temporal_graph_fn=temporal_graph_fn,
-                add_self_loops=False,
-            )
-        elif model == "grin":
-            with open("./downstream/imputation/GRIN/config.yaml", "r") as f:
-                config_args = yaml.safe_load(f)
-            for key, value in config_args.items():
-                setattr(args, key, value)
-            gnn_model = GRINet(
-                adj=spatial_adj_matrix.cpu().numpy(),
-                d_in=1,
-                d_hidden=args.d_hidden,
-                d_ff=args.d_ff,
-                ff_dropout=args.ff_dropout,
-                n_layers=args.layer_num,
-                kernel_size=args.kernel_size,
-                decoder_order=args.decoder_order,
-                global_att=args.global_att,
-                d_u=args.d_u,
-                d_emb=args.d_emb,
-                layer_norm=args.layer_norm,
-                merge=args.merge,
-                impute_only_holes=args.impute_only_holes,
-            )
-        else:
-            raise ValueError(f"Unsupported model {model}")
-
-        assert gnn_model is not None, "Model instantiation failed"
-
-        gnn_model.to(device)
-        optim = Adam(gnn_model.parameters(), lr=args.learning_rate)
-        gnn_model = train_imputer(
-            gnn_model,
-            dataset,
-            dataloader,
-            spatial_edge_index,
-            spatial_edge_weight,
-            optim,
-            metrics,
-            args.epochs,
-            args.iter_num,
-            device=device,
-            verbose=args.verbose,
-        )
-
-        with open(args.save_path, "w") as f:
-            json.dump(metrics, f, indent=2)
+    train, test, eval = dataset.grin_splitter()
 
 
 if __name__ == "__main__":
