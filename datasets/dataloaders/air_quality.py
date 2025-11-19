@@ -455,8 +455,9 @@ class AirQualityLoader(GraphLoader):
             _, val_idxs = self._disjoint_months(months=val_months, sync_mode="horizon")
         else:
             val_len = (
-                int(val_len * len(nontest_idxs)) if val_len < 1.0 else val_len
+                int(val_len * len(nontest_idxs)) if val_len < 1 else val_len
             ) // len(self.test_months)
+            print(f"After div: {val_len=}")
             # get indices of first day of each testing month
             delta_idxs = np.diff(test_idxs)
             print(f"{delta_idxs.shape=} {delta_idxs=}")
@@ -474,6 +475,7 @@ class AirQualityLoader(GraphLoader):
             val_idxs = np.concatenate(month_val_idxs) % len(self)
             val_idxs = val_idxs.astype(bool)
             print(f"{len(self)=}")
+            print(f"{val_idxs.shape=}")
             assert isinstance(val_idxs, np.ndarray)
             assert val_idxs.dtype == bool
             assert val_idxs.shape == (len(self),)
