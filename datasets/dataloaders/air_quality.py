@@ -447,6 +447,7 @@ class AirQualityLoader(GraphLoader):
         nontest_idxs, test_idxs = self._disjoint_months(
             months=self.test_months, sync_mode="horizon"
         )
+        print(f"{nontest_idxs.shape=} {test_idxs.shape=}")
         if in_sample:
             train_idxs = np.arange(len(self))
             val_months = [(m - 1) % 12 for m in self.test_months]
@@ -457,6 +458,7 @@ class AirQualityLoader(GraphLoader):
             ) // len(self.test_months)
             # get indices of first day of each testing month
             delta_idxs = np.diff(test_idxs)
+            print(f"{delta_idxs.shape=} {delta_idxs=}")
             end_month_idxs = test_idxs[1:][
                 np.flatnonzero(delta_idxs > delta_idxs.min())
             ]
