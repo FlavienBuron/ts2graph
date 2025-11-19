@@ -738,6 +738,7 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
     train, test, eval = dataset.grin_splitter()
+    print(f"{train.shape=} {test.shape=} {eval.shape=}")
 
 
 if __name__ == "__main__":
