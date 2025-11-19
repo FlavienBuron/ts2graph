@@ -468,7 +468,7 @@ class AirQualityLoader(GraphLoader):
             ]
             val_idxs = np.concatenate(month_val_idxs) % len(self)
             val_idxs = val_idxs.astype(bool)
-            print(f"{month_val_idxs.shape=}")
+            print(f"{len(month_val_idxs)=}")
             assert isinstance(val_idxs, np.ndarray)
             assert val_idxs.dtype == bool
             assert val_idxs.shape == (len(self),)
