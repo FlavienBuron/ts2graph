@@ -462,12 +462,14 @@ class AirQualityLoader(GraphLoader):
             end_month_idxs = test_idxs[1:][
                 np.flatnonzero(delta_idxs > delta_idxs.min())
             ]
+            print(f"{len(end_month_idxs)=} {end_month_idxs=}")
             if len(end_month_idxs) < len(self.test_months):
                 end_month_idxs = np.insert(end_month_idxs, 0, test_idxs[0])
             # expand month indices
             month_val_idxs = [
                 np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs
             ]
+            print(f"{len(month_val_idxs)=} {month_val_idxs=}")
             val_idxs = np.concatenate(month_val_idxs) % len(self)
             val_idxs = val_idxs.astype(bool)
             print(f"{len(self)=}")
