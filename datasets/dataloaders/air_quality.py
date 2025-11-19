@@ -440,7 +440,7 @@ class AirQualityLoader(GraphLoader):
 
     def grin_splitter(
         self,
-        val_len: float = 1.0,
+        val_len: float = 0.1,
         in_sample: bool = False,
         window: int = 36,
     ):
