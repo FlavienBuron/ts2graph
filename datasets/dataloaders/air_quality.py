@@ -444,9 +444,11 @@ class AirQualityLoader(GraphLoader):
         in_sample: bool = False,
         window: int = 36,
     ):
+        print(f"{val_len=} {window=}")
         nontest_idxs, test_idxs = self._disjoint_months(
             months=self.test_months, sync_mode="horizon"
         )
+        print(f"{nontest_idxs.shape=} {test_idxs.shape=}")
         if in_sample:
             train_idxs = np.arange(len(self))
             val_months = [(m - 1) % 12 for m in self.test_months]
@@ -455,19 +457,31 @@ class AirQualityLoader(GraphLoader):
             val_len = (
                 int(val_len * len(nontest_idxs)) if val_len < 1 else val_len
             ) // len(self.test_months)
+            print(f"After div: {val_len=}")
             # get indices of first day of each testing month
             delta_idxs = np.diff(test_idxs)
+            print(f"{delta_idxs.shape=} {delta_idxs=}")
             end_month_idxs = test_idxs[1:][
                 np.flatnonzero(delta_idxs > delta_idxs.min())
             ]
+            print(f"{len(end_month_idxs)=} {end_month_idxs=}")
             if len(end_month_idxs) < len(self.test_months):
                 end_month_idxs = np.insert(end_month_idxs, 0, test_idxs[0])
             # expand month indices
             month_val_idxs = [
                 np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs
             ]
+            print(f"{len(month_val_idxs)=} {month_val_idxs=}")
             val_idxs = np.concatenate(month_val_idxs) % len(self)
             val_idxs = val_idxs.astype(bool)
+            print(f"{len(self)=}")
+            print(f"{val_idxs.shape=}")
+            assert isinstance(val_idxs, np.ndarray)
+            assert val_idxs.dtype == bool
+            assert val_idxs.shape == (len(self),)
+            assert val_idxs.any(), (
+                "val_idxs of all-False produces empty indices and breaks expand_indices"
+            )
             # remove overlapping indices from training set
             ovl_idxs, _ = self.overlapping_indices(
                 nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
