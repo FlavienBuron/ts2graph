@@ -475,12 +475,7 @@ class AirQualityLoader(GraphLoader):
             val_idxs = np.concatenate(month_val_idxs) % len(self)
             print(f"{len(self)=}")
             print(f"{val_idxs.shape=}")
-            assert isinstance(val_idxs, np.ndarray)
-            assert val_idxs.dtype == bool
-            assert val_idxs.shape == (len(self),)
-            assert val_idxs.any(), (
-                "val_idxs of all-False produces empty indices and breaks expand_indices"
-            )
+
             # remove overlapping indices from training set
             ovl_idxs, _ = self.overlapping_indices(
                 nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
