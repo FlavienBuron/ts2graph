@@ -442,7 +442,7 @@ class AirQualityLoader(GraphLoader):
         self,
         val_len: float = 1.0,
         in_sample: bool = False,
-        window: int = 0,
+        window: int = 36,
     ):
         print(f"{val_len=} {window=}")
         nontest_idxs, test_idxs = self._disjoint_months(
