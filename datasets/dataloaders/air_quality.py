@@ -483,6 +483,7 @@ class AirQualityLoader(GraphLoader):
         sync_mode: str = "window",
     ):
         idxs = np.arange(len(self))
+        print(f"{idxs.shape=} {len(months)=}")
         if sync_mode == "window":
             start, end = 0, self.window - 1
         elif sync_mode == "horizon":
