@@ -472,6 +472,9 @@ class AirQualityLoader(GraphLoader):
                 nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
             )
             train_idxs = nontest_idxs[~ovl_idxs]
+            print(
+                f"{val_len=} {window=} {delta_idxs.shape=} {len(end_month_idxs)=} {len(month_val_idxs)=} {val_idxs.shape=} {len(self.test_months)=}"
+            )
         return train_idxs, val_idxs, test_idxs
 
     def _disjoint_months(
