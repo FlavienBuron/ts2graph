@@ -40,9 +40,9 @@ class GraphLoader(Dataset, ABC):
         self.test_mask: torch.Tensor
         self.distances = None
 
-        self.horizon = 24
-        self.window = 24
-        self.delay = 0
+        self.horizon = 36
+        self.window = 36
+        self.delay = -self.window
         self.stride = 1
 
         self._indices = np.arange(self.df.shape[0] - self.sample_span + 1)[
