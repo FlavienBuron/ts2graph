@@ -490,6 +490,7 @@ class AirQualityLoader(GraphLoader):
         elif sync_mode == "horizon":
             horizon_offset = self.horizon_offset
             start, end = horizon_offset, horizon_offset + horizon_offset - 1
+            print(f"{start=} {end=}")
         else:
             raise ValueError(
                 f"Invalid sync mode type: {sync_mode}. Expected 'window' or 'horizon'"
@@ -500,6 +501,9 @@ class AirQualityLoader(GraphLoader):
             end_in_months = np.isin(self.index[self._indices + end].month, months)
             idxs_in_months = start_in_months & end_in_months
             after_idxs = idxs[idxs_in_months]
+            print(
+                f"{start_in_months.sum()=} {end_in_months.sum()=} {idxs_in_months.sum()=}"
+            )
 
             # before idxs
             months_before = np.setdiff1d(np.arange(1, 13), months)
