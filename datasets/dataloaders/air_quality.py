@@ -489,7 +489,7 @@ class AirQualityLoader(GraphLoader):
             start, end = 0, self.window - 1
         elif sync_mode == "horizon":
             horizon_offset = self.horizon_offset
-            start, end = horizon_offset, horizon_offset + horizon_offset - 1
+            start, end = horizon_offset, horizon_offset + self.horizon - 1
             print(f"{start=} {end=}")
         else:
             raise ValueError(
