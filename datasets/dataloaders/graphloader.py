@@ -260,7 +260,8 @@ class GraphLoader(Dataset, ABC):
 
     def _check_input(self, data: torch.Tensor):
         if data is None:
-            raise ValueError("Data input for dataset should not be None")
+            # raise ValueError("Data input for dataset should not be None")
+            return data
         data = self.check_dim(data)
         data = data.clone().detach()
         if torch.is_floating_point(data):
