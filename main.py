@@ -739,6 +739,9 @@ def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
     train, test, eval = dataset.grin_splitter()
     print(f"{train.shape=} {test.shape=} {eval.shape=}")
+    dataset.setup(
+        train_indices=train, test_indices=test, val_indices=eval, samples_per_epoch=5120
+    )
 
 
 if __name__ == "__main__":
