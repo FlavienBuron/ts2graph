@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 from einops import rearrange
 from torch import Tensor
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import DataLoader, Dataset, RandomSampler, Subset
 
 from datasets.scalers.min_max_scaler import MinMaxScaler
 from datasets.scalers.standard_scaler import StandardScaler
@@ -456,7 +456,7 @@ class GraphLoader(Dataset, ABC):
         val_indices: List = [],
         test_indices: List = [],
         batch_size: int = 64,
-        sample_per_epoch: int = 0,
+        samples_per_epoch: int = 0,
     ):
         self._has_setup_fit = False
 
@@ -469,7 +469,7 @@ class GraphLoader(Dataset, ABC):
         self.scaling_axis = scaling_axis
         self.scale_exogenous = scale_exogenous
         self.batch_size = batch_size
-        self.sample_per_epoch = sample_per_epoch
+        self.samples_per_epoch = samples_per_epoch
 
         if self.scale:
             scaling_axes = self.get_scaling_axes(self.scaling_axis)
@@ -479,6 +479,10 @@ class GraphLoader(Dataset, ABC):
             scaler.fit(x=train, mask=train_mask, keepdims=True)
             self.scaler = scaler.to_torch()
 
+            print(
+                f"{self.scaling_axis=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=}"
+            )
+
             if len(self.scale_exogenous) > 0:
                 for label in self.scale_exogenous:
                     exo = getattr(self, label)
@@ -486,6 +490,43 @@ class GraphLoader(Dataset, ABC):
                     scaler.fit(exo[self.train_slice], keepdims=True)
                     scaler = scaler.to_torch()
                     setattr(self, label, scaler.transform(exo))
+
+    def _train_dataloaders(self, seed):
+        rnd_sampler = None
+        shuffle = True
+        if self.samples_per_epoch > 0:
+            rnd_gen = torch.Generator()
+            rnd_gen.manual_seed(seed)
+            shuffle = False
+
+            rnd_sampler = RandomSampler(
+                self.train_set,
+                replacement=True,
+                num_samples=self.samples_per_epoch,
+                generator=rnd_gen,
+            )
+
+        return DataLoader(
+            self.train_set,
+            shuffle=shuffle,
+            batch_size=self.batch_size,
+            sampler=rnd_sampler,
+            drop_last=True,
+        )
+
+    def _val_dataloader(self, shuffle: bool = False):
+        return DataLoader(
+            dataset=self.val_set,
+            shuffle=shuffle,
+            batch_size=self.batch_size,
+        )
+
+    def _test_dataloader(self, shuffle: bool = False):
+        return DataLoader(
+            dataset=self.train_set,
+            shuffle=shuffle,
+            batch_size=self.batch_size,
+        )
 
     @property
     def train_slice(self):
