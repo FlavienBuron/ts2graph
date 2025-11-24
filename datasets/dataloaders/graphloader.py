@@ -212,8 +212,6 @@ class GraphLoader(Dataset, ABC):
 
     def _store_spatiotemporal_data(
         self,
-        data: np.ndarray,
-        index: np.ndarray,
         freq: str | pd.DatetimeIndex | None = None,
         exogenous: dict | None = None,
         trend=None,
