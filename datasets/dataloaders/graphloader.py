@@ -49,7 +49,7 @@ class GraphLoader(Dataset, ABC):
         self._indices = np.arange(self.df.shape[0] - self.sample_span + 1)[
             :: self.stride
         ]
-        print(f"{len(self._indices)=} {self.df.shape=}")
+        print(f"{len(self._indices)=} {self.df.shape=} {self.sample_span=}")
 
         self.scaler = None
 

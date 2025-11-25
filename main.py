@@ -737,7 +737,7 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 
 def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
-    dataset._store_spatiotemporal_data()
+    # dataset._store_spatiotemporal_data()
     train, test, eval = dataset.grin_splitter()
     print(f"{train.shape=} {test.shape=} {eval.shape=}")
     dataset.setup(
