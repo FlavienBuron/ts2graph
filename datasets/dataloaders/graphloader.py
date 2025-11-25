@@ -42,7 +42,7 @@ class GraphLoader(Dataset, ABC):
 
         # Emulate GRIN's SpatioaTemporal classes, into one
         self.data, self.index = self.as_numpy(return_idx=True)
-        print(f"{self.data.shape=} {self.index=}")
+        print(f"{self.data.shape=} {self.index.shape=}")
 
         self.horizon = 36
         self.window = 36
