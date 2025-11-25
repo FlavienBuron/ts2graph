@@ -208,7 +208,8 @@ class GraphLoader(Dataset, ABC):
             self._resample(self.freq, aggr=aggr)
 
         assert "T" in self.freq
-        self.sample_per_day = int(60 / int(self.freq[:-1]) * 24)
+        self.samples_per_day = int(60 / int(self.freq[:-1]) * 24)
+        print(f"{len(idx)=} {freq=} {self.samples_per_day=}")
 
     def _store_spatiotemporal_data(
         self,
@@ -222,6 +223,7 @@ class GraphLoader(Dataset, ABC):
         stride: int = 1,
     ):
         data_array, self.index = self.as_numpy(return_idx=True)
+        print(f"{data_array.shape=} {self.index.shape=}")
         self.data = torch.tensor(data_array)
         if exogenous is not None:
             for name, value in exogenous.items():
@@ -241,6 +243,8 @@ class GraphLoader(Dataset, ABC):
         ]
         self.trend = trend
         self.scaler = scaler
+        print(f"{self.window=} {self.delay=} {self.horizon=} {self.stride=}")
+        print(f"{len(self._indices)=} {self.trend=} {self.scaler=}")
 
     def _resample(self, freq: str, aggr: str):
         resampler = self.df.resample(freq)
