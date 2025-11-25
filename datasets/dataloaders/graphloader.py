@@ -241,6 +241,7 @@ class GraphLoader(Dataset, ABC):
         self._indices = np.arange(self.data.shape[0] - self.sample_span + 1)[
             :: self.stride
         ]
+        print(f"{self.data.shape=} {self.sample_span=} {self.stride=}")
         self.trend = trend
         self.scaler = scaler
         print(f"{self.window=} {self.delay=} {self.horizon=} {self.stride=}")
