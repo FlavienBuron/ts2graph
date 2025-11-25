@@ -40,6 +40,10 @@ class GraphLoader(Dataset, ABC):
         self.test_mask: torch.Tensor
         self.distances = None
 
+        # Emulate GRIN's SpatioaTemporal classes, into one
+        self.data, self.index = self.as_numpy(return_idx=True)
+        print(f"{self.data.shape=} {self.index=}")
+
         self.horizon = 36
         self.window = 36
         self.delay = -self.window
@@ -72,9 +76,9 @@ class GraphLoader(Dataset, ABC):
         return self._data
 
     @data.setter
-    def data(self, value: torch.Tensor):
+    def data(self, value: np.ndarray):
         assert value is not None
-        self._data = self._check_input(value)
+        self._data = self._check_input(torch.tensor(value))
 
     @property
     def trend(self):
@@ -209,7 +213,7 @@ class GraphLoader(Dataset, ABC):
 
         assert "T" in self.freq
         self.samples_per_day = int(60 / int(self.freq[:-1]) * 24)
-        print(f"{len(idx)=} {freq=} {self.samples_per_day=}")
+        print(f"{len(idx)=} {self.freq=} {self.samples_per_day=}")
 
     def _store_spatiotemporal_data(
         self,
