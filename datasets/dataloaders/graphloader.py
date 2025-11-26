@@ -44,6 +44,12 @@ class GraphLoader(Dataset, ABC):
         self.data, self.index = self.as_numpy(return_idx=True)
         print(f"{self.data.shape=} {self.index.shape=}")
 
+        try:
+            freq = freq or self.index.freq or self.index.inferred_freq
+            self.freq = pd.tseries.frequencies.to_offset(freq)
+        except AttributeError:
+            self.freq = None
+
         self.horizon = 36
         self.window = 36
         self.delay = -self.window
@@ -226,17 +232,9 @@ class GraphLoader(Dataset, ABC):
         delay: int = 0,
         stride: int = 1,
     ):
-        data_array, self.index = self.as_numpy(return_idx=True)
-        print(f"{data_array.shape=} {self.index.shape=}")
-        self.data = torch.tensor(data_array)
         if exogenous is not None:
             for name, value in exogenous.items():
                 self._add_exogenous(value, name, for_window=True, for_horizon=False)
-        try:
-            freq = freq or self.index.freq or self.index.inferred_freq
-            self.freq = pd.tseries.frequencies.to_offset(freq)
-        except AttributeError:
-            self.freq = None
 
         self.window = window
         self.delay = delay
@@ -483,13 +481,12 @@ class GraphLoader(Dataset, ABC):
             scaling_axes = self.get_scaling_axes(self.scaling_axis)
             train = self.data[self.train_slice]
             train_mask = self._mask[self.train_slice]
-            scaler = self.get_scaler()(axis=scaling_axes)
-            scaler.fit(x=train, mask=train_mask, keepdims=True)
-            self.scaler = scaler.to_torch()
-
             print(
                 f"{self.scaling_axis=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=}"
             )
+            scaler = self.get_scaler()(axis=scaling_axes)
+            scaler.fit(x=train, mask=train_mask, keepdims=True)
+            self.scaler = scaler.to_torch()
 
             if len(self.scale_exogenous) > 0:
                 for label in self.scale_exogenous:
