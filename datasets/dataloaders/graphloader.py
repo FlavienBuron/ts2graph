@@ -77,6 +77,11 @@ class GraphLoader(Dataset, ABC):
             return self._mask
         return np.zeros_like(self.shape).astype("bool")
 
+    @mask.setter
+    def mask(self, value: np.ndarray):
+        assert value is not None
+        self._mask = self._check_input(torch.tensor(value))
+
     @property
     def data(self):
         return self._data
@@ -209,7 +214,7 @@ class GraphLoader(Dataset, ABC):
         self.start = idx[0]
         self.end = idx[-1]
 
-        self._mask: np.ndarray = mask
+        self._mask = mask
 
         if freq is not None:
             self._resample(freq=freq, aggr=aggr)
@@ -482,7 +487,7 @@ class GraphLoader(Dataset, ABC):
             train = self.data[self.train_slice]
             train_mask = self._mask[self.train_slice]
             print(
-                f"{self.scaling_axis=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=}"
+                f"{self.scaling_axes=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=}"
             )
             scaler = self.get_scaler()(axis=scaling_axes)
             scaler.fit(x=train, mask=train_mask, keepdims=True)
