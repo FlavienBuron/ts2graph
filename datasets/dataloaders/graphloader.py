@@ -485,9 +485,9 @@ class GraphLoader(Dataset, ABC):
         if self.scale:
             scaling_axes = self.get_scaling_axes(self.scaling_axis)
             train = self.data[self.train_slice]
-            train_mask = self._mask[self.train_slice]
+            train_mask = self.mask[self.train_slice]
             print(
-                f"{scaling_axes=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=}"
+                f"{scaling_axes=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=} {self._mask.shape=} {self.mask.shape=}"
             )
             scaler = self.get_scaler()(axis=scaling_axes)
             scaler.fit(x=train, mask=train_mask, keepdims=True)
