@@ -52,6 +52,7 @@ class GraphLoader(Dataset, ABC):
         if validation_mask is not None:
             exogenous["eval_mask_window"] = torch.tensor(validation_mask)
         for name, value in exogenous.items():
+            print(f"{name=}")
             self._add_exogenous(value, name, for_window=True, for_horizon=True)
         print(f"{self.mask.shape=}")
 
