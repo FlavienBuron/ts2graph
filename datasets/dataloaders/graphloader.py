@@ -214,7 +214,7 @@ class GraphLoader(Dataset, ABC):
         self.start = idx[0]
         self.end = idx[-1]
 
-        self._mask = mask
+        self.mask = mask
 
         if freq is not None:
             self._resample(freq=freq, aggr=aggr)
@@ -241,18 +241,8 @@ class GraphLoader(Dataset, ABC):
             for name, value in exogenous.items():
                 self._add_exogenous(value, name, for_window=True, for_horizon=False)
 
-        self.window = window
-        self.delay = delay
-        self.horizon = horizon
-        self.stride = stride
-        self._indices = np.arange(self.data.shape[0] - self.sample_span + 1)[
-            :: self.stride
-        ]
-        print(f"{self.data.shape=} {self.sample_span=} {self.stride=}")
         self.trend = trend
         self.scaler = scaler
-        print(f"{self.window=} {self.delay=} {self.horizon=} {self.stride=}")
-        print(f"{len(self._indices)=} {self.trend=} {self.scaler=}")
 
     def _resample(self, freq: str, aggr: str):
         resampler = self.df.resample(freq)
