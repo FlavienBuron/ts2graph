@@ -40,7 +40,11 @@ class AirQualityLoader(GraphLoader):
             list(masked_sensors) if masked_sensors is not None else list()
         )
         super().__init__(
-            dataframe=data, missing_mask=missing_mask, freq=freq, aggr="nearest"
+            dataframe=data,
+            missing_mask=missing_mask,
+            validation_mask=self.validation_mask,
+            freq=freq,
+            aggr="nearest",
         )
 
     @property

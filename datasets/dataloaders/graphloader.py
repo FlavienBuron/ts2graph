@@ -17,8 +17,10 @@ class GraphLoader(Dataset, ABC):
         self,
         dataframe: pd.DataFrame,
         missing_mask: np.ndarray,
+        validation_mask: np.ndarray | torch.Tensor | None = None,
         freq: str | None = None,
         aggr: str = "sum",
+        exogenous=None,
     ) -> None:
         self._exogenous_keys = dict()
         self._reserved_signature = {"data", "trend", "x", "y"}
@@ -43,6 +45,15 @@ class GraphLoader(Dataset, ABC):
         # Emulate GRIN's SpatioaTemporal classes, into one
         self.data, self.index = self.as_numpy(return_idx=True)
         print(f"{self.data.shape=} {self.index.shape=}")
+
+        if exogenous is None:
+            exogenous = dict()
+        exogenous["mask_window"] = self.mask
+        if validation_mask is not None:
+            exogenous["eval_mask_window"] = validation_mask
+        for name, value in exogenous.items():
+            self._add_exogenous(value, name, for_window=True, for_horizon=True)
+        print(f"{self.mask.shape=}")
 
         try:
             freq = freq or self.index.freq or self.index.inferred_freq
@@ -214,7 +225,7 @@ class GraphLoader(Dataset, ABC):
         self.start = idx[0]
         self.end = idx[-1]
 
-        self.mask = mask
+        self._mask = mask
 
         if freq is not None:
             self._resample(freq=freq, aggr=aggr)
