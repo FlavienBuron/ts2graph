@@ -7,7 +7,7 @@ def torch_nanmin(
     x: torch.Tensor,
     mask: torch.Tensor | None = None,
     axis: int | Tuple | None = None,
-    keepdim=False,
+    keepdims=False,
 ):
     """
     Replicate the behavior of Numpy's `nanmin`.
@@ -20,7 +20,7 @@ def torch_nanmin(
         axis = (axis,)
 
     for dim in sorted(axis, reverse=True):
-        x, _ = torch.min(x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdim)
+        x, _ = torch.min(x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdims)
 
     return x
 
@@ -29,7 +29,7 @@ def torch_nanmax(
     x: torch.Tensor,
     mask: torch.Tensor | None = None,
     axis: int | Tuple | None = None,
-    keepdim=False,
+    keepdims=False,
 ):
     """
     Replicate the behavior of Numpy's `nanmax`.
@@ -42,6 +42,6 @@ def torch_nanmax(
         axis = (axis,)
 
     for dim in sorted(axis, reverse=True):
-        x, _ = torch.min(x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdim)
+        x, _ = torch.min(x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdims)
 
     return x
