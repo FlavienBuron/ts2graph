@@ -21,7 +21,9 @@ class MinMaxScaler(AbstractScaler):
 
     def fit(self, x, mask=None, keepdims: bool = True):
         if mask is not None:
+            print(f"{type(x)=} {type(mask)=}")
             x = np.where(mask, x, np.nan)
+
             self.bias = np.nanmin(x, axis=self.axis, keepdims=keepdims)
             self.scale = np.nanmax(x, axis=self.axis, keepdims=keepdims) - self.bias
         else:
