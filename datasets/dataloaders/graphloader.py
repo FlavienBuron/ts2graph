@@ -48,9 +48,9 @@ class GraphLoader(Dataset, ABC):
 
         if exogenous is None:
             exogenous = dict()
-        exogenous["mask_window"] = torch.tensor(self.mask)
+        exogenous["mask_window"] = self.mask
         if validation_mask is not None:
-            exogenous["eval_mask_window"] = torch.tensor(validation_mask)
+            exogenous["eval_mask_window"] = validation_mask
         for name, value in exogenous.items():
             self._add_exogenous(value, name, for_window=True, for_horizon=True)
         print(f"{self.mask.shape=}")
@@ -91,7 +91,7 @@ class GraphLoader(Dataset, ABC):
     @mask.setter
     def mask(self, value: np.ndarray):
         assert value is not None
-        self._mask = self._check_input(torch.tensor(value))
+        self._mask = self._check_input(value)
 
     @property
     def data(self):
@@ -100,7 +100,7 @@ class GraphLoader(Dataset, ABC):
     @data.setter
     def data(self, value: np.ndarray):
         assert value is not None
-        self._data = self._check_input(torch.tensor(value))
+        self._data = self._check_input(value)
 
     @property
     def trend(self):
@@ -271,23 +271,35 @@ class GraphLoader(Dataset, ABC):
             self._mask = resampler.min().to_numpy()
         self.freq = freq
 
-    def _check_input(self, data: torch.Tensor):
+    def _check_input(self, data: np.ndarray):
         if data is None:
             # raise ValueError("Data input for dataset should not be None")
             return data
         data = self.check_dim(data)
-        data = data.clone().detach()
-        if torch.is_floating_point(data):
-            return data.float()
-        elif data.dtype in [
+        torch_data = torch.tensor(data)
+        if torch.is_floating_point(torch_data):
+            return torch_data.float()
+        elif torch_data.dtype in [
             torch.int,
             torch.int8,
             torch.int16,
             torch.int32,
             torch.int64,
         ]:
-            return data.int()
-        return data
+            return torch_data.int()
+        return torch_data
+
+    @staticmethod
+    def check_dim(data: np.ndarray):
+        dim = data.ndim
+        if dim == 3:
+            return data
+        elif data.ndim == 2:
+            return rearrange(data, "s (n f) -> s n f", f=1)
+        elif data.ndim == 1:
+            return rearrange(data, "(s n f) -> s n f", n=1, f=1)
+        else:
+            raise ValueError(f"Invalid data dimensions {data.shape}")
 
     def dataframe(self) -> pd.DataFrame:
         return self.df.copy()
@@ -371,18 +383,6 @@ class GraphLoader(Dataset, ABC):
 
     def __contains__(self, item):
         return item in self._exogenous_keys
-
-    @staticmethod
-    def check_dim(data: torch.Tensor):
-        dim = data.ndim
-        if dim == 3:
-            return data
-        elif data.ndim == 2:
-            return rearrange(data, "s (n f) -> s n f", f=1)
-        elif data.ndim == 1:
-            return rearrange(data, "(s n f) -> s n f", n=1, f=1)
-        else:
-            raise ValueError(f"Invalid data dimensions {data.shape}")
 
     def expand_indices(self, indices=None, unique=False) -> Dict:
         ds_indices = dict.fromkeys(
