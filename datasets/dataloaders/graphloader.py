@@ -491,6 +491,9 @@ class GraphLoader(Dataset, ABC):
                 f"{scaling_axes=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=} {self._mask.shape=} {self.mask.shape=}"
             )
             scaler = self.get_scaler()(axis=scaling_axes)
+            print(
+                f"{type(train)=} {type(train_mask)=} {type(self.mask)=} {type(self.data)=}"
+            )
             scaler.fit(x=train, mask=train_mask, keepdims=True)
             self.scaler = scaler.to_torch()
 
