@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import numpy as np
+import torch
 
 from datasets.scalers.abstract_scaler import AbstractScaler
 from datasets.utils.utils import torch_nanmax, torch_nanmin
@@ -20,10 +21,10 @@ class MinMaxScaler(AbstractScaler):
     def params(self):
         return dict(bias=self.bias, scale=self.scale)
 
-    def fit(self, x, mask=None, keepdims: bool = True):
-        print(f"{type(x)=} {type(mask)=} {type(keepdims)=}")
+    def fit(self, x: torch.Tensor, mask=None, keepdims: bool = True):
+        print(f"{type(x)=} {type(mask)=} {type(keepdims)}")
         if mask is not None:
-            x = np.where(mask, x, np.nan)
+            x = torch.where(mask, x, np.nan)
 
             self.bias = torch_nanmin(x, mask, axis=self.axis, keepdims=keepdims)
             self.scale = torch_nanmax(x, axis=self.axis, keepdims=keepdims) - self.bias
