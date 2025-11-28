@@ -18,7 +18,7 @@ def torch_nanmin(
         return x
     if isinstance(axis, int):
         axis = (axis,)
-
+    print(f"{type(x)=}")
     for dim in sorted(axis, reverse=True):
         x, _ = torch.min(x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdims)
 
