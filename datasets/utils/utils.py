@@ -13,9 +13,11 @@ def torch_nanmin(
     Replicate the behavior of Numpy's `nanmin`.
     """
     mask = torch.isnan(x) if mask is None else mask
+    print(f"{type(x)=}")
     if axis is None:
         x, _ = torch.min(x.masked_fill(mask, float("inf")))
         return x
+    print(f"{type(x)=}")
     if isinstance(axis, int):
         axis = (axis,)
     print(f"{type(x)=}")
