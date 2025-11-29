@@ -743,6 +743,9 @@ def run(args: Namespace) -> None:
     dataset.setup(
         train_indices=train, test_indices=test, val_indices=eval, samples_per_epoch=5120
     )
+    print(
+        f"{len(dataset._train_dataloaders(1))=} {len(dataset._test_dataloader())=} {len(dataset._val_dataloader())=}"
+    )
 
 
 if __name__ == "__main__":
