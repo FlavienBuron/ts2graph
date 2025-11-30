@@ -467,7 +467,7 @@ class GraphLoader(Dataset, ABC):
         train_indices: List = [],
         val_indices: List = [],
         test_indices: List = [],
-        batch_size: int = 64,
+        batch_size: int = 32,
         samples_per_epoch: int = 0,
     ):
         self._has_setup_fit = False
