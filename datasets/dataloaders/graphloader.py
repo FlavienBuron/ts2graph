@@ -508,6 +508,7 @@ class GraphLoader(Dataset, ABC):
     def _train_dataloaders(self, seed):
         rnd_sampler = None
         shuffle = True
+        print(f"train_loader: {len(self.train_set)=} {shuffle=} {self.batch_size=}")
         if self.samples_per_epoch > 0:
             rnd_gen = torch.Generator()
             rnd_gen.manual_seed(seed)
@@ -529,6 +530,7 @@ class GraphLoader(Dataset, ABC):
         )
 
     def _val_dataloader(self, shuffle: bool = False):
+        print(f"val_dataloader: {shuffle=} {self.batch_size=} {len(self.val_set)=}")
         return DataLoader(
             dataset=self.val_set,
             shuffle=shuffle,
@@ -536,6 +538,7 @@ class GraphLoader(Dataset, ABC):
         )
 
     def _test_dataloader(self, shuffle: bool = False):
+        print(f"test_dataloader: {shuffle=} {self.batch_size=} {len(self.test_set)=}")
         return DataLoader(
             dataset=self.train_set,
             shuffle=shuffle,
