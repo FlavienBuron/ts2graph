@@ -15,6 +15,7 @@ class StandardScaler(AbstractScaler):
         self.bias = offset
         self.scale = scale
         self.axis = axis
+        super(StandardScaler, self).__init__()
 
     def params(self):
         return dict(bias=self.bias, scale=self.scale)

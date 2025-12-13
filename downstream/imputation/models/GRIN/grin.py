@@ -1,10 +1,9 @@
 from time import perf_counter
 
 import torch
+from downstream.imputation.GRIN.layers.gril import BiGRIL
 from einops import rearrange
 from torch import nn
-
-from downstream.imputation.GRIN.layers.gril import BiGRIL
 
 # from ...utils.parser_utils import str_to_bool
 
@@ -51,14 +50,18 @@ class GRINet(nn.Module):
             merge=merge,
         )
 
-    def forward(self, x, mask=None, u=None, **kwargs):
+    def forward(
+        self, x, mask=None, u=None, **kwargs
+    ) -> tuple[torch.Tensor, torch.Tensor, float]:
         total_imputation_time = 0.0
-        x = x.unsqueeze(0)
+        # x = x.unsqueeze(0)
         # x: [batches, steps, nodes, channels] -> [batches, channels, nodes, steps]
         x = rearrange(x, "b s n c -> b c n s")
         if mask is not None:
-            mask = mask.unsqueeze(0)
+            # mask = mask.unsqueeze(0)
             mask = rearrange(mask, "b s n c -> b c n s")
+        else:
+            mask = torch.zeros_like(x)
 
         if u is not None:
             u = rearrange(u, "b s n c -> b c n s")
@@ -77,9 +80,9 @@ class GRINet(nn.Module):
         imputation = torch.transpose(imputation, -3, -1)
         prediction = torch.transpose(prediction, -3, -1)
 
-        imputation = imputation.squeeze(0)
+        # imputation = imputation.squeeze(0)
 
-        return imputation, total_imputation_time
+        return imputation, prediction, total_imputation_time
 
     @staticmethod
     def add_model_specific_args(parser):

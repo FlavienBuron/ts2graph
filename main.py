@@ -10,17 +10,29 @@ from typing import Callable, Optional
 import numpy as np
 import torch
 import torch.nn as nn
+import yaml
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
     root_mean_squared_error,
 )
 from torch.nn.functional import mse_loss
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
+from downstream.imputation.imputer import Imputer
+from downstream.imputation.metrics.metrics import (
+    MaskedMAE,
+    MaskedMAPE,
+    MaskedMRE,
+    MaskedMRE2,
+    MaskedMSE,
+)
+from downstream.imputation.models.GRIN.grin import GRINet
+from downstream.trainer import Trainer
 from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
@@ -736,16 +748,65 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 
 
 def run(args: Namespace) -> None:
+    args = parse_args()
+    with open("./downstream/imputation/models/GRIN/config.yaml", "r") as f:
+        config_args = yaml.safe_load(f)
+    for key, value in config_args.items():
+        setattr(args, key, value)
     dataset = get_dataset(args.dataset)
-    # dataset._store_spatiotemporal_data()
     train, test, eval = dataset.grin_splitter()
-    print(f"{train.shape=} {test.shape=} {eval.shape=}")
     dataset.setup(
         train_indices=train, test_indices=test, val_indices=eval, samples_per_epoch=5120
     )
-    print(
-        f"{len(dataset._train_dataloaders(1))=} {len(dataset._test_dataloader())=} {len(dataset._val_dataloader())=}"
+    # dataset._store_spatiotemporal_data()
+    adj, _ = get_spatial_graph(
+        technique="loc", parameter=0.3, dataset=dataset, args=args
     )
+    model = GRINet
+    loss_fn = MaskedMAE
+    metrics = {
+        "mae": MaskedMAE(compute_on_step=False),
+        "mape": MaskedMAPE(compute_on_step=False),
+        "mse": MaskedMSE(compute_on_step=False),
+        "mre": MaskedMRE(compute_on_step=False),
+        "mre2": MaskedMRE2(compute_on_step=False),
+    }
+    model_kwargs = {
+        "adj": adj,
+        "d_in": dataset.d_in,
+        "d_hidden": args.d_hidden,
+        "d_ff": args.d_ff,
+        "ff_dropout": args.ff_dropout,
+        "n_layers": args.layer_num,
+        "kernel_size": args.kernel_size,
+        "decoder_order": args.decoder_order,
+        "global_att": args.global_att,
+        "d_u": args.d_u,
+        "d_emb": args.d_emb,
+        "layer_norm": args.layer_norm,
+        "merge": args.merge,
+        "impute_only_holes": args.impute_only_holes,
+    }
+    imputer = Imputer(
+        model_class=model,
+        model_kwargs=model_kwargs,
+        optim_class=torch.optim.Adam,
+        optim_kwargs={"lr": args.lr, "weight_decay": 0.0},
+        loss_fn=MaskedMAE,
+        scaled_target=True,
+        metrics=metrics,
+        scheduler_class=CosineAnnealingLR,
+        scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
+    )
+    trainer = Trainer(
+        imputer=imputer,
+        dataloader=dataset,
+        max_epochs=300,
+        grad_clip_val=5.0,
+        grad_clip_algorithm="norm",
+    )
+    results = trainer.run()
+    print(results)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from einops import rearrange
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset, RandomSampler, Subset
 
+from datasets.scalers.abstract_scaler import AbstractScaler
 from datasets.scalers.min_max_scaler import MinMaxScaler
 from datasets.scalers.standard_scaler import StandardScaler
 
@@ -179,7 +180,7 @@ class GraphLoader(Dataset, ABC):
 
     def get(self, item: int, preprocess: bool = False):
         idx = self._indices[item]
-        res, transfrom = dict(), dict()
+        res, transform = dict(), dict()
         if self.window > 0:
             res["x"] = self.data[idx : idx + self.window]
             for attr in self._exo_window_keys:
@@ -199,17 +200,17 @@ class GraphLoader(Dataset, ABC):
                     idx + self.horizon_offset : idx + self.horizon_offset + self.horizon
                 ]
                 res["y"] = res["y"] - y_trend
-                transfrom["trend"] = y_trend
+                transform["trend"] = y_trend
                 if "x" in res:
                     res["x"] = res["x"] - self.trend[idx : idx + self.window]
             if self.scaler is not None:
-                transfrom.update(self.scaler.params())
+                transform.update(self.scaler.params())
                 if "x" in res:
-                    res["x"] = self.scaler.transfrom(res["x"])
+                    res["x"] = self.scaler.transform(res["x"])
 
         res["x"] = torch.where(res["mask"], res["x"], torch.zeros_like(res["x"]))
 
-        return res, transfrom
+        return res, transform
 
     def _store_pandas_data(
         self,
@@ -570,7 +571,7 @@ class GraphLoader(Dataset, ABC):
 
         return scaling_axis
 
-    def get_scaler(self):
+    def get_scaler(self) -> type[AbstractScaler]:
         if self.scaling_type == "std":
             return StandardScaler
         elif self.scaling_type == "minmax":
