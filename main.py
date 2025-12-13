@@ -754,10 +754,13 @@ def run(args: Namespace) -> None:
     for key, value in config_args.items():
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
+    print("Dataset initialized")
     train, test, eval = dataset.grin_splitter()
+    print("Dataset split")
     dataset.setup(
         train_indices=train, test_indices=test, val_indices=eval, samples_per_epoch=5120
     )
+    print("Dataset setup done")
     # dataset._store_spatiotemporal_data()
     adj, _ = get_spatial_graph(
         technique="loc", parameter=0.3, dataset=dataset, args=args
@@ -771,6 +774,7 @@ def run(args: Namespace) -> None:
         "mre": MaskedMRE(compute_on_step=False),
         "mre2": MaskedMRE2(compute_on_step=False),
     }
+    print("Metrics gotten")
     model_kwargs = {
         "adj": adj,
         "d_in": dataset.d_in,
@@ -798,6 +802,7 @@ def run(args: Namespace) -> None:
         scheduler_class=CosineAnnealingLR,
         scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
     )
+    print("imputer initialized")
     trainer = Trainer(
         imputer=imputer,
         dataloader=dataset,
@@ -805,6 +810,7 @@ def run(args: Namespace) -> None:
         grad_clip_val=5.0,
         grad_clip_algorithm="norm",
     )
+    print("trainer initialized")
     results = trainer.run()
     print(results)
 
