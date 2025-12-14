@@ -532,13 +532,11 @@ class AirQualityLoader(GraphLoader):
         force_symmetric: bool = False,
         weighted: bool = True,
     ) -> torch.Tensor:
-        print(f"{self.distances.shape=}")
-        theta = self.distances.std()
+        distances = torch.from_numpy(self.distances.to_numpy())
+        theta = distances.std()
         # adj = np.exp(-(self.distances**2) / (2 * theta**2))
-        adj = torch.exp(-torch.square(self.distances / theta))
-        dist = (self.distances - self.distances.min()) / (
-            self.distances.max() - self.distances.min()
-        )
+        adj = torch.exp(-torch.square(distances / theta))
+        dist = (distances - distances.min()) / (distances.max() - distances.min())
         mask = dist > threshold if threshold_on_input else adj < threshold
         adj[mask] = 0
         if not weighted:
