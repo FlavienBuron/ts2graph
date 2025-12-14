@@ -1,9 +1,10 @@
 from time import perf_counter
 
 import torch
-from downstream.imputation.GRIN.layers.gril import BiGRIL
 from einops import rearrange
 from torch import nn
+
+from downstream.imputation.models.GRIN.layers.gril import BiGRIL
 
 # from ...utils.parser_utils import str_to_bool
 
