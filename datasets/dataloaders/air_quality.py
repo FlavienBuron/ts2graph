@@ -575,6 +575,7 @@ class AirQualityLoader(GraphLoader):
 
         edge_index = from_knn(data=data, mask=mask, k=k, loop=loop, cosine=cosine)
         adj = to_dense_adj(edge_index).squeeze()
+        print(f"{adj.shape=}")
         return adj
 
     def get_geo_nn_graph(
