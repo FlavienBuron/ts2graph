@@ -532,6 +532,7 @@ class AirQualityLoader(GraphLoader):
         force_symmetric: bool = False,
         weighted: bool = True,
     ) -> torch.Tensor:
+        print(f"{self.distances.shape=}")
         theta = self.distances.std()
         # adj = np.exp(-(self.distances**2) / (2 * theta**2))
         adj = torch.exp(-torch.square(self.distances / theta))
