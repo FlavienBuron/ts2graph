@@ -754,7 +754,7 @@ def run(args: Namespace) -> None:
     for key, value in config_args.items():
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
-    print("Dataset initialized")
+    print(f"Dataset initialized. {dataset.distances.shape=}")
     train, test, eval = dataset.grin_splitter()
     print("Dataset split")
     dataset.setup(
