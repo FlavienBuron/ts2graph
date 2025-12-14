@@ -720,7 +720,7 @@ class AirQualityLoader(GraphLoader):
             eval_mask.loc[mask_i.index] = (
                 ~mask_i.loc[mask_i.index].astype(bool)
                 & data.loc[mask_i.index].astype(bool)
-            ).astype(eval_mask.dtypes[0])
+            ).astype(eval_mask.dtypes.iloc[0])
         return eval_mask
 
     def _compute_mean(self, data: pd.DataFrame) -> pd.DataFrame:
