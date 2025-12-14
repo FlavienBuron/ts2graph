@@ -41,7 +41,6 @@ class GraphLoader(Dataset, ABC):
         self.current_data: torch.Tensor  # The working copy, used during training
         self.missing_mask: torch.Tensor
         self.test_mask: torch.Tensor
-        self.distances = None
 
         # Emulate GRIN's SpatioaTemporal classes, into one
         self.data, self.index = self.as_numpy(return_idx=True)
