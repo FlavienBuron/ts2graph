@@ -37,6 +37,7 @@ class AirQualityLoader(GraphLoader):
         )
         print(f"{distances.shape=}")
         self.distances = distances
+        print(f"{self.distances.shape=}")
         self.masked_sensors = (
             list(masked_sensors) if masked_sensors is not None else list()
         )
