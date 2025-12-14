@@ -20,8 +20,6 @@ class MaskedMetric(Metric):
         at=None,
     ):
         super(MaskedMetric, self).__init__(
-            compute_on_step=compute_on_step,
-            dist_sync_on_step=dist_sync_on_step,
             process_group=process_group,
             dist_sync_fn=dist_sync_fn,
         )
