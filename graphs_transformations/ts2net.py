@@ -6,7 +6,8 @@ import numpy as np
 import rpy2.robjects as robjects
 import torch
 from rpy2.rinterface import NULL, RRuntimeWarning
-from rpy2.robjects import numpy2ri
+from rpy2.robjects import default_converter, numpy2ri
+from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.packages import importr, isinstalled
 from torch_geometric.utils import dense_to_sparse
 
@@ -14,7 +15,7 @@ from graphs_transformations.utils import get_radius_for_rec
 
 warnings.filterwarnings("ignore", category=RRuntimeWarning)
 
-numpy2ri.activate()
+# numpy2ri.activate()
 
 
 class Ts2Net:
@@ -64,24 +65,26 @@ class Ts2Net:
             raise RuntimeError(
                 "ts2net was not loaded, ts_dist function is not available"
             )
-        dist = self.r_ts2net.ts_dist(
-            ts_list,
-            dist_func,
-            is_symetric,
-            error_values,
-            warn_error,
-            num_cores,
-            **kwargs,
-        )
-        return np.array(dist)
+        with localconverter(default_converter + numpy2ri.converter):
+            dist = self.r_ts2net.ts_dist(
+                ts_list,
+                dist_func,
+                is_symetric,
+                error_values,
+                warn_error,
+                num_cores,
+                **kwargs,
+            )
+            return np.array(dist)
 
     def tsdist_cor(self, ts1, ts2, cor_type="abs"):
         if self.r_ts2net is None:
             raise RuntimeError(
                 "ts2net was not loaded, ts_dist function is not available"
             )
-        corr = self.r_ts2net.tsdist_cor(ts1, ts2, cor_type)
-        return float(corr[0])
+        with localconverter(default_converter + numpy2ri.converter):
+            corr = self.r_ts2net.tsdist_cor(ts1, ts2, cor_type)
+            return float(corr[0])
 
     def tsnet_vg(
         self,
@@ -100,14 +103,15 @@ class Ts2Net:
         if num_cores is None:
             num_cores = multiprocessing.cpu_count()
 
-        x_np = x.detach().numpy().flatten()
-        r_data = robjects.FloatVector(x_np)
-        limit = limit if limit is not None else robjects.r("Inf")
-        net = self.r_ts2net.tsnet_vg(
-            r_data, method, directed, limit, num_cores=num_cores
-        )
-        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
-        return edge_index, edge_weight
+        with localconverter(default_converter + numpy2ri.converter):
+            x_np = x.detach().numpy().flatten()
+            r_data = robjects.FloatVector(x_np)
+            limit = limit if limit is not None else robjects.r("Inf")
+            net = self.r_ts2net.tsnet_vg(
+                r_data, method, directed, limit, num_cores=num_cores
+            )
+            edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
+            return edge_index, edge_weight
 
     def chunked_tsnet_vg(
         self,
@@ -121,47 +125,48 @@ class Ts2Net:
         limit: Optional[int | object] = None,
         num_cores: Optional[int] = None,
     ):
-        time_steps = x.size(0)
-        all_edges, all_weights = [], []
+        with localconverter(default_converter + numpy2ri.converter):
+            time_steps = x.size(0)
+            all_edges, all_weights = [], []
 
-        for start in range(0, time_steps, stride):
-            end = min(start + window_size, time_steps)
-            if end - start < 3:
-                continue
+            for start in range(0, time_steps, stride):
+                end = min(start + window_size, time_steps)
+                if end - start < 3:
+                    continue
 
-            ei, ew = self.tsnet_vg(
-                x=x[start:end],
-                method=method,
-                directed=directed,
-                limit=limit,
-                num_cores=num_cores,
-            )
+                ei, ew = self.tsnet_vg(
+                    x=x[start:end],
+                    method=method,
+                    directed=directed,
+                    limit=limit,
+                    num_cores=num_cores,
+                )
 
-            ei += start  # shift to global indices
-            all_edges.append(ei)
-            all_weights.append(ew)
+                ei += start  # shift to global indices
+                all_edges.append(ei)
+                all_weights.append(ew)
 
-        if not all_edges:
-            edge_index = torch.zeros((2, 0), dtype=torch.long)
-            edge_weight = torch.zeros((0,), dtype=torch.float)
+            if not all_edges:
+                edge_index = torch.zeros((2, 0), dtype=torch.long)
+                edge_weight = torch.zeros((0,), dtype=torch.float)
+                return edge_index, edge_weight
+
+            # concatenation then deduplication
+            edge_index = torch.cat(all_edges, dim=1).T
+            edge_weight = torch.cat(all_weights)
+
+            edge_index_sorted, _ = torch.sort(edge_index, dim=1)
+            uniq, idx = torch.unique(edge_index_sorted, dim=0, return_inverse=True)
+
+            # aggregate weights (mean) per unique edge
+            if edge_weight.numel():
+                edge_weight = (
+                    torch.zeros(uniq.size(0)).index_add(0, idx, edge_weight)
+                    / torch.bincount(idx).float()
+                )
+            edge_index = uniq.T
+
             return edge_index, edge_weight
-
-        # concatenation then deduplication
-        edge_index = torch.cat(all_edges, dim=1).T
-        edge_weight = torch.cat(all_weights)
-
-        edge_index_sorted, _ = torch.sort(edge_index, dim=1)
-        uniq, idx = torch.unique(edge_index_sorted, dim=0, return_inverse=True)
-
-        # aggregate weights (mean) per unique edge
-        if edge_weight.numel():
-            edge_weight = (
-                torch.zeros(uniq.size(0)).index_add(0, idx, edge_weight)
-                / torch.bincount(idx).float()
-            )
-        edge_index = uniq.T
-
-        return edge_index, edge_weight
 
     def tsnet_rn(
         self,
@@ -174,25 +179,28 @@ class Ts2Net:
         do_plot: bool = False,
         **kwargs,
     ):
-        lib = self._ensure_dependencies_installed()
-        x = x.squeeze(-1)
-        x_np = x.detach().numpy().flatten()
-        r_data = robjects.FloatVector(x_np)
-        if embedding_dim is None:
-            dim = lib.estimateEmbeddingDim(r_data, time_lag=time_lag, do_plot=do_plot)
-            if isinstance(dim, robjects.vectors.BoolVector):
-                embedding_dim = min(10, max(3, x.shape[0] // 10))
-            else:
-                embedding_dim = int(dim.item())
-        radius = get_radius_for_rec(
-            x=x, alpha=radius, dim=embedding_dim, time_delay=time_lag
-        )
-        # r_data = robjects.FloatVector(x)
-        net = self.r_ts2net.tsnet_rn(
-            r_data, radius, embedding_dim, time_lag, do_plot, **kwargs
-        )
-        edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
-        return edge_index, edge_weight
+        with localconverter(default_converter + numpy2ri.converter):
+            lib = self._ensure_dependencies_installed()
+            x = x.squeeze(-1)
+            x_np = x.detach().numpy().flatten()
+            r_data = robjects.FloatVector(x_np)
+            if embedding_dim is None:
+                dim = lib.estimateEmbeddingDim(
+                    r_data, time_lag=time_lag, do_plot=do_plot
+                )
+                if isinstance(dim, robjects.vectors.BoolVector):
+                    embedding_dim = min(10, max(3, x.shape[0] // 10))
+                else:
+                    embedding_dim = int(dim.item())
+            radius = get_radius_for_rec(
+                x=x, alpha=radius, dim=embedding_dim, time_delay=time_lag
+            )
+            # r_data = robjects.FloatVector(x)
+            net = self.r_ts2net.tsnet_rn(
+                r_data, radius, embedding_dim, time_lag, do_plot, **kwargs
+            )
+            edge_index, edge_weight = self._get_adjacency_matrix(net, sparse, weighted)
+            return edge_index, edge_weight
 
     def tsnet_qn(
         self,
@@ -204,62 +212,63 @@ class Ts2Net:
         weighted: bool = True,
         **kwargs,
     ):
-        x = x.squeeze(-1)
-        x_np = x.detach().numpy().flatten()
+        with localconverter(default_converter + numpy2ri.converter):
+            x = x.squeeze(-1)
+            x_np = x.detach().numpy().flatten()
 
-        # Bin assignment - which quantile each time point belongs to
-        quantile_levels = np.linspace(0, 1, breaks + 1)
-        bins = np.quantile(x_np, quantile_levels)
-        bin_assignments = np.digitize(x_np, bins[1:-1], right=True)
+            # Bin assignment - which quantile each time point belongs to
+            quantile_levels = np.linspace(0, 1, breaks + 1)
+            bins = np.quantile(x_np, quantile_levels)
+            bin_assignments = np.digitize(x_np, bins[1:-1], right=True)
 
-        # Build bin-level graph from R (always get as sparse for efficiency)
-        r_data = robjects.FloatVector(x_np)
-        net = self.r_ts2net.tsnet_qn(
-            r_data, breaks, weights_as_prob, remove_loops, **kwargs
-        )
-        bin_edge_index, bin_edge_weight = self._get_sparse_matrix(
-            graph=net, weighted=weighted
-        )
-
-        # Build efficiency bin to edge indices mapping
-        from collections import defaultdict
-
-        bin_to_time = defaultdict(list)
-        for time_idx, bin_idx in enumerate(bin_assignments):
-            bin_to_time[bin_idx].append(time_idx)
-
-        # Convert bin edges to time-point edges
-        time_edges = []
-        time_weights = []
-
-        for edge_idx in range(bin_edge_index.shape[1]):
-            bin_src = bin_edge_index[0, edge_idx].item()
-            bin_dst = bin_edge_index[1, edge_idx].item()
-            edge_weight_val = bin_edge_weight[edge_idx].item() if weighted else 1.0
-
-            # Create edges between all time points in source bin to all in destination bin
-            for src_time in bin_to_time[bin_src]:
-                for dst_time in bin_to_time[bin_dst]:
-                    if remove_loops and src_time == dst_time:
-                        continue
-                    time_edges.append((src_time, dst_time))
-                    time_weights.append(edge_weight_val)
-
-        # Convert to PyTorch tensors in PyG format
-        if time_edges:
-            edge_index = torch.tensor(
-                time_edges, dtype=torch.long
-            ).T  # Shape [2, num_edges]
-            edge_weight = (
-                torch.tensor(time_weights, dtype=torch.float32)
-                if weighted
-                else torch.ones(edge_index.shape[1], dtype=torch.float32)
+            # Build bin-level graph from R (always get as sparse for efficiency)
+            r_data = robjects.FloatVector(x_np)
+            net = self.r_ts2net.tsnet_qn(
+                r_data, breaks, weights_as_prob, remove_loops, **kwargs
             )
-        else:
-            edge_index = torch.empty((2, 0), dtype=torch.long)
-            edge_weight = torch.empty(0, dtype=torch.float32)
+            bin_edge_index, bin_edge_weight = self._get_sparse_matrix(
+                graph=net, weighted=weighted
+            )
 
-        return edge_index, edge_weight
+            # Build efficiency bin to edge indices mapping
+            from collections import defaultdict
+
+            bin_to_time = defaultdict(list)
+            for time_idx, bin_idx in enumerate(bin_assignments):
+                bin_to_time[bin_idx].append(time_idx)
+
+            # Convert bin edges to time-point edges
+            time_edges = []
+            time_weights = []
+
+            for edge_idx in range(bin_edge_index.shape[1]):
+                bin_src = bin_edge_index[0, edge_idx].item()
+                bin_dst = bin_edge_index[1, edge_idx].item()
+                edge_weight_val = bin_edge_weight[edge_idx].item() if weighted else 1.0
+
+                # Create edges between all time points in source bin to all in destination bin
+                for src_time in bin_to_time[bin_src]:
+                    for dst_time in bin_to_time[bin_dst]:
+                        if remove_loops and src_time == dst_time:
+                            continue
+                        time_edges.append((src_time, dst_time))
+                        time_weights.append(edge_weight_val)
+
+            # Convert to PyTorch tensors in PyG format
+            if time_edges:
+                edge_index = torch.tensor(
+                    time_edges, dtype=torch.long
+                ).T  # Shape [2, num_edges]
+                edge_weight = (
+                    torch.tensor(time_weights, dtype=torch.float32)
+                    if weighted
+                    else torch.ones(edge_index.shape[1], dtype=torch.float32)
+                )
+            else:
+                edge_index = torch.empty((2, 0), dtype=torch.long)
+                edge_weight = torch.empty(0, dtype=torch.float32)
+
+            return edge_index, edge_weight
 
     def _suppress_warnings(self, expr: str):
         """Run an R command with warnings suppressed."""
