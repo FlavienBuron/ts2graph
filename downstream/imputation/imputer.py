@@ -66,7 +66,7 @@ class Imputer:
         self.train_metrics = MetricCollection(
             {
                 f"train_{k}": self._check_metric(metric, on_step=True)
-                for k, metric in metrics.item()
+                for k, metric in metrics.items()
             }
         )
         self.val_metrics = MetricCollection(
