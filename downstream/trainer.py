@@ -38,8 +38,8 @@ class Trainer:
         self.val_loader = self.dataloader._val_dataloader()
         self.test_loader = self.dataloader._test_dataloader()
 
-        optim_class = getattr(self.torch_model, "optim_class", None)
-        optim_kwargs = getattr(self.torch_model, "optim_kwargs", None)
+        optim_class = getattr(self.imputer, "optim_class", None)
+        optim_kwargs = getattr(self.imputer, "optim_kwargs", None)
         if optim_class is None or optim_kwargs is None:
             raise ValueError(
                 "Model must provide 'optim_class' and 'optim_kwargs' attributes"
