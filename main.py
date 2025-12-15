@@ -791,7 +791,7 @@ def run(args: Namespace) -> None:
         "merge": args.merge,
         "impute_only_holes": args.impute_only_holes,
     }
-    print(f"{args.items()=}")
+    print(f"{args=}")
     imputer = Imputer(
         model_class=model,
         model_kwargs=model_kwargs,
