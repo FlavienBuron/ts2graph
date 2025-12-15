@@ -791,12 +791,11 @@ def run(args: Namespace) -> None:
         "merge": args.merge,
         "impute_only_holes": args.impute_only_holes,
     }
-    print(f"{args=}")
     imputer = Imputer(
         model_class=model,
         model_kwargs=model_kwargs,
         optim_class=torch.optim.Adam,
-        optim_kwargs={"lr": args.lr, "weight_decay": 0.0},
+        optim_kwargs={"lr": args.learning_rate, "weight_decay": 0.0},
         loss_fn=MaskedMAE,
         scaled_target=True,
         metrics=metrics,
