@@ -58,14 +58,14 @@ class AirQualityLoader(GraphLoader):
     # def __len__(self) -> int:
     #     return self.original_data.shape[0]
 
-    def __getitem__(
-        self, index: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        missing_data = self.current_data[index, :]
-        ori_data = self.original_data[index, :]
-        missing_mask = self.missing_mask[index, :]
-        test_mask = self.test_mask[index, :]
-        return missing_data, missing_mask, ori_data.nan_to_num_(0.0), test_mask
+    # def __getitem__(
+    #     self, index: int
+    # ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    #     missing_data = self.current_data[index, :]
+    #     ori_data = self.original_data[index, :]
+    #     missing_mask = self.missing_mask[index, :]
+    #     test_mask = self.test_mask[index, :]
+    #     return missing_data, missing_mask, ori_data.nan_to_num_(0.0), test_mask
 
     def load_raw(
         self, small: bool = False
