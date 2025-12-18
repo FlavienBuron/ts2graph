@@ -24,6 +24,7 @@ from torch.utils.data import DataLoader
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.imputer import Imputer
+from downstream.imputation.metrics.losses import MaskedMAELoss
 from downstream.imputation.metrics.metrics import (
     MaskedMAE,
     MaskedMAPE,
@@ -766,7 +767,7 @@ def run(args: Namespace) -> None:
         technique="loc", parameter=0.3, dataset=dataset, args=args
     )
     model = GRINet
-    loss_fn = MaskedMAE
+    loss_fn = MaskedMAELoss
     metrics = {
         "mae": MaskedMAE(compute_on_step=False),
         "mape": MaskedMAPE(compute_on_step=False),
