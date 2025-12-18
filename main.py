@@ -797,7 +797,7 @@ def run(args: Namespace) -> None:
         model_kwargs=model_kwargs,
         optim_class=torch.optim.Adam,
         optim_kwargs={"lr": args.learning_rate, "weight_decay": 0.0},
-        loss_fn=MaskedMAE,
+        loss_fn=loss_fn,
         scaled_target=True,
         metrics=metrics,
         scheduler_class=CosineAnnealingLR,
