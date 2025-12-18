@@ -76,6 +76,7 @@ class MaskedMetric(Metric):
         target: torch.Tensor,
         mask: torch.Tensor | None = None,
     ) -> None:
+        print(f"{self.at=}")
         prediction = prediction[: self.at]
         target = target[: self.at]
         if mask is not None:
