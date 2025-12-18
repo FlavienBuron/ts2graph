@@ -125,8 +125,7 @@ class Imputer:
             mask.clone().detach().float() * self.keep_prob
         ).byte()
         eval_mask = batch_data.pop("eval_mask")
-        print(f"{mask.dtype=} {eval_mask.dtype=} {batch_data["mask"].dtype=}")
-        eval_mask = (mask | eval_mask) - batch_data["mask"]
+        eval_mask = (mask | eval_mask) & ~batch_data["mask"].bool()
 
         y = batch_data.pop("y")
 
