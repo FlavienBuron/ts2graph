@@ -76,11 +76,10 @@ class MaskedMetric(Metric):
         target: torch.Tensor,
         mask: torch.Tensor | None = None,
     ) -> None:
-        print(f"{self.at=}")
-        prediction = prediction[: self.at]
-        target = target[: self.at]
+        prediction = prediction[:, self.at]
+        target = target[:, self.at]
         if mask is not None:
-            mask = mask[: self.at]
+            mask = mask[:, self.at]
         if self.is_masked(mask):
             value, numel, _ = self._compute_masked(prediction, target, mask)
         else:
