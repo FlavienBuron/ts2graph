@@ -61,6 +61,9 @@ class GraphLoader(Dataset, ABC):
         except AttributeError:
             self.freq = None
 
+        self.trend = None
+        self.scaler = None
+
         self.horizon = 36
         self.window = 36
         self.delay = -self.window
