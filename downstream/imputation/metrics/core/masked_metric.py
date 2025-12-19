@@ -36,6 +36,7 @@ class MaskedMetric(Metric):
     def _check_mask(
         self, mask: Optional[torch.Tensor], values: torch.Tensor
     ) -> torch.Tensor:
+        print(f"{values.shape=} {mask.shape=}")
         if mask is None:
             mask = torch.ones_like(values).byte()
         else:
