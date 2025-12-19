@@ -66,8 +66,8 @@ class ProgressDisplay:
         )
 
     @contextmanager
-    def batch_bar(self, task: str, phase: str, total_batches: int):
-        description = f"[{task}] {phase} batches"
+    def batch_bar(self, phase: str, total_batches: int):
+        description = f"{phase} batches"
 
         batch_task = self.progress.add_task(
             description,

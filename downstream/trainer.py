@@ -59,42 +59,46 @@ class Trainer:
         self.patience_counter = 0
         self.global_step = 0
 
-    def train_epoch(self) -> List[float]:
+    def train_epoch(self, progress) -> List[float]:
         self.torch_model.train()
         torch.set_grad_enabled(True)
         batch_losses: List[float] = []
 
-        for batch_idx, batch in enumerate(self.train_loader):
-            loss = self.imputer.training_step(batch, batch_idx)
-            if loss is None:
-                raise RuntimeError("Training step returned None loss")
+        with progress.batch_bar("train", len(self.train_loader)) as advance:
+            for batch_idx, batch in enumerate(self.train_loader):
+                loss = self.imputer.training_step(batch, batch_idx)
+                if loss is None:
+                    raise RuntimeError("Training step returned None loss")
 
-            # scale gradient for accumulation
-            loss_scaled = loss / float(self.accumulate_grad_batches)
+                # scale gradient for accumulation
+                loss_scaled = loss / float(self.accumulate_grad_batches)
 
-            # zero grads at accumulation start
-            if (batch_idx % self.accumulate_grad_batches) == 0:
-                try:
-                    self.optimizer.zero_grad(set_to_none=True)
-                except TypeError:
-                    raise self.optimizer.zero_grad()
+                # zero grads at accumulation start
+                if (batch_idx % self.accumulate_grad_batches) == 0:
+                    try:
+                        self.optimizer.zero_grad(set_to_none=True)
+                    except TypeError:
+                        raise self.optimizer.zero_grad()
 
-            loss_scaled.backward()
+                loss_scaled.backward()
 
-            if (batch_idx + 1) % self.accumulate_grad_batches == 0:
-                params = [p for p in self.torch_model.parameters() if p.requires_grad]
-                if (self.grad_clip_val is not None) and params:
-                    if self.grad_clip_algorithm == "norm":
-                        torch.nn.utils.clip_grad_norm_(params, self.grad_clip_val)
-                    elif self.grad_clip_algorithm == "value":
-                        torch.nn.utils.clip_grad_value_(params, self.grad_clip_val)
-                    else:
-                        raise ValueError(f"Unknown {self.grad_clip_algorithm=}")
+                if (batch_idx + 1) % self.accumulate_grad_batches == 0:
+                    params = [
+                        p for p in self.torch_model.parameters() if p.requires_grad
+                    ]
+                    if (self.grad_clip_val is not None) and params:
+                        if self.grad_clip_algorithm == "norm":
+                            torch.nn.utils.clip_grad_norm_(params, self.grad_clip_val)
+                        elif self.grad_clip_algorithm == "value":
+                            torch.nn.utils.clip_grad_value_(params, self.grad_clip_val)
+                        else:
+                            raise ValueError(f"Unknown {self.grad_clip_algorithm=}")
 
-                self.optimizer.step()
-                self.global_step += 1
+                    self.optimizer.step()
+                    self.global_step += 1
 
-            batch_losses.append(float(loss.detach().cpu().item()))
+                batch_losses.append(float(loss.detach().cpu().item()))
+                advance()
 
         return batch_losses
 
