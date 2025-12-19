@@ -36,7 +36,9 @@ class Imputer:
         self.scheduler_kwargs = (
             scheduler_kwargs if scheduler_kwargs is not None else dict()
         )
+        print(f"{loss_fn=}")
         self.loss_fn = self._check_metric(loss_fn, on_step=True)
+        print(f"{self.loss_fn=}")
         self.scaled_target = scaled_target
 
         assert 0.0 <= whiten_prob <= 1.0
@@ -50,7 +52,7 @@ class Imputer:
 
     @staticmethod
     def _check_metric(metric, on_step=False):
-        print(f"{type(metric)=} {isinstance(metric, MaskedLoss)=}")
+        print(f"{metric=} {type(metric)=} {isinstance(metric, MaskedLoss)=}")
         if not isinstance(metric, MaskedMetric) or not isinstance(metric, MaskedLoss):
             if "reduction" in inspect.getfullargspec(metric).args:
                 metric_kwargs = {"reduction": "none"}
