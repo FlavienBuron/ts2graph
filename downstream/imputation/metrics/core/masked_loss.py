@@ -14,7 +14,7 @@ class MaskedLoss(nn.Module, ABC):
         eps: float = 1e-6,
         at: Optional[int] = None,
     ) -> None:
-        super().__init__()
+        super(MaskedLoss, self).__init__()
         self.mask_nans = mask_nans
         self.mask_inf = mask_inf
         self.reduction = reduction
