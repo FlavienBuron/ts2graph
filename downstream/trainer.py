@@ -5,6 +5,7 @@ import torch
 
 from datasets.dataloaders.graphloader import GraphLoader
 from downstream.imputation.imputer import Imputer
+from utils.progess import ProgressDisplay
 
 
 class Trainer:
@@ -150,43 +151,65 @@ class Trainer:
         all_train_losses = []
         val_losses = []
 
-        for epoch in range(self.max_epochs):
-            batch_losses = self.train_epoch()
-            all_train_losses.append(batch_losses)
+        with ProgressDisplay(self.max_epochs) as p:
+            for epoch in range(self.max_epochs):
+                self.imputer.reset_metrics()
+                p.set_phase("training")
 
-            val_loss = self.validate()
-            val_losses.append(val_loss)
+                batch_losses = self.train_epoch()
+                train_loss = sum(batch_losses) / len(batch_losses)
+                train_metrics = self.imputer.compute_metrics(phase="train")
 
-            if self.scheduler is not None:
-                try:
-                    if self.scheduler.__class__.__name__ == "ReduceLROnPlateau":
-                        self.scheduler.step(val_loss)
-                    else:
-                        self.scheduler.step()
-                except Exception:
+                all_train_losses.append(batch_losses)
+                p.log_train(train_loss, train_metrics)
+
+                self.imputer.reset_metrics()
+                p.set_phase("validating")
+
+                val_loss = self.validate()
+                val_metrics = self.imputer.compute_metrics(phase="val")
+                val_losses.append(val_loss)
+
+                val_loss = val_loss if val_loss is not None else 0.0
+
+                p.log_val(val_loss, val_metrics)
+
+                if self.scheduler is not None:
                     try:
-                        self.scheduler.step(val_loss)
+                        if self.scheduler.__class__.__name__ == "ReduceLROnPlateau":
+                            self.scheduler.step(val_loss)
+                        else:
+                            self.scheduler.step()
                     except Exception:
-                        print("Scheduler step failed; skipped")
+                        try:
+                            self.scheduler.step(val_loss)
+                        except Exception:
+                            print("Scheduler step failed; skipped")
 
-            if val_loss is not None:
-                if val_loss < self.best_val_loss:
-                    self.best_val_loss = val_loss
-                    self.patience_counter = 0
-                    torch.save(self.torch_model.state_dict(), self.save_path)
-                    print("Saved new best model")
-                else:
-                    if self.patience is not None:
-                        self.patience_counter += 1
-                        if self.patience_counter >= self.patience:
-                            print(
-                                f"Early stopping triggered (patience={self.patience})"
-                            )
-                            break
+                if val_loss is not None:
+                    if val_loss < self.best_val_loss:
+                        self.best_val_loss = val_loss
+                        self.patience_counter = 0
+                        torch.save(self.torch_model.state_dict(), self.save_path)
+                        print("Saved new best model")
+                    else:
+                        if self.patience is not None:
+                            self.patience_counter += 1
+                            if self.patience_counter >= self.patience:
+                                print(
+                                    f"Early stopping triggered (patience={self.patience})"
+                                )
+                                break
+                p.nex_epoch()
+
+            self.imputer.reset_metrics()
+            p.set_phase("testing")
+
+            preds, targets, masks = self.test()
+            test_metrics = self.imputer.compute_metrics(phase="test")
+            p.log_test(test_metrics)
 
         final_val = self.best_val_loss if self.best_val_loss != float("inf") else None
-        preds, targets, masks = self.test()
-
         return {
             "train_losses": all_train_losses,
             "val_losses": val_losses,

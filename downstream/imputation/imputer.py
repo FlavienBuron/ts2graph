@@ -36,9 +36,7 @@ class Imputer:
         self.scheduler_kwargs = (
             scheduler_kwargs if scheduler_kwargs is not None else dict()
         )
-        print(f"{loss_fn=}")
         self.loss_fn = self._check_metric(loss_fn, on_step=True)
-        print(f"{self.loss_fn=}")
         self.scaled_target = scaled_target
 
         assert 0.0 <= whiten_prob <= 1.0
@@ -52,9 +50,7 @@ class Imputer:
 
     @staticmethod
     def _check_metric(metric, on_step=False):
-        print(f"{metric=} {type(metric)=} {isinstance(metric, MaskedLoss)=}")
         if not isinstance(metric, MaskedMetric) and not isinstance(metric, MaskedLoss):
-            print("nooooooooooooo")
             if "reduction" in inspect.getfullargspec(metric).args:
                 metric_kwargs = {"reduction": "none"}
             else:
@@ -63,6 +59,28 @@ class Imputer:
                 metric, compute_on_step=on_step, metric_kwargs=metric_kwargs
             )
         return deepcopy(metric)
+
+    def reset_metrics(self) -> None:
+        if hasattr(self, "train_metrics") and self.train_metrics is not None:
+            self.train_metrics.reset()
+        if hasattr(self, "val_metrics") and self.val_metrics is not None:
+            self.val_metrics.reset()
+        if hasattr(self, "test_metrics") and self.test_metrics is not None:
+            self.test_metrics.reset()
+
+    def compute_metrics(self, phase: str) -> Dict:
+        if phase == "train":
+            metrics = self.train_metrics
+        elif phase == "val":
+            metrics = self.val_metrics
+        elif phase == "test":
+            metrics = self.test_metrics
+        else:
+            raise ValueError(f"Unknown phase: {phase}")
+
+        computed = metrics.compute()
+
+        return {k: v.item() for k, v in computed.items()}
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)
