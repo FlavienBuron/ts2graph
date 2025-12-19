@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -37,13 +39,14 @@ class ProgressDisplay:
         self.progress.update(self.epoch_task, status=phase)
 
     def log_train(self, loss: float, metrics: dict):
-        pass
+        self._update_status("train", loss, metrics)
 
     def log_val(self, loss: float, metrics: dict):
-        pass
+        self._update_status("val", loss, metrics)
 
     def log_test(self, metrics: dict):
-        pass
+        metric_str = self._format_metrics(metrics)
+        self.progress.update(self.epoch_task, status=f"test | {metric_str}")
 
     def nex_epoch(self):
         self.progress.advance(self.epoch_task)
@@ -61,3 +64,18 @@ class ProgressDisplay:
             self.epoch_task,
             status=f"{phase} loss={loss:.2f} | {metrics_str}",
         )
+
+    @contextmanager
+    def batch_bar(self, task: str, phase: str, total_batches: int):
+        description = f"[{task}] {phase} batches"
+
+        batch_task = self.progress.add_task(
+            description,
+            total=total_batches,
+            status="running",
+        )
+
+        try:
+            yield lambda n=1: self.progress.advance(batch_task, n)
+        finally:
+            self.progress.remove_task(batch_task)
