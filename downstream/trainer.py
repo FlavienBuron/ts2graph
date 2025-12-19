@@ -160,7 +160,7 @@ class Trainer:
                 self.imputer.reset_metrics()
                 p.set_phase("training")
 
-                batch_losses = self.train_epoch()
+                batch_losses = self.train_epoch(p)
                 train_loss = sum(batch_losses) / len(batch_losses)
                 train_metrics = self.imputer.compute_metrics(phase="train")
 
