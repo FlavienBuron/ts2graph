@@ -5,6 +5,7 @@ from typing import Dict, Optional, Tuple
 import torch
 from torchmetrics import MetricCollection
 
+from downstream.imputation.metrics.core.masked_loss import MaskedLoss
 from downstream.imputation.metrics.core.masked_metric import MaskedMetric
 
 epsilon = 1e-6
@@ -49,7 +50,7 @@ class Imputer:
 
     @staticmethod
     def _check_metric(metric, on_step=False):
-        if not isinstance(metric, MaskedMetric):
+        if not isinstance(metric, MaskedMetric) or not isinstance(metric, MaskedLoss):
             if "reduction" in inspect.getfullargspec(metric).args:
                 metric_kwargs = {"reduction": "none"}
             else:
