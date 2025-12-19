@@ -36,7 +36,6 @@ class MaskedMetric(Metric):
     def _check_mask(
         self, mask: Optional[torch.Tensor], values: torch.Tensor
     ) -> torch.Tensor:
-        print(f"{values.shape=} {mask.shape=}")
         if mask is None:
             mask = torch.ones_like(values).byte()
         else:
@@ -54,9 +53,7 @@ class MaskedMetric(Metric):
         mask: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         _check_same_shape(prediction, target)
-        print(f"{self.metric_fn=}")
         value = self.metric_fn(prediction, target)
-        print(f"{prediction.shape=} {target.shape=} {mask.shape=} {value.shape=}")
         mask = self._check_mask(mask, value)
         value = torch.where(mask, value, torch.tensor(0.0, device=value.device).float())
         return value.sum(), mask.sum(), None
