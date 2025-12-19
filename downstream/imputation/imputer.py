@@ -50,7 +50,7 @@ class Imputer:
 
     @staticmethod
     def _check_metric(metric, on_step=False):
-        print(f"{type(metric)=}")
+        print(f"{type(metric)=} {isinstance(metric, MaskedLoss)=}")
         if not isinstance(metric, MaskedMetric) or not isinstance(metric, MaskedLoss):
             if "reduction" in inspect.getfullargspec(metric).args:
                 metric_kwargs = {"reduction": "none"}
