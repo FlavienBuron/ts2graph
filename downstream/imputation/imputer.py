@@ -163,7 +163,6 @@ class Imputer:
             imputation = self._postprocess(imputation, batch_preprocessing)
             prediction = self._postprocess(prediction, batch_preprocessing)
 
-        print(f"{imputation.shape=} {target.shape=} {mask.shape=} {self.loss_fn=}")
         loss = self.loss_fn(imputation, target, mask)
         for pred in prediction:
             loss += self.tradeoff * self.loss_fn(pred, target, mask)
