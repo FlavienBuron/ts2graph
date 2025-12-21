@@ -1,7 +1,6 @@
 from typing import List
 
 import pytorch_lightning as pl
-import torch
 from torch.utils.data import DataLoader, RandomSampler, Subset
 
 from datasets.dataloaders.graphloader import GraphLoader
@@ -89,20 +88,17 @@ class DataModule(pl.LightningDataModule):
     def test_slice(self):
         return self.dataset.expand_and_merge_indices(self.test_set.indices)
 
-    def train_dataloader(self, seed):
+    def train_dataloader(self):
         rnd_sampler = None
         shuffle = True
         print(f"train_loader: {len(self.train_set)=} {shuffle=} {self.batch_size=}")
         if self.samples_per_epoch > 0:
-            rnd_gen = torch.Generator()
-            rnd_gen.manual_seed(seed)
             shuffle = False
 
             rnd_sampler = RandomSampler(
                 self.train_set,
                 replacement=True,
                 num_samples=self.samples_per_epoch,
-                # generator=rnd_gen,
             )
 
         return DataLoader(
