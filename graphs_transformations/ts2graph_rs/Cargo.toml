@@ -3,6 +3,7 @@ name = "ts2graph_rs"
 version = "0.1.0"
 edition = "2024"
 authors = ["Flavien Buron"]
+build = "build.rs"
 
 [lib]
 name = "ts2graph_rs"
