@@ -110,6 +110,7 @@ class AirQualityLoader(GraphLoader):
         in_sample: bool = False,
         window: int = 36,
     ):
+        print(f"{len(self.test_months)=} {self.test_months=}")
         nontest_idxs, test_idxs = self._disjoint_months(
             months=self.test_months, sync_mode="horizon"
         )
