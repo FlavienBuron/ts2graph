@@ -89,7 +89,7 @@ class DataModule(pl.LightningDataModule):
     def test_slice(self):
         return self.dataset.expand_and_merge_indices(self.test_set.indices)
 
-    def train_dataloaders(self, seed):
+    def train_dataloader(self, seed):
         rnd_sampler = None
         shuffle = True
         print(f"train_loader: {len(self.train_set)=} {shuffle=} {self.batch_size=}")
