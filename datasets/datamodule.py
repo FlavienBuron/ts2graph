@@ -20,7 +20,7 @@ class DataModule(pl.LightningDataModule):
         train_indices: List = [],
         val_indices: List = [],
         test_indices: List = [],
-        batch_size: int = 64,
+        batch_size: int = 32,
         workers=21,
         samples_per_epoch: int = 0,
     ):
