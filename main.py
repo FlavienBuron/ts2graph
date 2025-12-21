@@ -831,7 +831,7 @@ def run(args: Namespace) -> None:
         gradient_clip_val=0.5,
         enable_progress_bar=True,
     )
-    results = trainer.fit(imputer)
+    results = trainer.fit(imputer, datamodule=dm)
     print(results)
 
 
