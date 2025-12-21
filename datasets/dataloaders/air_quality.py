@@ -134,14 +134,14 @@ class AirQualityLoader(GraphLoader):
             month_val_idxs = [
                 np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs
             ]
-            val_idxs = np.concatenate(month_val_idxs) % len(self.dataset)
+            val_idxs = np.concatenate(month_val_idxs) % len(self)
             # remove overlapping indices from training set
             ovl_idxs, _ = self.overlapping_indices(
                 nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
             )
             train_idxs = nontest_idxs[~ovl_idxs]
             print(
-                f"{val_len=} {len(nontest_idxs)=} {delta_idxs.shape=} {len(end_month_idxs)=} {len(month_val_idxs)=} {val_idxs.shape=} {len(self.dataset.test_months)=}"
+                f"{val_len=} {len(nontest_idxs)=} {delta_idxs.shape=} {len(end_month_idxs)=} {len(month_val_idxs)=} {val_idxs.shape=} {len(self.test_months)=}"
             )
         return train_idxs, val_idxs, test_idxs
 

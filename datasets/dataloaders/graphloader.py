@@ -38,7 +38,7 @@ class GraphLoader(Dataset, ABC):
         self.missing_mask: torch.Tensor
         self.test_mask: torch.Tensor
 
-        self.test_months = []
+        # self.test_months = []
 
         # Emulate GRIN's SpatioaTemporal classes, into one
         self.data, self.index = self.as_numpy(return_idx=True)
