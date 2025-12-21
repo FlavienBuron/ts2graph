@@ -63,6 +63,7 @@ class DataModule(pl.LightningDataModule):
                     scaler.fit(exo[self.train_slice], keepdims=True)
                     scaler = scaler.to_torch()
                     setattr(self, label, scaler.transform(exo))
+        print("DEBUG: DataModule successfully initialized")
 
     @property
     def n_nodes(self):
