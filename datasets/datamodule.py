@@ -1,6 +1,5 @@
 from typing import List
 
-import numpy as np
 import pytorch_lightning as pl
 import torch
 from torch.utils.data import DataLoader, RandomSampler, Subset
@@ -80,15 +79,15 @@ class DataModule(pl.LightningDataModule):
 
     @property
     def train_slice(self):
-        return self.expand_and_merge_indices(self.train_set.indices)
+        return self.dataset.expand_and_merge_indices(self.train_set.indices)
 
     @property
     def val_slice(self):
-        return self.expand_and_merge_indices(self.val_set.indices)
+        return self.dataset.expand_and_merge_indices(self.val_set.indices)
 
     @property
     def test_slice(self):
-        return self.expand_and_merge_indices(self.test_set.indices)
+        return self.dataset.expand_and_merge_indices(self.test_set.indices)
 
     def _train_dataloaders(self, seed):
         rnd_sampler = None
@@ -142,31 +141,6 @@ class DataModule(pl.LightningDataModule):
             raise ValueError(f"Scaling axis '{dim}' is not valid")
 
         return scaling_axis
-
-    def expand_and_merge_indices(self, indices) -> np.ndarray:
-        ds_indices = dict.fromkeys(
-            [time for time in ["window", "horizon"] if getattr(self, time) > 0]
-        )
-        indices = np.arange(len(self.dataset._indices)) if indices is None else indices
-        if "window" in ds_indices:
-            window_idxs = [
-                np.arange(idx, idx + self.dataset.window)
-                for idx in self.dataset._indices[indices]
-            ]
-            ds_indices["window"] = np.concatenate(window_idxs)
-        if "horizon" in ds_indices:
-            horizon_idxs = [
-                np.arange(
-                    idx + self.dataset.horizon_offset,
-                    idx + self.dataset.horizon_offset + self.dataset.horizon,
-                )
-                for idx in self.dataset._indices[indices]
-            ]
-            ds_indices["horizon"] = np.concatenate(horizon_idxs)
-        ds_indices = np.unique(
-            np.hstack([v for v in ds_indices.values() if v is not None])
-        )
-        return ds_indices
 
     def get_scaler(self) -> type[AbstractScaler]:
         if self.scaling_type == "std":

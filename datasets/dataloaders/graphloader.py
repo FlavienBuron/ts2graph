@@ -379,37 +379,61 @@ class GraphLoader(Dataset, ABC):
         else:
             raise ValueError(f"Invalid data dimensions {data.shape}")
 
-    ########## Datamodule ##########
-    def setup(
-        self,
-    ):
-        self._has_setup_fit = False
+    def expand_and_merge_indices(self, indices) -> np.ndarray:
+        ds_indices = dict.fromkeys(
+            [time for time in ["window", "horizon"] if getattr(self, time) > 0]
+        )
+        indices = np.arange(len(self._indices)) if indices is None else indices
+        if "window" in ds_indices:
+            window_idxs = [
+                np.arange(idx, idx + self.window) for idx in self._indices[indices]
+            ]
+            ds_indices["window"] = np.concatenate(window_idxs)
+        if "horizon" in ds_indices:
+            horizon_idxs = [
+                np.arange(
+                    idx + self.horizon_offset,
+                    idx + self.horizon_offset + self.horizon,
+                )
+                for idx in self._indices[indices]
+            ]
+            ds_indices["horizon"] = np.concatenate(horizon_idxs)
+        ds_indices = np.unique(
+            np.hstack([v for v in ds_indices.values() if v is not None])
+        )
+        return ds_indices
 
-        self.scale = scale
-        self.scaling_type = scaling_type
-        self.scaling_axis = scaling_axis
-        self.scale_exogenous = scale_exogenous
-        self.batch_size = batch_size
-        self.samples_per_epoch = samples_per_epoch
-
-        if self.scale:
-            scaling_axes = self.get_scaling_axes(self.scaling_axis)
-            train = self.data[self.train_slice]
-            train_mask = self.mask[self.train_slice]
-            print(
-                f"{scaling_axes=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=} {self._mask.shape=} {self.mask.shape=}"
-            )
-            scaler = self.get_scaler()(axis=scaling_axes)
-            print(
-                f"{type(train)=} {type(train_mask)=} {type(self.mask)=} {type(self.data)=}"
-            )
-            scaler.fit(x=train, mask=train_mask, keepdims=True)
-            self.scaler = scaler.to_torch()
-
-            if len(self.scale_exogenous) > 0:
-                for label in self.scale_exogenous:
-                    exo = getattr(self, label)
-                    scaler = self.get_scaler()(axis=scaling_axes)
-                    scaler.fit(exo[self.train_slice], keepdims=True)
-                    scaler = scaler.to_torch()
-                    setattr(self, label, scaler.transform(exo))
+    # ########## Datamodule ##########
+    # def setup(
+    #     self,
+    # ):
+    #     self._has_setup_fit = False
+    #
+    #     self.scale = scale
+    #     self.scaling_type = scaling_type
+    #     self.scaling_axis = scaling_axis
+    #     self.scale_exogenous = scale_exogenous
+    #     self.batch_size = batch_size
+    #     self.samples_per_epoch = samples_per_epoch
+    #
+    #     if self.scale:
+    #         scaling_axes = self.get_scaling_axes(self.scaling_axis)
+    #         train = self.data[self.train_slice]
+    #         train_mask = self.mask[self.train_slice]
+    #         print(
+    #             f"{scaling_axes=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=} {self._mask.shape=} {self.mask.shape=}"
+    #         )
+    #         scaler = self.get_scaler()(axis=scaling_axes)
+    #         print(
+    #             f"{type(train)=} {type(train_mask)=} {type(self.mask)=} {type(self.data)=}"
+    #         )
+    #         scaler.fit(x=train, mask=train_mask, keepdims=True)
+    #         self.scaler = scaler.to_torch()
+    #
+    #         if len(self.scale_exogenous) > 0:
+    #             for label in self.scale_exogenous:
+    #                 exo = getattr(self, label)
+    #                 scaler = self.get_scaler()(axis=scaling_axes)
+    #                 scaler.fit(exo[self.train_slice], keepdims=True)
+    #                 scaler = scaler.to_torch()
+    #                 setattr(self, label, scaler.transform(exo))
