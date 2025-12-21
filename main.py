@@ -8,9 +8,11 @@ from time import perf_counter
 from typing import Callable, Optional
 
 import numpy as np
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import yaml
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
@@ -23,6 +25,7 @@ from torch.utils.data import DataLoader
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
+from datasets.datamodule import DataModule
 from downstream.imputation.imputer import Imputer
 from downstream.imputation.metrics.losses import MaskedMAELoss
 from downstream.imputation.metrics.metrics import (
@@ -33,7 +36,6 @@ from downstream.imputation.metrics.metrics import (
     MaskedMSE,
 )
 from downstream.imputation.models.GRIN.grin import GRINet
-from downstream.trainer import Trainer
 from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
@@ -755,10 +757,15 @@ def run(args: Namespace) -> None:
     for key, value in config_args.items():
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
-    train, test, eval = dataset.grin_splitter()
-    dataset.setup(
-        train_indices=train, test_indices=test, val_indices=eval, samples_per_epoch=5120
+    train, test, eval = dataset.grin_split()
+    dm = DataModule(
+        dataset,
+        train_indices=train,
+        test_indices=test,
+        val_indices=eval,
+        samples_per_epoch=5120,
     )
+
     print("Dataset setup done")
     # dataset._store_spatiotemporal_data()
     adj, _ = get_spatial_graph(
@@ -775,7 +782,7 @@ def run(args: Namespace) -> None:
     }
     model_kwargs = {
         "adj": adj,
-        "d_in": dataset.d_in,
+        "d_in": dm.d_in,
         "d_hidden": args.d_hidden,
         "d_ff": args.d_ff,
         "ff_dropout": args.ff_dropout,
@@ -789,6 +796,15 @@ def run(args: Namespace) -> None:
         "merge": args.merge,
         "impute_only_holes": args.impute_only_holes,
     }
+    savedir = "./experiments/results/"
+    tb_logger = TensorBoardLogger(
+        save_dir=savedir,
+        name="tensorboard",
+    )
+    csv_logger = CSVLogger(
+        save_dir=savedir,
+        name="csv",
+    )
     imputer = Imputer(
         model_class=model,
         model_kwargs=model_kwargs,
@@ -800,14 +816,22 @@ def run(args: Namespace) -> None:
         scheduler_class=CosineAnnealingLR,
         scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
     )
-    trainer = Trainer(
-        imputer=imputer,
-        dataloader=dataset,
-        max_epochs=300,
-        grad_clip_val=5.0,
-        grad_clip_algorithm="norm",
+    # trainer = Trainer(
+    #     imputer=imputer,
+    #     dataloader=dataset,
+    #     max_epochs=300,
+    #     grad_clip_val=5.0,
+    #     grad_clip_algorithm="norm",
+    # )
+    trainer = pl.Trainer(
+        max_epochs=args.epochs,
+        logger=[tb_logger, csv_logger],
+        default_root_dir=savedir,
+        gradient_clip_algorithm="norm",
+        gradient_clip_val=0.5,
+        enable_progress_bar=True,
     )
-    results = trainer.run()
+    results = trainer.fit(imputer)
     print(results)
 
 

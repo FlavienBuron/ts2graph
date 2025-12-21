@@ -2,6 +2,7 @@ import inspect
 from copy import deepcopy
 from typing import Dict, Optional, Tuple
 
+import pytorch_lightning as pl
 import torch
 from torchmetrics import MetricCollection
 
@@ -11,7 +12,7 @@ from downstream.imputation.metrics.core.masked_metric import MaskedMetric
 epsilon = 1e-6
 
 
-class Imputer:
+class Imputer(pl.LightningModule):
     def __init__(
         self,
         model_class: type[torch.nn.Module],
@@ -48,6 +49,13 @@ class Imputer:
         self.tradeoff = pred_loss_weigth
         self.trimming = (warm_up, warm_up)
 
+    def reset_model(self):
+        self.model = self.model_cls(**self.model_kwargs)
+
+    @property
+    def trainable_parameters(self):
+        return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+
     @staticmethod
     def _check_metric(metric, on_step=False):
         if not isinstance(metric, MaskedMetric) and not isinstance(metric, MaskedLoss):
@@ -59,6 +67,20 @@ class Imputer:
                 metric, compute_on_step=on_step, metric_kwargs=metric_kwargs
             )
         return deepcopy(metric)
+
+    def _set_metrics(self, metrics):
+        self.train_metrics = MetricCollection(
+            {
+                f"train_{k}": self._check_metric(metric, on_step=True)
+                for k, metric in metrics.items()
+            }
+        )
+        self.val_metrics = MetricCollection(
+            {f"val_{k}": self._check_metric(m) for k, m in metrics.items()}
+        )
+        self.test_metrics = MetricCollection(
+            {f"test_{k}": self._check_metric(m) for k, m in metrics.items()}
+        )
 
     def reset_metrics(self) -> None:
         if hasattr(self, "train_metrics") and self.train_metrics is not None:
@@ -84,20 +106,6 @@ class Imputer:
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)
-
-    def _set_metrics(self, metrics):
-        self.train_metrics = MetricCollection(
-            {
-                f"train_{k}": self._check_metric(metric, on_step=True)
-                for k, metric in metrics.items()
-            }
-        )
-        self.val_metrics = MetricCollection(
-            {f"val_{k}": self._check_metric(m) for k, m in metrics.items()}
-        )
-        self.test_metrics = MetricCollection(
-            {f"test_{k}": self._check_metric(m) for k, m in metrics.items()}
-        )
 
     def trim_seq(self, *seq):
         seq = [s[:, self.trimming[0] : s.size(1) - self.trimming[1]] for s in seq]
@@ -139,6 +147,23 @@ class Imputer:
             imputation = self._postprocess(imputation, batch_preprocessing)
             prediction = self._postprocess(prediction, batch_preprocessing)
         return imputation, prediction
+
+    def predict_step(self, batch, batch_idx):
+        batch_data, batch_preprocessing = self._unpack_batch(batch)
+
+        eval_mask = batch_data.pop("eval_mask", None)
+        target = batch_data.pop("y")
+
+        imputation, prediction = self.predict_batch(
+            batch, preprocess=False, postprocess=True
+        )
+
+        return {
+            "target": target.detach(),
+            "imputation": imputation.detach(),
+            "prediction": prediction.detach(),
+            "mask": eval_mask.detach() if eval_mask is not None else None,
+        }
 
     def training_step(self, batch, batch_idx):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
@@ -217,4 +242,18 @@ class Imputer:
             "preds": imputation.detach().clone(),
             "target": y.detach().clone(),
             "mask": eval_mask.detach().clone(),
+        }
+
+    def configure_optimizers(self):
+        optimizer = self.optim_class(self.model.parameters(), **self.optim_kwargs)
+
+        if self.scheduler_class is None:
+            return optimizer
+
+        scheduler = self.scheduler_class(optimizer, **self.scheduler_kwargs)
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": scheduler,
+            "monitor": "val_loss",  # required for ReduceLROnPlateau
         }

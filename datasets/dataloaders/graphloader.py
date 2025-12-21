@@ -1,16 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import torch
 from einops import rearrange
 from torch import Tensor
-from torch.utils.data import DataLoader, Dataset, RandomSampler, Subset
-
-from datasets.scalers.abstract_scaler import AbstractScaler
-from datasets.scalers.min_max_scaler import MinMaxScaler
-from datasets.scalers.standard_scaler import StandardScaler
+from torch.utils.data import Dataset
 
 
 class GraphLoader(Dataset, ABC):
@@ -42,8 +38,12 @@ class GraphLoader(Dataset, ABC):
         self.missing_mask: torch.Tensor
         self.test_mask: torch.Tensor
 
+        self.test_months = []
+
         # Emulate GRIN's SpatioaTemporal classes, into one
         self.data, self.index = self.as_numpy(return_idx=True)
+        if self.index is None:
+            raise AttributeError("Dataset index is returned as None")
         print(f"{self.data.shape=} {self.index.shape=}")
 
         if exogenous is None:
@@ -76,6 +76,15 @@ class GraphLoader(Dataset, ABC):
         print(f"{len(self._indices)=} {self.df.shape=} {self.sample_span=}")
 
         self.scaler = None
+
+    def __len__(self) -> int:
+        return len(self._indices)
+
+    def __getitem__(self, item: int) -> Any:
+        return self.get(item, self.preprocess)
+
+    def __contains__(self, item):
+        return item in self._exogenous_keys
 
     @property
     def has_mask(self):
@@ -128,18 +137,6 @@ class GraphLoader(Dataset, ABC):
     @property
     def n_steps(self):
         return self.data.shape[0]
-
-    @property
-    def d_in(self):  # changed from n_channels
-        return self.data.shape[-1]
-
-    @property
-    def d_out(self):
-        return self.horizon
-
-    @property
-    def n_nodes(self):
-        return self.data.shape[1]
 
     @property
     def indices(self):
@@ -366,14 +363,9 @@ class GraphLoader(Dataset, ABC):
     def load_raw(self) -> Any:
         pass
 
-    def __len__(self) -> int:
-        return len(self._indices)
-
-    def __getitem__(self, item: int) -> Any:
-        return self.get(item, self.preprocess)
-
-    def __contains__(self, item):
-        return item in self._exogenous_keys
+    @abstractmethod
+    def grin_split(self, *args, **kwargs) -> Any:
+        pass
 
     @staticmethod
     def check_dim(data: torch.Tensor):
@@ -387,97 +379,11 @@ class GraphLoader(Dataset, ABC):
         else:
             raise ValueError(f"Invalid data dimensions {data.shape}")
 
-    def expand_indices(self, indices=None, unique=False) -> Dict:
-        ds_indices = dict.fromkeys(
-            [time for time in ["window", "horizon"] if getattr(self, time) > 0]
-        )
-        indices = np.arange(len(self._indices)) if indices is None else indices
-        if "window" in ds_indices:
-            window_idxs = [
-                np.arange(idx, idx + self.window) for idx in self._indices[indices]
-            ]
-            ds_indices["window"] = np.concatenate(window_idxs)
-        if "horizon" in ds_indices:
-            horizon_idxs = [
-                np.arange(
-                    idx + self.horizon_offset, idx + self.horizon_offset + self.horizon
-                )
-                for idx in self._indices[indices]
-            ]
-            ds_indices["horizon"] = np.concatenate(horizon_idxs)
-        if unique:
-            ds_indices = {
-                k: np.unique(v) for k, v in ds_indices.items() if v is not None
-            }
-        return ds_indices
-
-    def expand_and_merge_indices(self, indices) -> np.ndarray:
-        ds_indices = dict.fromkeys(
-            [time for time in ["window", "horizon"] if getattr(self, time) > 0]
-        )
-        indices = np.arange(len(self._indices)) if indices is None else indices
-        if "window" in ds_indices:
-            window_idxs = [
-                np.arange(idx, idx + self.window) for idx in self._indices[indices]
-            ]
-            ds_indices["window"] = np.concatenate(window_idxs)
-        if "horizon" in ds_indices:
-            horizon_idxs = [
-                np.arange(
-                    idx + self.horizon_offset, idx + self.horizon_offset + self.horizon
-                )
-                for idx in self._indices[indices]
-            ]
-            ds_indices["horizon"] = np.concatenate(horizon_idxs)
-        ds_indices = np.unique(
-            np.hstack([v for v in ds_indices.values() if v is not None])
-        )
-        return ds_indices
-
-    def overlapping_indices(
-        self, idxs1, idxs2, sync_mode="window", as_mask=False
-    ) -> tuple[np.ndarray, np.ndarray]:
-        assert sync_mode in ["window", "horizon"], (
-            "sync_mode can only be 'window' or 'horizon'"
-        )
-        timestamp1 = self.data_timestamps(idxs1, flatten=False)[sync_mode]
-        timestamp2 = self.data_timestamps(idxs2, flatten=False)[sync_mode]
-        common_timestamps = np.intersect1d(np.unique(timestamp1), np.unique(timestamp2))
-        is_overlapping = lambda sample: np.any(np.isin(sample, common_timestamps))
-        m1 = np.apply_along_axis(is_overlapping, 1, timestamp1)
-        m2 = np.apply_along_axis(is_overlapping, 1, timestamp2)
-        if as_mask:
-            return m1, m2
-        return np.sort(idxs1[m1]), np.sort(idxs2[m2])
-
-    def data_timestamps(self, indices=None, flatten=True) -> Dict:
-        ds_indices = self.expand_indices(indices, unique=False)
-        ds_timestamp = {k: self.index[v] for k, v in ds_indices.items()}
-        if not flatten:
-            ds_timestamp = {
-                k: np.array(v).reshape(-1, getattr(self, k))
-                for k, v in ds_timestamp.items()
-            }
-        return ds_timestamp
-
     ########## Datamodule ##########
     def setup(
         self,
-        scale: bool = True,
-        scaling_axis: str = "global",
-        scaling_type: str = "minmax",
-        scale_exogenous: List = [],
-        train_indices: List = [],
-        val_indices: List = [],
-        test_indices: List = [],
-        batch_size: int = 32,
-        samples_per_epoch: int = 0,
     ):
         self._has_setup_fit = False
-
-        self.train_set = Subset(self, train_indices)
-        self.val_set = Subset(self, val_indices)
-        self.test_set = Subset(self, test_indices)
 
         self.scale = scale
         self.scaling_type = scaling_type
@@ -507,76 +413,3 @@ class GraphLoader(Dataset, ABC):
                     scaler.fit(exo[self.train_slice], keepdims=True)
                     scaler = scaler.to_torch()
                     setattr(self, label, scaler.transform(exo))
-
-    def _train_dataloaders(self, seed):
-        rnd_sampler = None
-        shuffle = True
-        print(f"train_loader: {len(self.train_set)=} {shuffle=} {self.batch_size=}")
-        if self.samples_per_epoch > 0:
-            rnd_gen = torch.Generator()
-            rnd_gen.manual_seed(seed)
-            shuffle = False
-
-            rnd_sampler = RandomSampler(
-                self.train_set,
-                replacement=True,
-                num_samples=self.samples_per_epoch,
-                generator=rnd_gen,
-            )
-
-        return DataLoader(
-            self.train_set,
-            shuffle=shuffle,
-            batch_size=self.batch_size,
-            sampler=rnd_sampler,
-            drop_last=True,
-        )
-
-    def _val_dataloader(self, shuffle: bool = False):
-        print(f"val_dataloader: {shuffle=} {self.batch_size=} {len(self.val_set)=}")
-        return DataLoader(
-            dataset=self.val_set,
-            shuffle=shuffle,
-            batch_size=self.batch_size,
-        )
-
-    def _test_dataloader(self, shuffle: bool = False):
-        print(f"test_dataloader: {shuffle=} {self.batch_size=} {len(self.test_set)=}")
-        return DataLoader(
-            dataset=self.train_set,
-            shuffle=shuffle,
-            batch_size=self.batch_size,
-        )
-
-    @property
-    def train_slice(self):
-        return self.expand_and_merge_indices(self.train_set.indices)
-
-    @property
-    def val_slice(self):
-        return self.expand_and_merge_indices(self.val_set.indices)
-
-    @property
-    def test_slice(self):
-        return self.expand_and_merge_indices(self.test_set.indices)
-
-    def get_scaling_axes(self, dim: str = "global"):
-        scaling_axis = tuple()
-        if dim == "global":
-            scaling_axis = (0, 1, 2)
-        elif dim == "channels":
-            scaling_axis = (0, 1)
-        elif dim == "nodes":
-            scaling_axis = (0,)
-        else:
-            raise ValueError(f"Scaling axis '{dim}' is not valid")
-
-        return scaling_axis
-
-    def get_scaler(self) -> type[AbstractScaler]:
-        if self.scaling_type == "std":
-            return StandardScaler
-        elif self.scaling_type == "minmax":
-            return MinMaxScaler
-        else:
-            raise NotImplementedError

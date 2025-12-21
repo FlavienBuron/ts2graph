@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -103,6 +103,46 @@ class AirQualityLoader(GraphLoader):
         dist = self._geographical_distance(stations_coords)
         print(f"{data.shape=} {missing_mask.shape=} {dist.shape=}")
         return data, missing_mask, dist
+
+    def grin_split(
+        self,
+        val_len: float = 0.1,
+        in_sample: bool = False,
+        window: int = 36,
+    ):
+        nontest_idxs, test_idxs = self._disjoint_months(
+            months=self.test_months, sync_mode="horizon"
+        )
+        print(f"{nontest_idxs.shape=} {test_idxs.shape=} {len(self)=}")
+        if in_sample:
+            train_idxs = np.arange(len(self))
+            val_months = [(m - 1) % 12 for m in self.test_months]
+            _, val_idxs = self._disjoint_months(months=val_months, sync_mode="horizon")
+        else:
+            val_len = (
+                int(val_len * len(nontest_idxs)) if val_len < 1 else val_len
+            ) // len(self.test_months)
+            # get indices of first day of each testing month
+            delta_idxs = np.diff(test_idxs)
+            end_month_idxs = test_idxs[1:][
+                np.flatnonzero(delta_idxs > delta_idxs.min())
+            ]
+            if len(end_month_idxs) < len(self.test_months):
+                end_month_idxs = np.insert(end_month_idxs, 0, test_idxs[0])
+            # expand month indices
+            month_val_idxs = [
+                np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs
+            ]
+            val_idxs = np.concatenate(month_val_idxs) % len(self.dataset)
+            # remove overlapping indices from training set
+            ovl_idxs, _ = self.overlapping_indices(
+                nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
+            )
+            train_idxs = nontest_idxs[~ovl_idxs]
+            print(
+                f"{val_len=} {len(nontest_idxs)=} {delta_idxs.shape=} {len(end_month_idxs)=} {len(month_val_idxs)=} {val_idxs.shape=} {len(self.dataset.test_months)=}"
+            )
+        return train_idxs, val_idxs, test_idxs
 
     def split(
         self,
@@ -442,88 +482,6 @@ class AirQualityLoader(GraphLoader):
 
         return train_mask, eval_mask
 
-    def grin_splitter(
-        self,
-        val_len: float = 0.1,
-        in_sample: bool = False,
-        window: int = 36,
-    ):
-        nontest_idxs, test_idxs = self._disjoint_months(
-            months=self.test_months, sync_mode="horizon"
-        )
-        print(f"{nontest_idxs.shape=} {test_idxs.shape=} {len(self)=}")
-        if in_sample:
-            train_idxs = np.arange(len(self))
-            val_months = [(m - 1) % 12 for m in self.test_months]
-            _, val_idxs = self._disjoint_months(months=val_months, sync_mode="horizon")
-        else:
-            val_len = (
-                int(val_len * len(nontest_idxs)) if val_len < 1 else val_len
-            ) // len(self.test_months)
-            # get indices of first day of each testing month
-            delta_idxs = np.diff(test_idxs)
-            end_month_idxs = test_idxs[1:][
-                np.flatnonzero(delta_idxs > delta_idxs.min())
-            ]
-            if len(end_month_idxs) < len(self.test_months):
-                end_month_idxs = np.insert(end_month_idxs, 0, test_idxs[0])
-            # expand month indices
-            month_val_idxs = [
-                np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs
-            ]
-            val_idxs = np.concatenate(month_val_idxs) % len(self)
-            # remove overlapping indices from training set
-            ovl_idxs, _ = self.overlapping_indices(
-                nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
-            )
-            train_idxs = nontest_idxs[~ovl_idxs]
-            print(
-                f"{val_len=} {len(nontest_idxs)=} {delta_idxs.shape=} {len(end_month_idxs)=} {len(month_val_idxs)=} {val_idxs.shape=} {len(self.test_months)=}"
-            )
-        return train_idxs, val_idxs, test_idxs
-
-    def _disjoint_months(
-        self,
-        months: List = [],
-        sync_mode: str = "window",
-    ):
-        idxs = np.arange(len(self))
-        print(f"{idxs.shape=} {len(months)=}")
-        if sync_mode == "window":
-            start, end = 0, self.window - 1
-        elif sync_mode == "horizon":
-            horizon_offset = self.horizon_offset
-            start, end = horizon_offset, horizon_offset + self.horizon - 1
-            print(f"{start=} {end=}")
-        else:
-            raise ValueError(
-                f"Invalid sync mode type: {sync_mode}. Expected 'window' or 'horizon'"
-            )
-        if self.index is not None:
-            # after idxs
-            start_in_months = np.isin(self.index[self._indices + start].month, months)
-            end_in_months = np.isin(self.index[self._indices + end].month, months)
-            idxs_in_months = start_in_months & end_in_months
-            after_idxs = idxs[idxs_in_months]
-            print(
-                f"{start_in_months.sum()=} {end_in_months.sum()=} {idxs_in_months.sum()=}"
-            )
-
-            # before idxs
-            months_before = np.setdiff1d(np.arange(1, 13), months)
-            start_in_months = np.isin(
-                self.index[self._indices + start].month, months_before
-            )
-            end_in_months = np.isin(
-                self.index[self._indices + end].month, months_before
-            )
-            idxs_in_months = start_in_months & end_in_months
-            prev_idxs = idxs[idxs_in_months]
-
-            return prev_idxs, after_idxs
-        else:
-            raise ValueError
-
     def get_geolocation_graph(
         self,
         threshold: float = 0.1,
@@ -744,3 +702,96 @@ class AirQualityLoader(GraphLoader):
             data_mean = data_mean.fillna(method="ffill")
             data_mean = data_mean.fillna(method="bfill")
         return data_mean
+
+    def _disjoint_months(
+        self,
+        months: List = [],
+        sync_mode: str = "window",
+    ):
+        idxs = np.arange(len(self))
+        print(f"{idxs.shape=} {len(months)=}")
+        if sync_mode == "window":
+            start, end = 0, self.window - 1
+        elif sync_mode == "horizon":
+            horizon_offset = self.horizon_offset
+            start, end = horizon_offset, horizon_offset + self.horizon - 1
+            print(f"{start=} {end=}")
+        else:
+            raise ValueError(
+                f"Invalid sync mode type: {sync_mode}. Expected 'window' or 'horizon'"
+            )
+        if self.index is not None:
+            # after idxs
+            start_in_months = np.isin(self.index[self._indices + start].month, months)
+            end_in_months = np.isin(self.index[self._indices + end].month, months)
+            idxs_in_months = start_in_months & end_in_months
+            after_idxs = idxs[idxs_in_months]
+            print(
+                f"{start_in_months.sum()=} {end_in_months.sum()=} {idxs_in_months.sum()=}"
+            )
+
+            # before idxs
+            months_before = np.setdiff1d(np.arange(1, 13), months)
+            start_in_months = np.isin(
+                self.index[self._indices + start].month, months_before
+            )
+            end_in_months = np.isin(
+                self.index[self._indices + end].month, months_before
+            )
+            idxs_in_months = start_in_months & end_in_months
+            prev_idxs = idxs[idxs_in_months]
+
+            return prev_idxs, after_idxs
+        else:
+            raise ValueError
+
+    def overlapping_indices(
+        self, idxs1, idxs2, sync_mode="window", as_mask=False
+    ) -> tuple[np.ndarray, np.ndarray]:
+        assert sync_mode in ["window", "horizon"], (
+            "sync_mode can only be 'window' or 'horizon'"
+        )
+        timestamp1 = self.data_timestamps(idxs1, flatten=False)[sync_mode]
+        timestamp2 = self.data_timestamps(idxs2, flatten=False)[sync_mode]
+        common_timestamps = np.intersect1d(np.unique(timestamp1), np.unique(timestamp2))
+        is_overlapping = lambda sample: np.any(np.isin(sample, common_timestamps))
+        m1 = np.apply_along_axis(is_overlapping, 1, timestamp1)
+        m2 = np.apply_along_axis(is_overlapping, 1, timestamp2)
+        if as_mask:
+            return m1, m2
+        return np.sort(idxs1[m1]), np.sort(idxs2[m2])
+
+    def expand_indices(self, indices=None, unique=False) -> Dict:
+        ds_indices = dict.fromkeys(
+            [time for time in ["window", "horizon"] if getattr(self, time) > 0]
+        )
+        indices = np.arange(len(self._indices)) if indices is None else indices
+        if "window" in ds_indices:
+            window_idxs = [
+                np.arange(idx, idx + self.window) for idx in self._indices[indices]
+            ]
+            ds_indices["window"] = np.concatenate(window_idxs)
+        if "horizon" in ds_indices:
+            horizon_idxs = [
+                np.arange(
+                    idx + self.horizon_offset,
+                    idx + self.horizon_offset + self.horizon,
+                )
+                for idx in self._indices[indices]
+            ]
+            ds_indices["horizon"] = np.concatenate(horizon_idxs)
+        if unique:
+            ds_indices = {
+                k: np.unique(v) for k, v in ds_indices.items() if v is not None
+            }
+        return ds_indices
+
+    def data_timestamps(self, indices=None, flatten=True) -> Dict:
+        ds_indices = self.expand_indices(indices, unique=False)
+        ds_timestamp = {k: self.index[v] for k, v in ds_indices.items()}
+        if not flatten:
+            ds_timestamp = {
+                k: np.array(v).reshape(-1, getattr(self, k))
+                for k, v in ds_timestamp.items()
+            }
+        return ds_timestamp
