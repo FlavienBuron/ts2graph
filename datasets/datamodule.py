@@ -25,6 +25,10 @@ class DataModule(pl.LightningDataModule):
         samples_per_epoch: int = 0,
     ):
         super().__init__()
+        print(
+            f"DEBUG: Is LightningDataModule? {isinstance(self, pl.LightningDataModule)}"
+        )
+        print(f"DEBUG: MRO: {self.__class__.__mro__}")
         self.dataset = dataset
         self._has_setup_fit = True
 
