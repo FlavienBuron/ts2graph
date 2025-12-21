@@ -24,7 +24,7 @@ class DataModule(pl.LightningDataModule):
         workers=21,
         samples_per_epoch: int = 0,
     ):
-        super(DataModule, self).__init__()
+        super().__init__()
         self.dataset = dataset
         self._has_setup_fit = True
 
@@ -89,6 +89,7 @@ class DataModule(pl.LightningDataModule):
         return self.dataset.expand_and_merge_indices(self.test_set.indices)
 
     def train_dataloader(self):
+        print("DEBUG: train_dataloader method is being called!")
         rnd_sampler = None
         shuffle = True
         print(f"train_loader: {len(self.train_set)=} {shuffle=} {self.batch_size=}")
