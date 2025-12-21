@@ -89,7 +89,7 @@ class DataModule(pl.LightningDataModule):
     def test_slice(self):
         return self.dataset.expand_and_merge_indices(self.test_set.indices)
 
-    def _train_dataloaders(self, seed):
+    def train_dataloaders(self, seed):
         rnd_sampler = None
         shuffle = True
         print(f"train_loader: {len(self.train_set)=} {shuffle=} {self.batch_size=}")
@@ -113,7 +113,7 @@ class DataModule(pl.LightningDataModule):
             drop_last=True,
         )
 
-    def _val_dataloader(self, shuffle: bool = False):
+    def val_dataloader(self, shuffle: bool = False):
         print(f"val_dataloader: {shuffle=} {self.batch_size=} {len(self.val_set)=}")
         return DataLoader(
             dataset=self.val_set,
@@ -121,7 +121,7 @@ class DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
         )
 
-    def _test_dataloader(self, shuffle: bool = False):
+    def test_dataloader(self, shuffle: bool = False):
         print(f"test_dataloader: {shuffle=} {self.batch_size=} {len(self.test_set)=}")
         return DataLoader(
             dataset=self.train_set,
