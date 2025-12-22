@@ -82,7 +82,7 @@ class DataModule(pl.LightningDataModule):
     def test_slice(self):
         return self.dataset.expand_and_merge_indices(self.test_set.indices)
 
-    def train_dataloader(self, *args, **kwargs):
+    def train_dataloader(self):
         rnd_sampler = None
         shuffle = True
         if self.samples_per_epoch > 0:
@@ -100,6 +100,7 @@ class DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             sampler=rnd_sampler,
             drop_last=True,
+            num_workers=self.workers,
         )
 
     def val_dataloader(self, shuffle: bool = False):
@@ -107,6 +108,7 @@ class DataModule(pl.LightningDataModule):
             dataset=self.val_set,
             shuffle=shuffle,
             batch_size=self.batch_size,
+            num_workers=self.workers,
         )
 
     def test_dataloader(self, shuffle: bool = False):
@@ -114,6 +116,7 @@ class DataModule(pl.LightningDataModule):
             dataset=self.train_set,
             shuffle=shuffle,
             batch_size=self.batch_size,
+            num_workers=self.workers,
         )
 
     def get_scaling_axes(self, dim: str = "global"):
