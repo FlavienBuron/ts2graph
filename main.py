@@ -780,6 +780,9 @@ def run(args: Namespace) -> None:
         "mre": MaskedMRE(compute_on_step=False),
         "mre2": MaskedMRE2(compute_on_step=False),
     }
+    print(
+        f"{dm.d_in=} {args.d_hidden=} {args.d_ff=} {args.d_u=} {args.d_emb=} {dm.n_nodes=}"
+    )
     model_kwargs = {
         "adj": adj,
         "d_in": dm.d_in,
