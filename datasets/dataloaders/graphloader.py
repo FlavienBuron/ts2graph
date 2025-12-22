@@ -107,11 +107,13 @@ class GraphLoader(Dataset, ABC):
 
     @property
     def data(self):
+        print(f"DEBUG: get data {self._data.shape=}")
         return self._data
 
     @data.setter
     def data(self, value: np.ndarray):
         assert value is not None
+        print(f"DEBUG: set data {value.shape=}")
         self._data = self._check_input(torch.tensor(value))
 
     @property
