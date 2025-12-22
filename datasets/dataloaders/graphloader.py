@@ -375,10 +375,10 @@ class GraphLoader(Dataset, ABC):
             print(f"GL In check_dim: {dim=}")
             return data
         elif data.ndim == 2:
-            print(f"GL In check_dim: {rearrange(data, "s (n f) -> s n f", f=1)=}")
+            print(f"GL In check_dim: {rearrange(data, "s (n f) -> s n f", f=1).shape=}")
             return rearrange(data, "s (n f) -> s n f", f=1)
         elif data.ndim == 1:
-            print(f"GL In check_dim: {rearrange(data, "s (n f) -> s n f", f=1)=}")
+            print(f"GL In check_dim: {rearrange(data, "s (n f) -> s n f", f=1).shape=}")
             return rearrange(data, "(s n f) -> s n f", n=1, f=1)
         else:
             raise ValueError(f"Invalid data dimensions {dim}")
