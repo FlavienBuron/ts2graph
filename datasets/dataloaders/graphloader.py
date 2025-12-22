@@ -44,7 +44,6 @@ class GraphLoader(Dataset, ABC):
         self.data, self.index = self.as_numpy(return_idx=True)
         if self.index is None:
             raise AttributeError("Dataset index is returned as None")
-        print(f"{self.data.shape=} {self.index.shape=}")
 
         if exogenous is None:
             exogenous = dict()
@@ -69,11 +68,9 @@ class GraphLoader(Dataset, ABC):
         self.delay = -self.window
         self.stride = 1
 
-        print(f"{self.window=} {self.delay=} {self.horizon=} {self.stride=}")
         self._indices = np.arange(self.df.shape[0] - self.sample_span + 1)[
             :: self.stride
         ]
-        print(f"{len(self._indices)=} {self.df.shape=} {self.sample_span=}")
 
         self.scaler = None
 
@@ -107,13 +104,11 @@ class GraphLoader(Dataset, ABC):
 
     @property
     def data(self):
-        print(f"DEBUG: get data {self._data.shape=}")
         return self._data
 
     @data.setter
     def data(self, value: np.ndarray):
         assert value is not None
-        print(f"DEBUG: set data {value.shape=}")
         self._data = self._check_input(torch.tensor(value))
 
     @property
@@ -245,7 +240,6 @@ class GraphLoader(Dataset, ABC):
 
         assert "T" in self.freq
         self.samples_per_day = int(60 / int(self.freq[:-1]) * 24)
-        print(f"{len(idx)=} {self.freq=} {self.samples_per_day=}")
 
     def _store_spatiotemporal_data(
         self,
@@ -380,15 +374,11 @@ class GraphLoader(Dataset, ABC):
     @staticmethod
     def check_dim(data: torch.Tensor):
         dim = data.ndim
-        print(f"GL In check_dim: {dim=}")
         if dim == 3:
-            print(f"GL In check_dim: {dim=}")
             return data
         elif data.ndim == 2:
-            print(f"GL In check_dim: {rearrange(data, "s (n f) -> s n f", f=1).shape=}")
             return rearrange(data, "s (n f) -> s n f", f=1)
         elif data.ndim == 1:
-            print(f"GL In check_dim: {rearrange(data, "s (n f) -> s n f", f=1).shape=}")
             return rearrange(data, "(s n f) -> s n f", n=1, f=1)
         else:
             raise ValueError(f"Invalid data dimensions {dim}")

@@ -101,7 +101,6 @@ class AirQualityLoader(GraphLoader):
 
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
-        print(f"{data.shape=} {missing_mask.shape=} {dist.shape=}")
         return data, missing_mask, dist
 
     def grin_split(
@@ -110,11 +109,9 @@ class AirQualityLoader(GraphLoader):
         in_sample: bool = False,
         window: int = 36,
     ):
-        print(f"{len(self.test_months)=} {self.test_months=}")
         nontest_idxs, test_idxs = self._disjoint_months(
             months=self.test_months, sync_mode="horizon"
         )
-        print(f"{nontest_idxs.shape=} {test_idxs.shape=} {len(self)=}")
         if in_sample:
             train_idxs = np.arange(len(self))
             val_months = [(m - 1) % 12 for m in self.test_months]
@@ -140,9 +137,6 @@ class AirQualityLoader(GraphLoader):
                 nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
             )
             train_idxs = nontest_idxs[~ovl_idxs]
-            print(
-                f"{val_len=} {len(nontest_idxs)=} {delta_idxs.shape=} {len(end_month_idxs)=} {len(month_val_idxs)=} {val_idxs.shape=} {len(self.test_months)=}"
-            )
         return train_idxs, val_idxs, test_idxs
 
     def split(
@@ -533,7 +527,6 @@ class AirQualityLoader(GraphLoader):
 
         edge_index = from_knn(data=data, mask=mask, k=k, loop=loop, cosine=cosine)
         adj = to_dense_adj(edge_index).squeeze()
-        print(f"{adj.shape=}")
         return adj
 
     def get_geo_nn_graph(
@@ -710,13 +703,11 @@ class AirQualityLoader(GraphLoader):
         sync_mode: str = "window",
     ):
         idxs = np.arange(len(self))
-        print(f"{idxs.shape=} {len(months)=}")
         if sync_mode == "window":
             start, end = 0, self.window - 1
         elif sync_mode == "horizon":
             horizon_offset = self.horizon_offset
             start, end = horizon_offset, horizon_offset + self.horizon - 1
-            print(f"{start=} {end=}")
         else:
             raise ValueError(
                 f"Invalid sync mode type: {sync_mode}. Expected 'window' or 'horizon'"

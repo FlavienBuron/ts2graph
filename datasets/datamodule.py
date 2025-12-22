@@ -26,7 +26,6 @@ class DataModule(pl.LightningDataModule):
     ):
         super().__init__()
         self.dataset = dataset
-        print(f"DEBUG:{dataset.data.shape=} {self.dataset.shape=}")
         self._has_setup_fit = True
 
         self.train_set = Subset(self.dataset, train_indices)
@@ -47,13 +46,7 @@ class DataModule(pl.LightningDataModule):
             scaling_axes = self.get_scaling_axes(self.scaling_axis)
             train = self.dataset.data[self.train_slice]
             train_mask = self.dataset.mask[self.train_slice]
-            print(
-                f"{scaling_axes=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=} {self.dataset._mask.shape=} {self.dataset.mask.shape=}"
-            )
             scaler = self.get_scaler()(axis=scaling_axes)
-            print(
-                f"{type(train)=} {type(train_mask)=} {type(self.dataset.mask)=} {type(self.dataset.data)=}"
-            )
             scaler.fit(x=train, mask=train_mask, keepdims=True)
             self.scaler = scaler.to_torch()
 
@@ -64,7 +57,6 @@ class DataModule(pl.LightningDataModule):
                     scaler.fit(exo[self.train_slice], keepdims=True)
                     scaler = scaler.to_torch()
                     setattr(self, label, scaler.transform(exo))
-        print("DEBUG: DataModule successfully initialized")
 
     @property
     def n_nodes(self):
@@ -91,10 +83,8 @@ class DataModule(pl.LightningDataModule):
         return self.dataset.expand_and_merge_indices(self.test_set.indices)
 
     def train_dataloader(self, *args, **kwargs):
-        print("DEBUG: train_dataloader method is being called!")
         rnd_sampler = None
         shuffle = True
-        print(f"train_loader: {len(self.train_set)=} {shuffle=} {self.batch_size=}")
         if self.samples_per_epoch > 0:
             shuffle = False
 
@@ -113,7 +103,6 @@ class DataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self, shuffle: bool = False):
-        print(f"val_dataloader: {shuffle=} {self.batch_size=} {len(self.val_set)=}")
         return DataLoader(
             dataset=self.val_set,
             shuffle=shuffle,
@@ -121,7 +110,6 @@ class DataModule(pl.LightningDataModule):
         )
 
     def test_dataloader(self, shuffle: bool = False):
-        print(f"test_dataloader: {shuffle=} {self.batch_size=} {len(self.test_set)=}")
         return DataLoader(
             dataset=self.train_set,
             shuffle=shuffle,

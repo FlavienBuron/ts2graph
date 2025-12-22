@@ -766,7 +766,6 @@ def run(args: Namespace) -> None:
         samples_per_epoch=5120,
     )
 
-    print("Dataset setup done")
     # dataset._store_spatiotemporal_data()
     adj, _ = get_spatial_graph(
         technique="loc", parameter=0.3, dataset=dataset, args=args
@@ -780,9 +779,6 @@ def run(args: Namespace) -> None:
         "mre": MaskedMRE(compute_on_step=False),
         "mre2": MaskedMRE2(compute_on_step=False),
     }
-    print(
-        f"{dm.d_in=} {args.d_hidden=} {args.d_ff=} {args.d_u=} {args.d_emb=} {dm.n_nodes=}"
-    )
     model_kwargs = {
         "adj": adj,
         "d_in": dm.d_in,
