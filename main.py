@@ -832,8 +832,9 @@ def run(args: Namespace) -> None:
         gradient_clip_val=0.5,
         enable_progress_bar=True,
     )
-    results = trainer.fit(imputer, datamodule=dm)
-    print(results)
+    trainer.fit(imputer, datamodule=dm)
+    pred = trainer.predict(imputer, datamodule=dm)
+    print(f"{pred=}")
 
 
 if __name__ == "__main__":
