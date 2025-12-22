@@ -68,17 +68,11 @@ class DataModule(pl.LightningDataModule):
 
     @property
     def n_nodes(self):
-        print(
-            f"DEBUG: DM n_nodes: {self.dataset.shape[1]} shape={self.dataset.shape} {self.dataset.n_nodes=}"
-        )
-        return self.dataset.shape[1]
+        return self.dataset.n_nodes
 
     @property
     def d_in(self):  # changed from n_channels
-        print(
-            f"DEBUG: DM d_in: {self.dataset.shape[-1]} shape={self.dataset.shape} {self.dataset.n_channels=}"
-        )
-        return self.dataset.shape[-1]
+        return self.dataset.n_channels
 
     @property
     def d_out(self):
