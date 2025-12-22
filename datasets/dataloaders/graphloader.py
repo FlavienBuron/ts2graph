@@ -141,6 +141,14 @@ class GraphLoader(Dataset, ABC):
         return self.data.shape[0]
 
     @property
+    def n_channels(self):
+        return self.data.shape[-1]
+
+    @property
+    def n_nodes(self):
+        return self.data.shape[1]
+
+    @property
     def indices(self):
         return self._indices
 
