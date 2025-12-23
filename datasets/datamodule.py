@@ -119,6 +119,9 @@ class DataModule(pl.LightningDataModule):
             num_workers=self.workers,
         )
 
+    def predict_dataloader(self):
+        return self.test_dataloader()
+
     def get_scaling_axes(self, dim: str = "global"):
         scaling_axis = tuple()
         if dim == "global":
