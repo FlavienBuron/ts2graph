@@ -154,7 +154,7 @@ class Imputer(pl.LightningModule):
         eval_mask = batch_data.pop("eval_mask", None)
         target = batch_data.pop("y")
 
-        imputation, prediction = self.predict_batch(
+        imputation, prediction = self._predict_batch(
             batch, preprocess=False, postprocess=True
         )
 
