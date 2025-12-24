@@ -139,6 +139,7 @@ class Imputer(pl.LightningModule):
         if preprocess:
             x = batch_data.pop("x")
             x = self._preprocess(x, batch_preprocessing)
+            print(f"DEBUG: Preprocessed x: {torch.isnan(x).any().item()}")
             imputation, prediction, _ = self.forward(x, **batch_data)
         else:
             imputation, prediction, _ = self.forward(**batch_data)
@@ -146,6 +147,12 @@ class Imputer(pl.LightningModule):
         if postprocess:
             imputation = self._postprocess(imputation, batch_preprocessing)
             prediction = self._postprocess(prediction, batch_preprocessing)
+            print(
+                f"DEBUG: Postprocessed imputation: {torch.isnan(imputation).any().item()}"
+            )
+            print(
+                f"DEBUG: Postprocessed prediction: {torch.isnan(prediction).any().item()}"
+            )
         return imputation, prediction
 
     def predict_step(self, batch, batch_idx):
@@ -178,6 +185,15 @@ class Imputer(pl.LightningModule):
         eval_mask = (mask | eval_mask) & ~batch_data["mask"].bool()
 
         y = batch_data.pop("y")
+        if batch_idx == 0:
+            masked_y = y[eval_mask]
+            masked_imp = imputation[eval_mask]
+            print(
+                "DEBUG: NaNs in y:",
+                torch.isnan(masked_y).any().item(),
+                "DEBUG: NaNs in imputation:",
+                torch.isnan(masked_imp).any().item(),
+            )
 
         imputation, prediction = self._predict_batch(
             batch, preprocess=False, postprocess=False
