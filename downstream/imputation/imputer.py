@@ -265,7 +265,7 @@ class Imputer(pl.LightningModule):
             on_step=False,
             on_epoch=True,
             logger=True,
-            # prog_bar=False,
+            prog_bar=False,
         )
         return {
             "loss": test_loss,

@@ -213,6 +213,7 @@ class GraphLoader(Dataset, ABC):
                     res["x"] = self.scaler.transform(res["x"])
 
         res["x"] = torch.where(res["mask"], res["x"], torch.zeros_like(res["x"]))
+        res["mask"] = res["mask"].bool()
 
         return res, transform
 
