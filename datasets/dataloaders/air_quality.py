@@ -645,9 +645,9 @@ class AirQualityLoader(GraphLoader):
             self.missing_data = self.original_data.nan_to_num(nan=0.0)
 
     def _infer_mask(self, data: pd.DataFrame) -> pd.DataFrame:
-        observed_mask = data.isna().astype("uint8")
+        observed_mask = data.isna().astype("bool")
         eval_mask = pd.DataFrame(index=data.index, columns=data.columns, data=0).astype(
-            "uint8"
+            "bool"
         )
         if self.infer_eval_from == "previous":
             offset = -1
