@@ -185,6 +185,10 @@ class Imputer(pl.LightningModule):
         eval_mask = (mask | eval_mask) & ~batch_data["mask"].bool()
 
         y = batch_data.pop("y")
+
+        imputation, prediction = self._predict_batch(
+            batch, preprocess=False, postprocess=False
+        )
         if batch_idx == 0:
             masked_y = y[eval_mask]
             masked_imp = imputation[eval_mask]
@@ -194,10 +198,6 @@ class Imputer(pl.LightningModule):
                 "DEBUG: NaNs in imputation:",
                 torch.isnan(masked_imp).any().item(),
             )
-
-        imputation, prediction = self._predict_batch(
-            batch, preprocess=False, postprocess=False
-        )
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
