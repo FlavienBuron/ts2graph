@@ -837,11 +837,8 @@ def run(args: Namespace) -> None:
     if outputs is None:
         print("Trainer prediction return None results")
         return
-    pred_loss = outputs["loss"]
-    preds = outputs["preds"]
-    target = outputs["target"]
 
-    print(f"{pred_loss=} {preds.shape=} {target.shape=}")
+    print(f"{type(outputs)=}")
 
 
 if __name__ == "__main__":

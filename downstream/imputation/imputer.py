@@ -256,7 +256,14 @@ class Imputer(pl.LightningModule):
         self.log_dict(
             self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
-
+        self.log(
+            "test_loss",
+            test_loss.detach(),
+            on_step=False,
+            on_epoch=True,
+            logger=True,
+            # prog_bar=False,
+        )
         return {
             "loss": test_loss,
             "preds": imputation.detach().clone(),
