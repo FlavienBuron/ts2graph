@@ -20,7 +20,7 @@ class AirQualityLoader(GraphLoader):
         dataset_path: str = "./datasets/data/air_quality/",
         small: bool = False,
         normalization_type: str = "min_max",
-        impute_nans: bool = False,
+        impute_nans: bool = True,
         nan_method: str = "mean",
         freq: str = "60T",
         masked_sensors: list | None = None,
