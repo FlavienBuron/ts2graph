@@ -833,8 +833,15 @@ def run(args: Namespace) -> None:
         enable_progress_bar=True,
     )
     trainer.fit(imputer, datamodule=dm)
-    pred = trainer.predict(imputer, datamodule=dm)
-    print(f"{pred=}")
+    outputs = trainer.predict(imputer, datamodule=dm)
+    if outputs is None:
+        print("Trainer prediction return None results")
+        return
+    pred_loss = outputs["loss"]
+    preds = outputs["preds"]
+    target = outputs["target"]
+
+    print(f"{pred_loss=} {preds.shape=} {target.shape=}")
 
 
 if __name__ == "__main__":
