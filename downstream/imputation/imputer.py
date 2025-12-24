@@ -196,6 +196,15 @@ class Imputer(pl.LightningModule):
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
+        if batch_idx == 0:
+            masked_y = y[eval_mask]
+            masked_imp = imputation[eval_mask]
+            print(
+                "DEBUG: NaNs in y:",
+                torch.isnan(masked_y).any().item(),
+                "DEBUG: NaNs in imputation:",
+                torch.isnan(masked_imp).any().item(),
+            )
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
             self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
