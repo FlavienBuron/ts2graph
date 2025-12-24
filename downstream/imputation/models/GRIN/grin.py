@@ -57,6 +57,7 @@ class GRINet(nn.Module):
         total_imputation_time = 0.0
         # x = x.unsqueeze(0)
         # x: [batches, steps, nodes, channels] -> [batches, channels, nodes, steps]
+        print(f"DEBUG: Model x as any NaNs?: {torch.isnan(x).any().item()}")
         x = rearrange(x, "b s n c -> b c n s")
         if mask is not None:
             # mask = mask.unsqueeze(0)
