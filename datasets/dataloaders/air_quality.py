@@ -97,7 +97,6 @@ class AirQualityLoader(GraphLoader):
             )
         self.validation_mask = eval_mask
         if impute_nans:
-            print(f"DEBUG: {impute_nans=}")
             data = data.fillna(self._compute_mean(data))
 
         stations_coords = stations.loc[:, ["latitude", "longitude"]]

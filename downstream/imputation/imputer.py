@@ -139,7 +139,6 @@ class Imputer(pl.LightningModule):
         if preprocess:
             x = batch_data.pop("x")
             x = self._preprocess(x, batch_preprocessing)
-            print(f"DEBUG: Preprocessed x: {torch.isnan(x).any().item()}")
             imputation, prediction, _ = self.forward(x, **batch_data)
         else:
             imputation, prediction, _ = self.forward(**batch_data)
@@ -147,12 +146,6 @@ class Imputer(pl.LightningModule):
         if postprocess:
             imputation = self._postprocess(imputation, batch_preprocessing)
             prediction = self._postprocess(prediction, batch_preprocessing)
-            print(
-                f"DEBUG: Postprocessed imputation: {torch.isnan(imputation).any().item()}"
-            )
-            print(
-                f"DEBUG: Postprocessed prediction: {torch.isnan(prediction).any().item()}"
-            )
         return imputation, prediction
 
     def predict_step(self, batch, batch_idx):
@@ -180,8 +173,6 @@ class Imputer(pl.LightningModule):
             mask.clone().detach().float() * self.keep_prob
         ).byte()
         eval_mask = batch_data.pop("eval_mask")
-        if batch_idx == 0:
-            print("DEBUG: valid eval points:", eval_mask.sum().item())
         eval_mask = (mask | eval_mask) & ~batch_data["mask"].bool()
 
         y = batch_data.pop("y")
@@ -189,15 +180,6 @@ class Imputer(pl.LightningModule):
         imputation, prediction = self._predict_batch(
             batch, preprocess=False, postprocess=False
         )
-        if batch_idx == 0:
-            masked_y = y[eval_mask]
-            masked_imp = imputation[eval_mask]
-            print(
-                "DEBUG: NaNs in y:",
-                torch.isnan(masked_y).any().item(),
-                "DEBUG: NaNs in imputation:",
-                torch.isnan(masked_imp).any().item(),
-            )
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
@@ -215,12 +197,6 @@ class Imputer(pl.LightningModule):
         if batch_idx == 0:
             masked_y = y[eval_mask]
             masked_imp = imputation[eval_mask]
-            print(
-                "DEBUG: NaNs in y:",
-                torch.isnan(masked_y).any().item(),
-                "DEBUG: NaNs in imputation:",
-                torch.isnan(masked_imp).any().item(),
-            )
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
             self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
