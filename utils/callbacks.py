@@ -8,11 +8,12 @@ class ConsoleMetricsCallback(pl.Callback):
         ordered = sorted(val_metrics.items())
 
         line = (
-            f"[Epoch {trainer.current_epoch}]"
+            f"[Epoch {trainer.current_epoch}] "
             # f"train_mae={metrics['train_mae']:.3f} | "
             # f"val_mae={metrics['val_mae']:.3f}"
         )
         line += " | ".join(f"{k}={v:.3f}" for k, v in ordered)
+        line += "\n"
         from pytorch_lightning.utilities import rank_zero_info
 
         rank_zero_info(line)
