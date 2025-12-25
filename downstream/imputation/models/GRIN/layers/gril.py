@@ -197,7 +197,6 @@ class GRIL(nn.Module):
             # firstly impute missing values with predictions from state
             xs_hat_1 = self.first_stage(h_s)
             # fill missing values in input with prediction
-            print(f"DEBUG: {x_s.dtype=} {m_s.dtype=} {xs_hat_1.dtype=}")
             x_s = torch.where(m_s, x_s, xs_hat_1)
             # prepare inputs
             # retrieve maximum information from neighbors
