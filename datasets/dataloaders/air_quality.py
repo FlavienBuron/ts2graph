@@ -677,6 +677,7 @@ class AirQualityLoader(GraphLoader):
 
     def _compute_mean(self, data: pd.DataFrame) -> pd.DataFrame:
         data_mean = data.copy()
+
         condition0 = [
             data_mean.index.year,
             data_mean.index.isocalendar().week,
@@ -689,7 +690,7 @@ class AirQualityLoader(GraphLoader):
         ]
         conditions = [condition0, condition1, condition1[1:], condition1[2:]]
         while data_mean.isna().values.sum() and len(conditions):
-            nan_mean = data_mean.groupby(conditions[0]).transform(np.nanmean)
+            nan_mean = data_mean.groupby(conditions[0]).transform("mean")
             data_mean = data_mean.fillna(nan_mean)
             conditions = conditions[1:]
         if data_mean.isna().values.sum():
