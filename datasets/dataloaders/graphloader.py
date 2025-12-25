@@ -221,7 +221,7 @@ class GraphLoader(Dataset, ABC):
         self,
         dataframe: pd.DataFrame,
         mask: np.ndarray,
-        freq: str | None = "60T",
+        freq: str | None = "60min",
         aggr: str = "sum",
     ):
         self.df = dataframe
@@ -239,7 +239,6 @@ class GraphLoader(Dataset, ABC):
             self.freq = dataframe.index.inferred_freq
             self._resample(self.freq, aggr=aggr)
 
-        assert "T" in self.freq
         self.samples_per_day = int(60 / int(self.freq[:-1]) * 24)
 
     def _store_spatiotemporal_data(
