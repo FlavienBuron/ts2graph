@@ -231,9 +231,9 @@ class Imputer(pl.LightningModule):
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
         self.val_metrics.update(imputation.detach(), y, eval_mask)
-        self.log_dict(
-            self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
-        )
+        # self.log_dict(
+        #     self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        # )
         # self.log(
         #     "val_loss",
         #     val_loss.detach(),
@@ -242,6 +242,9 @@ class Imputer(pl.LightningModule):
         #     logger=True,
         #     prog_bar=False,
         # )
+
+        self.log("val_loss", val_loss, prog_bar=True, logger=True, on_epoch=True)
+        self.log_dict(self.val_metrics, prog_bar=False, logger=True, on_epoch=True)
 
         return val_loss
 
