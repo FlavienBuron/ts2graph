@@ -8,7 +8,7 @@ class ConsoleMetricsCallback(pl.Callback):
         ordered = sorted(val_metrics.items())
 
         line = (
-            f"[Epoch {trainer.current_epoch}] {metrics}"
+            f"[Epoch {trainer.current_epoch}]"
             # f"train_mae={metrics['train_mae']:.3f} | "
             # f"val_mae={metrics['val_mae']:.3f}"
         )
