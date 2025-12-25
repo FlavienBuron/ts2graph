@@ -32,7 +32,7 @@ class GRINet(nn.Module):
         self.d_hidden = d_hidden
         self.d_u = int(d_u) if d_u is not None else 0
         self.d_emb = int(d_emb) if d_emb is not None else 0
-        self.register_buffer("adj", torch.tensor(adj).float())
+        self.register_buffer("adj", adj.detach().clone().float())
         self.impute_only_holes = impute_only_holes
 
         self.bigrill = BiGRIL(
