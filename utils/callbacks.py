@@ -6,9 +6,10 @@ class ConsoleMetricsCallback(pl.Callback):
         metrics = trainer.callback_metrics
 
         line = (
-            f"[Epoch {trainer.current_epoch}] {metrics}"
+            f"[Epoch {trainer.current_epoch}]"
             # f"train_mae={metrics['train_mae']:.3f} | "
-            # f"val_mae={metrics['val_mae']:.3f}"
+            f"{metric}: {value}"
+            for metric, value in metrics.items()
         )
         from pytorch_lightning.utilities import rank_zero_info
 
