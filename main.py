@@ -42,6 +42,7 @@ from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
     compute_laplacian_smoothness,
 )
+from utils.callbacks import ConsoleMetricsCallback
 
 random.seed(42)
 np.random.seed(42)
@@ -831,6 +832,7 @@ def run(args: Namespace) -> None:
         gradient_clip_algorithm="norm",
         gradient_clip_val=0.5,
         enable_progress_bar=True,
+        callbacks=[ConsoleMetricsCallback()],
     )
     trainer.fit(imputer, datamodule=dm)
     outputs = trainer.predict(imputer, datamodule=dm)
