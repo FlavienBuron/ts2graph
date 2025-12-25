@@ -198,9 +198,9 @@ class Imputer(pl.LightningModule):
             masked_y = y[eval_mask]
             masked_imp = imputation[eval_mask]
         self.train_metrics.update(imputation.detach(), y, eval_mask)
-        self.log_dict(
-            self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
-        )
+        # self.log_dict(
+        #     self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        # )
 
         self.log(
             "train_loss",
@@ -231,9 +231,9 @@ class Imputer(pl.LightningModule):
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
         self.val_metrics.update(imputation.detach(), y, eval_mask)
-        self.log_dict(
-            self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
-        )
+        # self.log_dict(
+        #     self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        # )
         self.log(
             "val_loss",
             val_loss.detach(),
@@ -256,9 +256,9 @@ class Imputer(pl.LightningModule):
 
         # Logging
         self.test_metrics.update(imputation.detach(), y, eval_mask)
-        self.log_dict(
-            self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
-        )
+        # self.log_dict(
+        #     self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        # )
         self.log(
             "test_loss",
             test_loss.detach(),
