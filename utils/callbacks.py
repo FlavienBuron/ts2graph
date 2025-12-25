@@ -6,7 +6,7 @@ class ConsoleMetricsCallback(pl.Callback):
         metrics = trainer.callback_metrics
 
         line = (
-            f"[Epoch {trainer.current_epoch}]"
+            f"[Epoch {trainer.current_epoch}] {type(metrics)}"
             # f"train_mae={metrics['train_mae']:.3f} | "
             f"{metric}: {value}"
             for metric, value in metrics.items()
