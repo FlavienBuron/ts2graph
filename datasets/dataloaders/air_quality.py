@@ -22,7 +22,7 @@ class AirQualityLoader(GraphLoader):
         normalization_type: str = "min_max",
         impute_nans: bool = True,
         nan_method: str = "mean",
-        freq: str = "60T",
+        freq: str = "60min",
         masked_sensors: list | None = None,
     ):
         self.dataset_path = dataset_path
