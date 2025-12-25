@@ -13,7 +13,5 @@ class ConsoleMetricsCallback(pl.Callback):
             # f"val_mae={metrics['val_mae']:.3f}"
         )
         line += " | ".join(f"{k}={v:.3f}" for k, v in ordered)
-        line += "\n"
-        from pytorch_lightning.utilities import rank_zero_info
 
-        rank_zero_info(line)
+        trainer.print(line)
