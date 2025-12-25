@@ -202,14 +202,14 @@ class Imputer(pl.LightningModule):
             self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
 
-        # self.log(
-        #     "train_loss",
-        #     loss.detach(),
-        #     on_step=False,
-        #     on_epoch=True,
-        #     logger=True,
-        #     prog_bar=False,
-        # )
+        self.log(
+            "train_loss",
+            loss.detach(),
+            on_step=False,
+            on_epoch=True,
+            logger=True,
+            prog_bar=False,
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -231,20 +231,20 @@ class Imputer(pl.LightningModule):
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
         self.val_metrics.update(imputation.detach(), y, eval_mask)
-        # self.log_dict(
-        #     self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
-        # )
-        # self.log(
-        #     "val_loss",
-        #     val_loss.detach(),
-        #     on_step=False,
-        #     on_epoch=True,
-        #     logger=True,
-        #     prog_bar=False,
-        # )
+        self.log_dict(
+            self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        )
+        self.log(
+            "val_loss",
+            val_loss.detach(),
+            on_step=False,
+            on_epoch=True,
+            logger=True,
+            prog_bar=False,
+        )
 
-        self.log("val_loss", val_loss, prog_bar=True, logger=True, on_epoch=True)
-        self.log_dict(self.val_metrics, prog_bar=False, logger=True, on_epoch=True)
+        # self.log("val_loss", val_loss, prog_bar=True, logger=True, on_epoch=True)
+        # self.log_dict(self.val_metrics, prog_bar=False, logger=True, on_epoch=True)
 
         return val_loss
 
@@ -262,14 +262,14 @@ class Imputer(pl.LightningModule):
         self.log_dict(
             self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
-        # self.log(
-        #     "test_loss",
-        #     test_loss.detach(),
-        #     on_step=False,
-        #     on_epoch=True,
-        #     logger=True,
-        #     prog_bar=False,
-        # )
+        self.log(
+            "test_loss",
+            test_loss.detach(),
+            on_step=False,
+            on_epoch=True,
+            logger=True,
+            prog_bar=False,
+        )
         return {
             "loss": test_loss,
             "preds": imputation.detach().clone(),
