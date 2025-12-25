@@ -12,6 +12,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import yaml
+from pytorch_lightning.callbacks import RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from sklearn.metrics import (
     mean_absolute_error,
@@ -832,7 +833,7 @@ def run(args: Namespace) -> None:
         gradient_clip_algorithm="norm",
         gradient_clip_val=0.5,
         enable_progress_bar=True,
-        callbacks=[ConsoleMetricsCallback()],
+        callbacks=[RichProgressBar(), ConsoleMetricsCallback()],
     )
     trainer.fit(imputer, datamodule=dm)
     outputs = trainer.predict(imputer, datamodule=dm)
