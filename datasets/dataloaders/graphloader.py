@@ -98,9 +98,16 @@ class GraphLoader(Dataset, ABC):
         return np.zeros_like(self.shape).astype("bool")
 
     @mask.setter
-    def mask(self, value: np.ndarray):
+    def mask(self, value: np.ndarray | torch.Tensor):
         assert value is not None
-        self._mask = self._check_input(torch.tensor(value))
+        # Convert to tensor if needed, using proper method
+        if isinstance(value, torch.Tensor):
+            # Already a tensor - use detach().clone()
+            tensor_value = value.detach().clone()
+        else:
+            # Numpy array - convert to tensor
+            tensor_value = torch.from_numpy(value)
+        self._mask = self._check_input(tensor_value)
 
     @property
     def data(self):
