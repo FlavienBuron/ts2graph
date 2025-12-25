@@ -227,19 +227,20 @@ class GraphLoader(Dataset, ABC):
         self.df = dataframe
         self.index = pd.to_datetime(dataframe.index)
 
-        idx = sorted(self.df.index)
-        self.start = idx[0]
-        self.end = idx[-1]
+        self.start, self.end = self.index.min(), self.index.max()
 
         self._mask = mask
 
         if freq is not None:
             self._resample(freq=freq, aggr=aggr)
         else:
-            self.freq = dataframe.index.inferred_freq
-            self._resample(self.freq, aggr=aggr)
+            self.freq = self.index.inferred_freq
+            if self.freq is not None:
+                self._resample(self.freq, aggr=aggr)
+            else:
+                raise ValueError("Inferred frequencies returned None")
 
-        self.samples_per_day = int(60 / int(self.freq[:-1]) * 24)
+        self.samples_per_day = int(86400 / pd.Timedelta(self.freq).total_seconds())
 
     def _store_spatiotemporal_data(
         self,
