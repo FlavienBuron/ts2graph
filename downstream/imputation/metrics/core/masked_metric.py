@@ -30,8 +30,6 @@ class MaskedMetric(Metric):
         self.at = slice(None) if at is None else slice(at, at + 1)
         self.add_state("value", dist_reduce_fx="sum", default=torch.tensor(0.0).float())
         self.add_state("numel", dist_reduce_fx="sum", default=torch.tensor(0))
-        self.value = torch.tensor(0.0)
-        self.numel = torch.tensor(0.0)
 
     def _check_mask(
         self, mask: Optional[torch.Tensor], values: torch.Tensor
