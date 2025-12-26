@@ -172,7 +172,7 @@ class GRIL(nn.Module):
                 rnn_in = self.dropout(rnn_in)
         return h
 
-    def forward(self, x, adj, mask=None, u=None, h=None, cached_support=False):
+    def forward(self, x, adj, mask: torch.Tensor, u=None, h=None, cached_support=False):
         # x:[batch, features, nodes, steps]
         *_, steps = x.size()
 
