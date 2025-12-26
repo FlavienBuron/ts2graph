@@ -217,6 +217,7 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
+        print(f"DEBUG: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
 
         imputation, _ = self._predict_batch(batch, preprocess=False, postprocess=False)
 
