@@ -3,6 +3,7 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
+from torchmetrics.functional import mean_absolute_error
 
 
 class MaskedLoss(nn.Module, ABC):
@@ -32,29 +33,45 @@ class MaskedLoss(nn.Module, ABC):
     ) -> torch.Tensor:
         prediction = prediction[:, self.at]
         target = target[:, self.at]
+
         if mask is not None:
-            mask = mask[:, self.at]
+            mask = mask[:, self.at].bool()
 
-        # elementwise loss
-        value = self._elementwise(prediction, target)
+            # apply mask BEFORE MAE
+            prediction = prediction[mask]
+            target = target[mask]
 
-        # build mask
-        mask = self._build_mask(value, mask)
+            # handle fully-masked batch
+            if prediction.numel() == 0:
+                return prediction.new_tensor(0.0)
 
-        # apply mask
-        value = torch.where(mask, value, torch.zeros_like(value))
-
-        if self.reduction == "sum":
-            return value.sum()
-        value = value.mean(dim=-1)
-        mask = mask.any(dim=-1)
-        value = value.flatten(1).sum(dim=1)
-        denom = mask.flatten(1).sum(dim=1).clamp_min(self.eps)
-
-        # mean
-        # denom = mask.sum().clamp_min(self.eps)
-
-        return (value / denom).mean()
+        # TorchMetrics MAE already reduces correctly
+        return mean_absolute_error(prediction, target)
+        # prediction = prediction[:, self.at]
+        # target = target[:, self.at]
+        # if mask is not None:
+        #     mask = mask[:, self.at]
+        #
+        # # elementwise loss
+        # value = self._elementwise(prediction, target)
+        #
+        # # build mask
+        # mask = self._build_mask(value, mask)
+        #
+        # # apply mask
+        # value = torch.where(mask, value, torch.zeros_like(value))
+        #
+        # if self.reduction == "sum":
+        #     return value.sum()
+        # value = value.mean(dim=-1)
+        # mask = mask.any(dim=-1)
+        # value = value.flatten(1).sum(dim=1)
+        # denom = mask.flatten(1).sum(dim=1).clamp_min(self.eps)
+        #
+        # # mean
+        # # denom = mask.sum().clamp_min(self.eps)
+        #
+        # return (value / denom).mean()
 
     def _build_mask(
         self,
