@@ -775,7 +775,7 @@ def run(args: Namespace) -> None:
     )
     model = GRINet
     # loss_fn = MaskedMAELoss()
-    loss_fn = MaskedMAE
+    loss_fn = MaskedMAE()
     metrics = {
         "mae": MaskedMAE(compute_on_step=False),
         "mape": MaskedMAPE(compute_on_step=False),
