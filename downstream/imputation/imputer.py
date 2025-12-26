@@ -226,7 +226,7 @@ class Imputer(pl.LightningModule):
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        print(f"DEBUG: {imputation.sum()=}")
+        print(f"DEBUG: {imputation.sum()=} {target.sum()=}")
         val_loss = self.loss_fn(imputation, target, eval_mask)
 
         if self.scaled_target:
