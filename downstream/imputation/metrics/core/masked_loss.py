@@ -57,7 +57,7 @@ class MaskedLoss(nn.Module, ABC):
         # mean
         # denom = mask.sum().clamp_min(self.eps)
         print(
-            f"6. Reduction - Sum: {value.item():.6f}, Denom: {denom.item()} -> {(value / denom).mean()=}"
+            f"6. Reduction - Sum: {value}, Denom: {denom} -> {(value / denom).mean()=}"
         )
         return (value / denom).mean()
 
