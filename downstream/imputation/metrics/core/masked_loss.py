@@ -36,6 +36,7 @@ class MaskedLoss(nn.Module, ABC):
             mask = mask[:, self.at]
 
         # elementwise loss
+        print(f"DEBUG: {prediction.shape=} {target.shape=} {mask.shape=}")
         value = self._elementwise(prediction, target)
 
         # build mask
