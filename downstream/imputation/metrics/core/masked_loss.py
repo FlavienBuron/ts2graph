@@ -30,31 +30,26 @@ class MaskedLoss(nn.Module, ABC):
         target: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        # Slice if needed
         prediction = prediction[:, self.at]
         target = target[:, self.at]
+        if mask is not None:
+            mask = mask[:, self.at]
 
-        # Compute elementwise loss
-        value = self._elementwise(prediction, target)  # [B, H, W, C]
+        # elementwise loss
+        value = self._elementwise(prediction, target)
 
-        # Build mask
-        mask = self._build_mask(value, mask)  # same shape as value
+        # build mask
+        mask = self._build_mask(value, mask)
 
-        # Apply mask
+        # apply mask
         value = torch.where(mask, value, torch.zeros_like(value))
 
-        # Sum reduction over all elements
         if self.reduction == "sum":
             return value.sum()
 
-        # Per-sample reduction: flatten spatial dims, keep batch
-        value = value.view(value.size(0), -1).sum(dim=1)
-
-        # Denominator: number of valid pixels per sample
-        denom = mask.view(mask.size(0), -1).sum(dim=1).clamp_min(self.eps)
-
-        # Mean over batch
-        return (value / denom).mean()
+        # mean
+        denom = mask.sum().clamp_min(self.eps)
+        return value.sum() / denom
 
     def _build_mask(
         self,
