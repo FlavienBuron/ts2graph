@@ -51,13 +51,15 @@ class MaskedLoss(nn.Module, ABC):
 
         if self.reduction == "sum":
             return value.sum()
+        value = value.flatten(1).sum(dim=1)
+        denom = mask.flatten(1).sum(dim=1).clamp_min(self.eps)
 
         # mean
-        denom = mask.sum().clamp_min(self.eps)
+        # denom = mask.sum().clamp_min(self.eps)
         print(
-            f"6. Reduction - Sum: {value.sum().item():.6f}, Denom: {denom.item()} -> {value.sum() / denom=}"
+            f"6. Reduction - Sum: {value.item():.6f}, Denom: {denom.item()} -> {(value / denom).mean()=}"
         )
-        return value.sum() / denom
+        return (value / denom).mean()
 
     def _build_mask(
         self,
