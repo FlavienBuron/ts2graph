@@ -37,14 +37,14 @@ class MaskedMetric(Metric):
         self, mask: Optional[torch.Tensor], values: torch.Tensor
     ) -> torch.Tensor:
         if mask is None:
-            mask = torch.ones_like(values).byte()
+            mask = torch.ones_like(values)
         else:
             _check_same_shape(mask, values)
         if self.mask_nans:
             mask = mask * ~torch.isnan(values)
         if self.mask_inf:
             mask = mask * ~torch.isinf(values)
-        return mask
+        return mask.bool()
 
     def _compute_masked(
         self,
