@@ -46,6 +46,8 @@ class MaskedLoss(nn.Module, ABC):
 
         if self.reduction == "sum":
             return value.sum()
+        value = value.mean(dim=-1)
+        mask = mask.any(dim=-1)
         value = value.flatten(1).sum(dim=1)
         denom = mask.flatten(1).sum(dim=1).clamp_min(self.eps)
 
