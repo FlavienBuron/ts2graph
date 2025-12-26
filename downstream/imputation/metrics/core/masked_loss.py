@@ -35,6 +35,7 @@ class MaskedLoss(nn.Module, ABC):
         target = target[:, self.at]
 
         if mask is not None:
+            print("DEBUG: MAE Loss Masked")
             mask = mask[:, self.at].bool()
 
             # apply mask BEFORE MAE
