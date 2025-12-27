@@ -41,6 +41,6 @@ def torch_nanmax(
         axis = (axis,)
 
     for dim in sorted(axis, reverse=True):
-        x, _ = torch.max(x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdims)
+        x, _ = torch.max(x.masked_fill(mask, float("-inf")), dim=dim, keepdim=keepdims)
 
     return x
