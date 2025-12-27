@@ -16,20 +16,14 @@ class StandardScaler(AbstractScaler):
         self.bias = offset
         self.scale = scale
         self.axis = axis
-        print(f"DEBUG: init {axis=} {self.axis=}")
-        # super(StandardScaler, self).__init__()
 
     def params(self):
         return dict(bias=self.bias, scale=self.scale)
 
     def fit(self, x: torch.Tensor, mask=None, keepdims: bool = True):
-        print(
-            f"DEBUG std fit: {x.min()=} {x.max()=} {x.mean()=} {x.std()=} {self.axis=}"
-        )
         if mask is not None:
             self.bias = torch_nanmean(x, mask, axis=self.axis, keepdims=keepdims)
             self.scale = torch_nanstd(x, mask, axis=self.axis, keepdims=keepdims)
         else:
             self.bias = x.mean(axis=self.axis, keepdims=keepdims)
             self.scale = x.std(axis=self.axis, keepdims=keepdims)
-        print(f"DEBUG: {self.bias=} {self.scale=}")
