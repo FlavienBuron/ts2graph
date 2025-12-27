@@ -22,7 +22,7 @@ class StandardScaler(AbstractScaler):
         return dict(bias=self.bias, scale=self.scale)
 
     def fit(self, x: torch.Tensor, mask=None, keepdims: bool = True):
-        print(f"DEBUG: {x.min()=} {x.max()=} {x.mean()=} {x.std()=}")
+        print(f"DEBUG std fit: {x.min()=} {x.max()=} {x.mean()=} {x.std()=}")
         if mask is not None:
             self.bias = torch_nanmean(x, mask, axis=self.axis, keepdims=keepdims)
             self.scale = torch_nanstd(x, mask, axis=self.axis, keepdims=keepdims)
