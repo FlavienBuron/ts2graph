@@ -14,6 +14,7 @@ class MinMaxScaler(AbstractScaler):
         scale: float = 1.0,
         axis: Tuple = (0,),
     ) -> None:
+        super(MinMaxScaler).__init__()
         self.bias = offset
         self.scale = scale
         self.axis = axis
