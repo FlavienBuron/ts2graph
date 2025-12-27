@@ -12,14 +12,21 @@ def torch_nanmin(
     """
     Replicate the behavior of Numpy's `nanmin`.
     """
-    mask = torch.isnan(x) if mask is None else mask
+    if mask is None:
+        mask = torch.isnan(x)
+
     if axis is None:
-        x, _ = torch.min(x.masked_fill(mask, float("inf")))
-        return x
+        result, _ = torch.min(x.masked_fill(mask, float("inf")))
+        return result
+
     if isinstance(axis, int):
         axis = (axis,)
-    for dim in sorted(axis, reverse=True):
-        x, _ = torch.min(x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdims)
+
+    current_x = x.clone()
+    for dim in tuple(sorted(axis, reverse=True)):
+        current_x, _ = torch.min(
+            current_x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdims
+        )
 
     return x
 
@@ -33,14 +40,20 @@ def torch_nanmax(
     """
     Replicate the behavior of Numpy's `nanmax`.
     """
-    mask = torch.isnan(x) if mask is None else mask
+    if mask is None:
+        mask = torch.isnan(x)
+
     if axis is None:
-        x, _ = torch.max(x.masked_fill(mask, float("-inf")))
-        return x
+        result, _ = torch.max(x.masked_fill(mask, float("-inf")))
+        return result
+
     if isinstance(axis, int):
         axis = (axis,)
 
-    for dim in sorted(axis, reverse=True):
-        x, _ = torch.max(x.masked_fill(mask, float("-inf")), dim=dim, keepdim=keepdims)
+    current_x = x.clone()
+    for dim in tuple(sorted(axis, reverse=True)):
+        current_x, _ = torch.max(
+            current_x.masked_fill(mask, float("-inf")), dim=dim, keepdim=keepdims
+        )
 
     return x
