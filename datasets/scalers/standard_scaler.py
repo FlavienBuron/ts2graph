@@ -1,6 +1,5 @@
 from typing import Tuple
 
-import numpy as np
 import torch
 
 from datasets.scalers.abstract_scaler import AbstractScaler
@@ -25,9 +24,8 @@ class StandardScaler(AbstractScaler):
     def fit(self, x: torch.Tensor, mask=None, keepdims: bool = True):
         print(f"DEBUG: {x.min()=} {x.max()=} {x.mean()=} {x.std()=}")
         if mask is not None:
-            x = torch.where(mask, x, np.nan)
-            self.bias = torch_nanmean(x, axis=self.axis, keepdims=keepdims)
-            self.scale = torch_nanstd(x, axis=self.axis, keepdims=keepdims)
+            self.bias = torch_nanmean(x, mask, axis=self.axis, keepdims=keepdims)
+            self.scale = torch_nanstd(x, mask, axis=self.axis, keepdims=keepdims)
         else:
             self.bias = x.mean(axis=self.axis, keepdims=keepdims)
             self.scale = x.std(axis=self.axis, keepdims=keepdims)

@@ -84,16 +84,14 @@ def torch_nanmean(
         # Compute sum and count over all elements
         total = x_filled.sum()
         count = keep_mask.sum().clamp_min(eps)
-        result = total / count
-        return result if keepdims else result
+    else:
+        # Handle single axis as tuple
+        if isinstance(axis, int):
+            axis = (axis,)
 
-    # Handle single axis as tuple
-    if isinstance(axis, int):
-        axis = (axis,)
-
-    # Compute sum over specified axes
-    total = x_filled.sum(dim=axis, keepdim=keepdims)
-    count = keep_mask.sum(dim=axis, keepdim=keepdims).clamp_min(eps)
+        # Compute sum over specified axes
+        total = x_filled.sum(dim=axis, keepdim=keepdims)
+        count = keep_mask.sum(dim=axis, keepdim=keepdims).clamp_min(eps)
 
     return total / count
 
@@ -119,12 +117,10 @@ def torch_nanstd(
 
     # First compute the mean using valid values only
     mean = torch_nanmean(x, mask=mask, axis=axis, keepdims=True, eps=eps)
+    sq_diff = (x - mean) ** 2
+    sq_diff_filled = sq_diff.masked_fill(mask, 0.0)
 
     if axis is None:
-        # For full reduction
-        # Compute squared differences only for valid values
-        sq_diff = (x - mean) ** 2
-        sq_diff_filled = sq_diff.masked_fill(mask, 0.0)
         total = sq_diff_filled.sum()
         count = keep_mask.sum()
 
@@ -132,26 +128,12 @@ def torch_nanstd(
         # For partial reduction
         if isinstance(axis, int):
             axis = (axis,)
-
-        # Expand mean for broadcasting
-        mean_expanded = mean
-        for dim in axis:
-            if keepdims:
-                mean_expanded = mean_expanded.unsqueeze(dim)
-
-        # Ensure proper broadcasting
-        while mean_expanded.dim() < x.dim():
-            mean_expanded = mean_expanded.unsqueeze(-1)
-
-        # Compute squared differences only for valid values
-        sq_diff = (x - mean_expanded) ** 2
-        sq_diff_filled = sq_diff.masked_fill(mask, 0.0)
         total = sq_diff_filled.sum(dim=axis, keepdim=keepdims)
         count = keep_mask.sum(dim=axis, keepdim=keepdims)
 
     # Apply Bessel's correction if unbiased
     if unbiased:
-        count = count - 1
+        count = torch.where(count > 1, count - 1, torch.zeros_like(count))
 
     # Avoid division by zero
     count = count.clamp_min(eps)
