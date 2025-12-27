@@ -49,6 +49,7 @@ class DataModule(pl.LightningDataModule):
             scaler = self.get_scaler()(axis=scaling_axes)
             scaler.fit(x=train, mask=train_mask, keepdims=True)
             self.scaler = scaler.to_torch()
+            print(f"DEBUG: {self.scaler.bias=} {self.scaler.scale=}")
 
             if len(self.scale_exogenous) > 0:
                 for label in self.scale_exogenous:
