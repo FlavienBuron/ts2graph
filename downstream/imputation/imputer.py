@@ -138,7 +138,13 @@ class Imputer(pl.LightningModule):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
         if preprocess:
             x = batch_data.pop("x")
+            print(
+                f"DEBUG: predict_batch - {x.min()=} {x.max()=} {x.mean()=} {x.std()=}"
+            )
             x = self._preprocess(x, batch_preprocessing)
+            print(
+                f"DEBUG: predict_batch - {x.min()=} {x.max()=} {x.mean()=} {x.std()=}"
+            )
             imputation, prediction, _ = self.forward(x, **batch_data)
         else:
             imputation, prediction, _ = self.forward(**batch_data)
