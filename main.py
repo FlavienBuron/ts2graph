@@ -768,6 +768,7 @@ def run(args: Namespace) -> None:
         test_indices=test,
         val_indices=eval,
         samples_per_epoch=5120,
+        scaling_type="std",
     )
 
     # dataset._store_spatiotemporal_data()
