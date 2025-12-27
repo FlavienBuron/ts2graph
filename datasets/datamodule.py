@@ -138,6 +138,7 @@ class DataModule(pl.LightningDataModule):
         return scaling_axis
 
     def get_scaler(self, axis) -> AbstractScaler:
+        print(f"DEBUG: get_scaler {axis=}")
         if self.scaling_type == "std":
             return StandardScaler(axis=axis)
         elif self.scaling_type == "minmax":

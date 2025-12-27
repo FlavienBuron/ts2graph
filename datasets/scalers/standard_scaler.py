@@ -15,6 +15,7 @@ class StandardScaler(AbstractScaler):
     ) -> None:
         self.bias = offset
         self.scale = scale
+        print(f"DEBUG: init {axis=}")
         self.axis = axis
         super(StandardScaler, self).__init__()
 
