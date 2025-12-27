@@ -46,7 +46,8 @@ class DataModule(pl.LightningDataModule):
             scaling_axes = self.get_scaling_axes(self.scaling_axis)
             train = self.dataset.data[self.train_slice]
             train_mask = self.dataset.mask[self.train_slice]
-            scaler = self.get_scaler()(axis=scaling_axes)
+            print(f"DEBUG: {scaling_axes=}")
+            scaler = self.get_scaler(axis=scaling_axes)
             scaler.fit(x=train, mask=train_mask, keepdims=True)
             self.scaler = scaler.to_torch()
             print(f"DEBUG: {self.scaler.bias=} {self.scaler.scale=}")
@@ -136,10 +137,10 @@ class DataModule(pl.LightningDataModule):
 
         return scaling_axis
 
-    def get_scaler(self) -> type[AbstractScaler]:
+    def get_scaler(self, axis) -> AbstractScaler:
         if self.scaling_type == "std":
-            return StandardScaler
+            return StandardScaler(axis=axis)
         elif self.scaling_type == "minmax":
-            return MinMaxScaler
+            return MinMaxScaler(axis=axis)
         else:
             raise NotImplementedError
