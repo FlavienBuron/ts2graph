@@ -35,12 +35,12 @@ def torch_nanmax(
     """
     mask = torch.isnan(x) if mask is None else mask
     if axis is None:
-        x, _ = torch.min(x.masked_fill(mask, float("-inf")))
+        x, _ = torch.max(x.masked_fill(mask, float("-inf")))
         return x
     if isinstance(axis, int):
         axis = (axis,)
 
     for dim in sorted(axis, reverse=True):
-        x, _ = torch.min(x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdims)
+        x, _ = torch.max(x.masked_fill(mask, float("inf")), dim=dim, keepdim=keepdims)
 
     return x
