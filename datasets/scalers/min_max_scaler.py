@@ -28,7 +28,9 @@ class MinMaxScaler(AbstractScaler):
             x = torch.where(mask, np.nan, x)
 
             self.bias = torch_nanmin(x, mask, axis=self.axis, keepdims=keepdims)
-            self.scale = torch_nanmax(x, axis=self.axis, keepdims=keepdims) - self.bias
+            self.scale = (
+                torch_nanmax(x, mask, axis=self.axis, keepdims=keepdims) - self.bias
+            )
         else:
             self.bias = x.min(axis=self.axis, keepdims=keepdims)
             self.scale = x.max(axis=self.axis, keepdims=keepdims) - self.bias
