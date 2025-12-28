@@ -117,6 +117,11 @@ class Imputer(pl.LightningModule):
         trend = batch_preprocessing.get("trend", 0.0)
         bias = batch_preprocessing.get("bias", 0.0)
         scale = batch_preprocessing.get("scale", 1.0)
+        print(
+            f"DEBUG: preprocess - {data.min()=} {data.max()=} {data.mean()=} {data.std()=}"
+        )
+        x = (data - trend - bias) / (scale + epsilon)
+        print(f"DEBUG: preprocess - {x.min()=} {x.max()=} {x.mean()=} {x.std()=}")
         return (data - trend - bias) / (scale + epsilon)
 
     def _postprocess(self, data: torch.Tensor, batch_preprocessing: Dict):
@@ -148,6 +153,9 @@ class Imputer(pl.LightningModule):
             imputation, prediction, _ = self.forward(x, **batch_data)
         else:
             imputation, prediction, _ = self.forward(**batch_data)
+            print(
+                f"DEBUG: predict_batch - {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+            )
 
         if postprocess:
             imputation = self._postprocess(imputation, batch_preprocessing)
