@@ -50,13 +50,6 @@ class GRINet(nn.Module):
             layer_norm=layer_norm,
             merge=merge,
         )
-        print(
-            f"DEBUG: GRIN - d_in={self.d_in} {d_ff=} {ff_dropout=} hidden_size={self.d_hidden}"
-        )
-        print(
-            f"    d_emb={self.d_emb} n_nodes={self.adj.shape[0]} {n_layers=} {kernel_size=} {decoder_order=}"
-        )
-        print(f"    {global_att=} d_u={self.d_u} {layer_norm=} {merge=}")
 
     def forward(
         self, x, mask=None, u=None, **kwargs

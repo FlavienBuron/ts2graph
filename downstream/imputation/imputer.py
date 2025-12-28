@@ -117,12 +117,6 @@ class Imputer(pl.LightningModule):
         trend = batch_preprocessing.get("trend", 0.0)
         bias = batch_preprocessing.get("bias", 0.0)
         scale = batch_preprocessing.get("scale", 1.0)
-        print(f"DEBUG: preprocess - {trend=} {bias.mean()=} {scale.mean()=}")
-        print(
-            f"DEBUG: preprocess - {data.min()=} {data.max()=} {data.mean()=} {data.std()=}"
-        )
-        x = (data - trend - bias) / (scale + epsilon)
-        print(f"DEBUG: preprocess - {x.min()=} {x.max()=} {x.mean()=} {x.std()=}")
         return (data - trend - bias) / (scale + epsilon)
 
     def _postprocess(self, data: torch.Tensor, batch_preprocessing: Dict):
@@ -144,19 +138,10 @@ class Imputer(pl.LightningModule):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
         if preprocess:
             x = batch_data.pop("x")
-            print(
-                f"DEBUG: predict_batch - {x.min()=} {x.max()=} {x.mean()=} {x.std()=}"
-            )
             x = self._preprocess(x, batch_preprocessing)
-            print(
-                f"DEBUG: predict_batch - {x.min()=} {x.max()=} {x.mean()=} {x.std()=}"
-            )
             imputation, prediction, _ = self.forward(x, **batch_data)
         else:
             imputation, prediction, _ = self.forward(**batch_data)
-            print(
-                f"DEBUG: predict_batch - {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
-            )
 
         if postprocess:
             imputation = self._postprocess(imputation, batch_preprocessing)
@@ -232,7 +217,6 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
-        print(f"DEBUG: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
 
         imputation, _ = self._predict_batch(batch, preprocess=False, postprocess=False)
 
@@ -242,7 +226,6 @@ class Imputer(pl.LightningModule):
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        print(f"DEBUG: {imputation.sum()=} {target.sum()=}")
         val_loss = self.loss_fn(imputation, target, eval_mask)
 
         if self.scaled_target:

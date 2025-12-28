@@ -24,7 +24,6 @@ class MinMaxScaler(AbstractScaler):
 
     def fit(self, x: torch.Tensor, mask=None, keepdims: bool = True):
         if mask is not None:
-            print(f"{type(mask)=} {type(x)=}")
             x = torch.where(mask, np.nan, x)
 
             self.bias = torch_nanmin(x, mask, axis=self.axis, keepdims=keepdims)

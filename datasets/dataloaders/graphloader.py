@@ -52,7 +52,6 @@ class GraphLoader(Dataset, ABC):
             exogenous["eval_mask_window"] = torch.tensor(validation_mask)
         for name, value in exogenous.items():
             self._add_exogenous(value, name, for_window=True, for_horizon=True)
-        print(f"{self.mask.shape=}")
 
         try:
             freq = freq or self.index.freq or self.index.inferred_freq
@@ -414,38 +413,3 @@ class GraphLoader(Dataset, ABC):
             np.hstack([v for v in ds_indices.values() if v is not None])
         )
         return ds_indices
-
-    # ########## Datamodule ##########
-    # def setup(
-    #     self,
-    # ):
-    #     self._has_setup_fit = False
-    #
-    #     self.scale = scale
-    #     self.scaling_type = scaling_type
-    #     self.scaling_axis = scaling_axis
-    #     self.scale_exogenous = scale_exogenous
-    #     self.batch_size = batch_size
-    #     self.samples_per_epoch = samples_per_epoch
-    #
-    #     if self.scale:
-    #         scaling_axes = self.get_scaling_axes(self.scaling_axis)
-    #         train = self.data[self.train_slice]
-    #         train_mask = self.mask[self.train_slice]
-    #         print(
-    #             f"{scaling_axes=} {len(self.train_slice)=} {train.shape=} {train_mask.shape=} {self._mask.shape=} {self.mask.shape=}"
-    #         )
-    #         scaler = self.get_scaler()(axis=scaling_axes)
-    #         print(
-    #             f"{type(train)=} {type(train_mask)=} {type(self.mask)=} {type(self.data)=}"
-    #         )
-    #         scaler.fit(x=train, mask=train_mask, keepdims=True)
-    #         self.scaler = scaler.to_torch()
-    #
-    #         if len(self.scale_exogenous) > 0:
-    #             for label in self.scale_exogenous:
-    #                 exo = getattr(self, label)
-    #                 scaler = self.get_scaler()(axis=scaling_axes)
-    #                 scaler.fit(exo[self.train_slice], keepdims=True)
-    #                 scaler = scaler.to_torch()
-    #                 setattr(self, label, scaler.transform(exo))

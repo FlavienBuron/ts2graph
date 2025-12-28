@@ -36,14 +36,12 @@ class MaskedLoss(nn.Module, ABC):
             mask = mask[:, self.at]
 
         # elementwise loss
-        print(f"DEBUG: {prediction.shape=} {target.shape=} {mask.shape=}")
         value = self._elementwise(prediction, target)
 
         # build mask
         mask = self._build_mask(value, mask)
 
         # apply mask
-        print(f"DEBUG: {value.shape=} {mask.shape=}")
         value = torch.where(mask, value, torch.zeros_like(value))
 
         if self.reduction == "sum":
@@ -51,7 +49,6 @@ class MaskedLoss(nn.Module, ABC):
 
         # mean
         denom = mask.sum().clamp_min(self.eps)
-        print(f"DEBUG: {value.sum()=} {denom=} {value.sum()/denom=}")
         return value.sum() / denom
 
     def _build_mask(
