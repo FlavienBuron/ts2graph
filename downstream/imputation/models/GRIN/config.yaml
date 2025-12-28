@@ -1,6 +1,6 @@
 d_hidden: 64
 d_ff: 64
-ff_dropout: 0.1
+ff_dropout: 0
 n_layers: 1
 kernel_size: 2
 decoder_order: 1
