@@ -136,7 +136,6 @@ class GraphLoader(Dataset, ABC):
 
     @property
     def preprocess(self):
-        print(f"DEBUG: {self.trend=} {self.scaler=}")
         return (self.trend is not None) or (self.scaler is not None)
 
     @property
