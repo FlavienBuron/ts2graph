@@ -117,7 +117,6 @@ class Imputer(pl.LightningModule):
         trend = batch_preprocessing.get("trend", 0.0)
         bias = batch_preprocessing.get("bias", 0.0)
         scale = batch_preprocessing.get("scale", 1.0)
-        print(f"DEBUG: preprocess - {trend=} {bias=} {scale=}")
         print(
             f"DEBUG: preprocess - {data.min()=} {data.max()=} {data.mean()=} {data.std()=}"
         )
