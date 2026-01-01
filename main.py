@@ -43,6 +43,7 @@ from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
     compute_laplacian_smoothness,
 )
+from utils import numpy_metrics
 from utils.callbacks import ConsoleMetricsCallback
 from utils.helpers import aggregate_predictions, prediction_dataframe
 
@@ -849,6 +850,12 @@ def run(args: Namespace) -> None:
 
     eval_mask = dataset.eval_mask[dm.test_slice]
     df_true = dataset.df.iloc[dm.test_slice]
+    metrics = {
+        "mae": numpy_metrics.masked_mae,
+        "mse": numpy_metrics.masked_mse,
+        "mre": numpy_metrics.masked_mre,
+        "mape": numpy_metrics.masked_mape,
+    }
 
     index = dataset.data_timestamps(dm.test_set.indices, flatten=False)["horizon"]
 
