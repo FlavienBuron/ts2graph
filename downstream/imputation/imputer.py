@@ -129,11 +129,42 @@ class Imputer(pl.LightningModule):
         batch_data, batch_preprocessing = batch
         return batch_data, batch_preprocessing
 
+    def predict_loader(
+        self,
+        loader,
+        preprocess: bool = False,
+        postprocess: bool = False,
+    ):
+        targets, imputations, masks = [], [], []
+
+        for batch in loader:
+            batch_data, batch_preprocessing = self._unpack_batch(batch)
+
+            target = batch_data.get("y")
+            eval_mask = batch_data.get("eval_mask")
+
+            imputation, _ = self._predict_batch(
+                batch, preprocess=preprocess, postprocess=postprocess
+            )
+
+            imputation = self._postprocess(imputation, batch_preprocessing)
+
+            targets.append(target.detach() if target is not None else None)
+            imputations.append(imputation.detach())
+
+            masks.append(eval_mask.detach() if eval_mask is not None else None)
+
+        targets_tensor = torch.cat(targets, dim=0)
+        imputations_tensor = torch.cat(imputations, dim=0)
+        masks_tensor = torch.cat(masks, dim=0)
+
+        return targets_tensor, imputations_tensor, masks_tensor
+
     def _predict_batch(
         self,
         batch: Tuple[Dict, Dict],
         preprocess: bool = False,
-        postprocess: bool = True,
+        postprocess: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         batch_data, batch_preprocessing = self._unpack_batch(batch)
         if preprocess:
@@ -154,14 +185,17 @@ class Imputer(pl.LightningModule):
         eval_mask = batch_data.pop("eval_mask", None)
         target = batch_data.pop("y")
 
-        imputation, prediction = self._predict_batch(
-            batch, preprocess=False, postprocess=True
+        imputation, predictions = self._predict_batch(
+            batch, preprocess=False, postprocess=False
         )
+
+        imputation = self._postprocess(imputation, batch_preprocessing)
+        predictions = self._postprocess(predictions, batch_preprocessing)
 
         return {
             "target": target.detach(),
             "imputation": imputation.detach(),
-            "prediction": prediction.detach(),
+            "prediction": predictions.detach(),
             "mask": eval_mask.detach() if eval_mask is not None else None,
         }
 
@@ -258,7 +292,7 @@ class Imputer(pl.LightningModule):
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
 
-        imputation, _ = self._predict_batch(batch, preprocess=False, postprocess=True)
+        imputation, _ = self._predict_batch(batch, preprocess=False, postprocess=False)
         test_loss = self.loss_fn(imputation, y, eval_mask)
 
         # Logging

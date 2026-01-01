@@ -44,6 +44,7 @@ from graphs_transformations.utils import (
     compute_laplacian_smoothness,
 )
 from utils.callbacks import ConsoleMetricsCallback
+from utils.helpers import aggregate_predictions, prediction_dataframe
 
 random.seed(42)
 np.random.seed(42)
@@ -843,7 +844,26 @@ def run(args: Namespace) -> None:
         print("Trainer prediction return None results")
         return
 
-    print(f"{type(outputs)=}")
+    target, imputation, mask = aggregate_predictions(outputs)
+    imputation = imputation.squeeze(-1).cpu().numpy()
+
+    eval_mask = dataset.eval_mask[dm.test_slice]
+    df_true = dataset.df.iloc[dm.test_slice]
+
+    index = dataset.data_timestamps(dm.test_set.indices, flatten=False)["horizon"]
+
+    aggr_methods = ["mean"]
+
+    df_hats = prediction_dataframe(
+        imputation, index, dataset.df.columns, aggregate_by=aggr_methods
+    )
+    df_hats = dict(zip(aggr_methods, df_hats))
+    for aggr_by, df_hat in df_hats.items():
+        # Compute error
+        print(f"- AGGREGATE BY {aggr_by.upper()}")
+        for metric_name, metric_fn in metrics.items():
+            error = metric_fn(df_hat.values, df_true.values, eval_mask).item()
+            print(f" {metric_name}: {error:.4f}")
 
 
 if __name__ == "__main__":

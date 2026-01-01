@@ -14,11 +14,12 @@ class GraphLoader(Dataset, ABC):
         self,
         dataframe: pd.DataFrame,
         missing_mask: np.ndarray,
-        validation_mask: np.ndarray | torch.Tensor | None = None,
+        eval_mask: np.ndarray | torch.Tensor | None = None,
         freq: str | None = None,
         aggr: str = "sum",
         exogenous=None,
     ) -> None:
+        self.eval_mask = eval_mask
         self._exogenous_keys = dict()
         self._reserved_signature = {"data", "trend", "x", "y"}
 
@@ -48,8 +49,8 @@ class GraphLoader(Dataset, ABC):
         if exogenous is None:
             exogenous = dict()
         exogenous["mask_window"] = torch.tensor(self.mask)
-        if validation_mask is not None:
-            exogenous["eval_mask_window"] = torch.tensor(validation_mask)
+        if eval_mask is not None:
+            exogenous["eval_mask_window"] = torch.tensor(eval_mask)
         for name, value in exogenous.items():
             self._add_exogenous(value, name, for_window=True, for_horizon=True)
 

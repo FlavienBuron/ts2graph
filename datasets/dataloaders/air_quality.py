@@ -42,18 +42,14 @@ class AirQualityLoader(GraphLoader):
         super().__init__(
             dataframe=data,
             missing_mask=missing_mask,
-            validation_mask=self.validation_mask,
+            eval_mask=self.eval_mask,
             freq=freq,
             aggr="nearest",
         )
 
     @property
     def training_mask(self):
-        return (
-            self._mask
-            if self.validation_mask is None
-            else (self._mask & ~self.validation_mask)
-        )
+        return self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
 
     # def __len__(self) -> int:
     #     return self.original_data.shape[0]
@@ -95,7 +91,7 @@ class AirQualityLoader(GraphLoader):
             eval_mask[:masked_sensors] = np.where(
                 missing_mask[:, masked_sensors], True, False
             )
-        self.validation_mask = eval_mask
+        self.eval_mask = eval_mask
         if impute_nans:
             data = data.fillna(self._compute_mean(data))
 
@@ -171,9 +167,9 @@ class AirQualityLoader(GraphLoader):
         working_points = torch.sum(working_mask).item()
 
         if mask_pattern == "default":
-            if self.validation_mask is not None:
+            if self.eval_mask is not None:
                 print("Using predefined validation mask")
-                working_mask = working_mask & ~self.validation_mask
+                working_mask = working_mask & ~self.eval_mask
 
                 orig_valid_points = torch.sum(~self.missing_mask).item()
                 post_val_points = torch.sum(working_mask).item()
@@ -193,15 +189,13 @@ class AirQualityLoader(GraphLoader):
                     percent=test_percent,
                     time_blocks=time_blocks,
                 )
-                self.validation_mask = torch.zeros_like(
-                    self.test_mask, dtype=torch.bool
-                )
+                self.eval_mask = torch.zeros_like(self.test_mask, dtype=torch.bool)
         elif mask_pattern == "blackout":
             print(
                 f"Creating a blackout mask covering {total_missing_percent * 100}% of the rows"
             )
             working_mask = ~self.missing_mask
-            self.test_mask, self.validation_mask = self.split_blackout(
+            self.test_mask, self.eval_mask = self.split_blackout(
                 valid_mask=working_mask,
                 test_frac=test_percent,
                 total_missing=total_missing_percent,
@@ -211,7 +205,7 @@ class AirQualityLoader(GraphLoader):
             print(
                 f"Creating a MCAR mask covering {total_missing_percent * 100}% of non-missing data"
             )
-            self.test_mask, self.validation_mask = self.split_mcar(
+            self.test_mask, self.eval_mask = self.split_mcar(
                 valid_mask=working_mask,
                 test_frac=test_percent,
                 total_missing=total_missing_percent,
@@ -219,11 +213,11 @@ class AirQualityLoader(GraphLoader):
         else:
             raise ValueError("Provide a valid mask pattern")
 
-        if self.test_mask is None or self.validation_mask is None:
+        if self.test_mask is None or self.eval_mask is None:
             raise ValueError("Test mask or validation mask shouldn't be None")
 
         test_points = torch.sum(self.test_mask).item()
-        val_points = torch.sum(self.validation_mask).item()
+        val_points = torch.sum(self.eval_mask).item()
         missing = torch.sum(self.missing_mask).item() + test_points + val_points
 
         print(
@@ -236,13 +230,13 @@ class AirQualityLoader(GraphLoader):
             f"Original missing values: {torch.sum(self.missing_mask) / total_points:.2f}; Actual missing values: {missing / total_points:.2f}"
         )
 
-        assert not torch.isnan(self.original_data[self.validation_mask]).any(), (
+        assert not torch.isnan(self.original_data[self.eval_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
         )
         assert not torch.isnan(self.original_data[self.test_mask]).any(), (
             "Missing values found under evaluation mask (second pass)"
         )
-        self.validation_mask = self.validation_mask.bool()
+        self.eval_mask = self.eval_mask.bool()
         self.test_mask = self.test_mask.bool()
 
     def sample_mask_by_time(
@@ -507,7 +501,7 @@ class AirQualityLoader(GraphLoader):
         cosine: bool = False,
         full_dataset: bool = False,
     ) -> torch.Tensor:
-        total_missing_masK = self.missing_mask | self.test_mask | self.validation_mask
+        total_missing_masK = self.missing_mask | self.test_mask | self.eval_mask
 
         available_rows = (~total_missing_masK).any(dim=(1, 2))
 
@@ -551,7 +545,7 @@ class AirQualityLoader(GraphLoader):
         cosine: bool = False,
         full_dataset: bool = False,
     ) -> torch.Tensor:
-        total_missing_masK = self.missing_mask | self.test_mask | self.validation_mask
+        total_missing_masK = self.missing_mask | self.test_mask | self.eval_mask
 
         available_rows = (~total_missing_masK).any(dim=(1, 2))
 
@@ -603,12 +597,12 @@ class AirQualityLoader(GraphLoader):
             test_percent=test_percent,
             total_missing_percent=total_missing_percent,
         )
-        if self.validation_mask is None:
+        if self.eval_mask is None:
             raise ValueError("Validation mask should not be None after split")
         self.missing_data = torch.where(self.test_mask, 0.0, self.missing_data)
-        self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
+        self.missing_data = torch.where(self.eval_mask, 0.0, self.missing_data)
         self.current_data = self.missing_data.clone()
-        self.missing_mask = self.missing_mask | self.validation_mask | self.test_mask
+        self.missing_mask = self.missing_mask | self.eval_mask | self.test_mask
         return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
 
     def _normalize(self, data, mask, type: str = "min_max") -> torch.Tensor:
