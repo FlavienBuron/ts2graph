@@ -869,7 +869,9 @@ def run(args: Namespace) -> None:
         # Compute error
         print(f"- AGGREGATE BY {aggr_by.upper()}")
         for metric_name, metric_fn in metrics.items():
-            error = metric_fn(df_hat.values, df_true.values, eval_mask.numpy()).item()
+            error = metric_fn(
+                df_hat.values, df_true.values, eval_mask.squeeze().numpy()
+            ).item()
             print(f" {metric_name}: {error:.4f}")
 
 
