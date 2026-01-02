@@ -763,12 +763,12 @@ def run(args: Namespace) -> None:
     for key, value in config_args.items():
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
-    train, test, eval = dataset.grin_split()
+    train, val, test = dataset.grin_split()
     dm = DataModule(
         dataset,
         train_indices=train,
         test_indices=test,
-        val_indices=eval,
+        val_indices=val,
         samples_per_epoch=5120,
         scaling_type="std",
     )
