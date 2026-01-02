@@ -245,7 +245,7 @@ class Imputer(pl.LightningModule):
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
 
-        imputation = self._postprocess(imputation, batch_preprocessing)
+        # imputation = self._postprocess(imputation, batch_preprocessing)
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
