@@ -49,6 +49,7 @@ class MaskedLoss(nn.Module, ABC):
 
         # mean
         denom = mask.sum().clamp_min(self.eps)
+        print(f"{value.sum()=} {denom=} {value.sum()/denom=}")
         return value.sum() / denom
 
     def _build_mask(
