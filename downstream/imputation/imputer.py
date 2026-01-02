@@ -208,16 +208,21 @@ class Imputer(pl.LightningModule):
 
         imputation, prediction = self._predict_batch(batch, preprocess=False)
 
+        print(f"{y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
         else:
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
-            for h in range(prediction.shape[0]):
+            for h, _ in enumerate(prediction):
                 prediction[h] = self._postprocess(prediction[h], batch_preprocessing)
 
+        print(
+            f"{imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+        )
+        print(f"{target.min()=} {target.max()=} {target.mean()=} {target.std()=}")
         loss = self.loss_fn(imputation, target, mask)
-        for h in range(prediction.shape[0]):
+        for h, _ in enumerate(prediction):
             loss += self.tradeoff * self.loss_fn(prediction[h], target, mask)
 
         if self.scaled_target:
