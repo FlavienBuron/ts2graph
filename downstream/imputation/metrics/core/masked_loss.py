@@ -57,7 +57,7 @@ class MaskedLoss(nn.Module, ABC):
         mask: Optional[torch.Tensor],
     ) -> torch.Tensor:
         if mask is None:
-            mask = torch.ones_like(values, dtype=torch.float16)
+            mask = torch.ones_like(values, dtype=torch.bool)
         else:
             if mask.shape != values.shape:
                 raise ValueError(
@@ -70,7 +70,7 @@ class MaskedLoss(nn.Module, ABC):
         if self.mask_inf:
             mask &= ~torch.isinf(values)
 
-        return mask.float()
+        return mask
 
     @abstractmethod
     def _elementwise(

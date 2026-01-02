@@ -254,15 +254,10 @@ class Imputer(pl.LightningModule):
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
 
+        print(f"{imputation.mean()=} {target.mean()=} {eval_mask.mean()=}")
+
         val_loss = self.loss_fn(imputation, target, eval_mask)
 
-        print(
-            "validation:: mask mean:",
-            "eval_mask mean:",
-            eval_mask.float().mean().item(),
-            "imputation shape:",
-            imputation.shape,
-        )
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
         self.val_metrics.update(imputation.detach(), y, eval_mask)
