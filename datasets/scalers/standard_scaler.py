@@ -25,6 +25,13 @@ class StandardScaler(AbstractScaler):
         if mask is not None:
             self.bias = torch_nanmean(x, mask, axis=self.axis, keepdims=keepdims)
             self.scale = torch_nanstd(x, mask, axis=self.axis, keepdims=keepdims)
+            print(
+                f"{self.bias.min()=} {self.bias.max()=} {self.bias.mean()=} {self.bias.std()=}"
+            )
+            print(
+                f"{self.scale.min()=} {self.scale.max()=} {self.scale.mean()=} {self.scale.std()=}"
+            )
+
         else:
             self.bias = x.mean(axis=self.axis, keepdims=keepdims)
             self.scale = x.std(axis=self.axis, keepdims=keepdims)
