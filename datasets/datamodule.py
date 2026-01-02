@@ -48,7 +48,7 @@ class DataModule(pl.LightningDataModule):
             train_mask = self.dataset.mask[self.train_slice]
             print(
                 "Training: mask mean:",
-                train_mask.mean().item(),
+                train_mask.float().mean().item(),
             )
             scaler = self.get_scaler(axis=scaling_axes)
             scaler.fit(x=train, mask=train_mask, keepdims=True)
