@@ -97,7 +97,7 @@ class AirQualityLoader(GraphLoader):
 
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
-        return data, missing_mask, dist
+        return data, ~missing_mask, dist
 
     def grin_split(
         self,
