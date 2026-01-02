@@ -164,7 +164,6 @@ class Imputer(pl.LightningModule):
         self,
         batch: Tuple[Dict, Dict],
         preprocess: bool = False,
-        postprocess: bool = True,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         batch_data, batch_preprocessing = self._unpack_batch(batch)
         if preprocess:
@@ -174,9 +173,6 @@ class Imputer(pl.LightningModule):
         else:
             imputation, prediction, _ = self.forward(**batch_data)
 
-        if postprocess:
-            imputation = self._postprocess(imputation, batch_preprocessing)
-            prediction = self._postprocess(prediction, batch_preprocessing)
         return imputation, prediction
 
     def predict_step(self, batch, batch_idx):
@@ -185,9 +181,7 @@ class Imputer(pl.LightningModule):
         eval_mask = batch_data.pop("eval_mask", None)
         target = batch_data.pop("y")
 
-        imputation, predictions = self._predict_batch(
-            batch, preprocess=False, postprocess=True
-        )
+        imputation, predictions = self._predict_batch(batch, preprocess=False)
 
         # imputation = self._postprocess(imputation, batch_preprocessing)
         # predictions = self._postprocess(predictions, batch_preprocessing)
@@ -211,20 +205,18 @@ class Imputer(pl.LightningModule):
 
         y = batch_data.pop("y")
 
-        imputation, predictions = self._predict_batch(
-            batch, preprocess=False, postprocess=False
-        )
+        imputation, prediction = self._predict_batch(batch, preprocess=False)
+        print(f"{type(prediction)=} {prediction.shape=}")
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
         else:
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
-            for i, _ in enumerate(predictions):
-                predictions[i] = self._postprocess(predictions[i], batch_preprocessing)
+            prediction = self._postprocess(prediction, batch_preprocessing)
 
         loss = self.loss_fn(imputation, target, mask)
-        for pred in predictions:
+        for pred in prediction:
             loss += self.tradeoff * self.loss_fn(pred, target, mask)
 
         if self.scaled_target:
@@ -251,7 +243,7 @@ class Imputer(pl.LightningModule):
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
 
-        imputation, _ = self._predict_batch(batch, preprocess=False, postprocess=False)
+        imputation, _ = self._predict_batch(batch, preprocess=False)
 
         imputation = self._postprocess(imputation, batch_preprocessing)
 
@@ -289,7 +281,7 @@ class Imputer(pl.LightningModule):
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
 
-        imputation, _ = self._predict_batch(batch, preprocess=False, postprocess=True)
+        imputation, _ = self._predict_batch(batch, preprocess=False)
         test_loss = self.loss_fn(imputation, y, eval_mask)
 
         # Logging
