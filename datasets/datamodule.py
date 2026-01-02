@@ -46,6 +46,7 @@ class DataModule(pl.LightningDataModule):
             scaling_axes = self.get_scaling_axes(self.scaling_axis)
             train = self.dataset.data[self.train_slice]
             train_mask = self.dataset.mask[self.train_slice]
+            print(f"{len(self.train_slice)=}")
             print(
                 "Training: mask mean:",
                 train_mask.float().mean().item(),
