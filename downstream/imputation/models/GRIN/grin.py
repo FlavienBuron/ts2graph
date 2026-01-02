@@ -70,7 +70,6 @@ class GRINet(nn.Module):
 
         # imputation: [batches, channels, nodes, steps] prediction: [4, batches, channels, nodes, steps]
         imputation_start = perf_counter()
-        print(f"{x.min()=} {x.max()=} {x.mean()=} {x.std()=}")
         imputation, prediction = self.bigrill(
             x, self.adj, mask=mask, u=u, cached_support=self.training
         )
