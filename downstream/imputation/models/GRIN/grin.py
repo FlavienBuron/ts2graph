@@ -34,6 +34,7 @@ class GRINet(nn.Module):
         self.d_emb = int(d_emb) if d_emb is not None else 0
         self.register_buffer("adj", adj.detach().clone().float())
         self.impute_only_holes = impute_only_holes
+        print(f"DEBUG: {self.impute_only_holes=}")
 
         self.bigrill = BiGRIL(
             input_size=self.d_in,
@@ -69,6 +70,7 @@ class GRINet(nn.Module):
 
         # imputation: [batches, channels, nodes, steps] prediction: [4, batches, channels, nodes, steps]
         imputation_start = perf_counter()
+        print(f"{x.min()=} {x.max()=} {x.mean()=} {x.std()=}")
         imputation, prediction = self.bigrill(
             x, self.adj, mask=mask, u=u, cached_support=self.training
         )
