@@ -196,13 +196,13 @@ class Imputer(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
-        mask = ~batch_data["mask"].clone().detach().bool()
+        mask = ~batch_data["mask"].clone().detach()
         batch_data["mask"] = torch.bernoulli(
             mask.clone().detach().float() * self.keep_prob
-        ).bool()  # .byte()
+        ).byte()
         eval_mask = batch_data.pop("eval_mask")
-        # eval_mask = (mask.byte() | eval_mask.byte()) - batch_data["mask"]
-        # batch_data["mask"] = batch_data["mask"].bool()
+        eval_mask = (mask.byte() | eval_mask.byte()) - batch_data["mask"]
+        batch_data["mask"] = batch_data["mask"].bool()
 
         y = batch_data.pop("y")
 
