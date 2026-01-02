@@ -42,7 +42,7 @@ class MaskedMetric(Metric):
             mask = mask * ~torch.isnan(values)
         if self.mask_inf:
             mask = mask * ~torch.isinf(values)
-        return mask.bool()
+        return mask.float()
 
     def _compute_masked(
         self,
