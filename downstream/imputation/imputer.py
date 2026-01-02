@@ -325,3 +325,20 @@ class Imputer(pl.LightningModule):
             "lr_scheduler": scheduler,
             "monitor": "val_loss",  # required for ReduceLROnPlateau
         }
+
+    def on_after_backward(self):
+        total_norm = 0.0
+        for p in self.parameters():
+            if p.grad is not None:
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+        total_norm = total_norm**0.5
+
+        self.log(
+            "grad_norm",
+            total_norm,
+            on_step=True,
+            on_epoch=False,
+            prog_bar=False,
+            logger=True,
+        )
