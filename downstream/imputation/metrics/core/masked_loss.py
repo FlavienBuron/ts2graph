@@ -43,7 +43,7 @@ class MaskedLoss(nn.Module, ABC):
         print(f"{value.sum()=}")
 
         # apply mask
-        value = torch.where(mask, value, torch.zeros_like(value))
+        value = torch.where(~mask, value, torch.zeros_like(value))
 
         if self.reduction == "sum":
             return value.sum()
