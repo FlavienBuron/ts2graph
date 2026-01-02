@@ -72,6 +72,7 @@ class AirQualityLoader(GraphLoader):
         else:
             path = os.path.join(self.dataset_path, "full437.h5")
             eval_mask = None
+        print(f"{eval_mask is None=}")
         data = pd.DataFrame(pd.read_hdf(path, key="pm25"))
         stations = pd.DataFrame(pd.read_hdf(path, key="stations"))
         return data, stations, eval_mask
