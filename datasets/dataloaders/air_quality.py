@@ -83,7 +83,7 @@ class AirQualityLoader(GraphLoader):
         masked_sensors: list | None = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame]:
         data, stations, eval_mask = self.load_raw(small=small)
-        missing_mask = np.isnan(data.values).astype("bool")  # 1=missing, 0=observed
+        missing_mask = ~np.isnan(data.values).astype("bool")  # 0=missing, 1=observed
         if eval_mask is None:
             eval_mask = self._infer_mask(data)
         eval_mask = eval_mask.values.astype("bool")
@@ -97,7 +97,7 @@ class AirQualityLoader(GraphLoader):
 
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
-        return data, ~missing_mask, dist
+        return data, missing_mask, dist
 
     def grin_split(
         self,
