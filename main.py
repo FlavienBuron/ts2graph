@@ -830,6 +830,9 @@ def run(args: Namespace) -> None:
     #     grad_clip_val=5.0,
     #     grad_clip_algorithm="norm",
     # )
+    print(
+        f"{dataset.eval_mask[dm.train_slice].mean()=} {dataset.eval_mask[dm.val_slice].mean()=} {dataset.eval_mask[dm.test_slice].mean()=} "
+    )
     trainer = pl.Trainer(
         max_epochs=args.epochs,
         logger=[tb_logger, csv_logger],
