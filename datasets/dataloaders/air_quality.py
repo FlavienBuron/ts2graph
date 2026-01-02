@@ -85,6 +85,7 @@ class AirQualityLoader(GraphLoader):
         data, stations, eval_mask = self.load_raw(small=small)
         missing_mask = ~np.isnan(data.values).astype("bool")  # 0=missing, 1=observed
         if eval_mask is None:
+            print("Infering eval mask")
             eval_mask = self._infer_mask(data)
         eval_mask = eval_mask.values.astype("bool")
         if masked_sensors is not None:
