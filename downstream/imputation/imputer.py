@@ -214,14 +214,6 @@ class Imputer(pl.LightningModule):
             imputation = self._postprocess(imputation, batch_preprocessing)
             for h in range(prediction.shape[0]):
                 prediction[h] = self._postprocess(prediction[h], batch_preprocessing)
-        print(
-            "Training: mask mean:",
-            mask.float().mean().item(),
-            "eval_mask mean:",
-            eval_mask.float().mean().item(),
-            "imputation shape:",
-            imputation.shape,
-        )
 
         loss = self.loss_fn(imputation, target, mask)
         for h in range(prediction.shape[0]):
