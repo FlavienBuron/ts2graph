@@ -72,7 +72,6 @@ class AirQualityLoader(GraphLoader):
         else:
             path = os.path.join(self.dataset_path, "full437.h5")
             eval_mask = None
-        print(f"{eval_mask is None=}")
         data = pd.DataFrame(pd.read_hdf(path, key="pm25"))
         stations = pd.DataFrame(pd.read_hdf(path, key="stations"))
         return data, stations, eval_mask
@@ -89,6 +88,7 @@ class AirQualityLoader(GraphLoader):
             print("Infering eval mask")
             eval_mask = self._infer_mask(data)
         eval_mask = eval_mask.values.astype("bool")
+        print(f"{eval_mask.astype("uint8").mean()=}")
         if masked_sensors is not None:
             eval_mask[:masked_sensors] = np.where(
                 missing_mask[:, masked_sensors], True, False
