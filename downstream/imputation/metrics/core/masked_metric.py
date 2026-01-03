@@ -85,6 +85,9 @@ class MaskedMetric(Metric):
             value, numel, _ = self._compute_std(prediction, target)
         self.value += value
         self.numel += numel
+        print(
+            f"Update: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {self.value=} {self.numel=}"
+        )
 
     def compute(self) -> torch.Tensor:
         if self.numel > 0:
