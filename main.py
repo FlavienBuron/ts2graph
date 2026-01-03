@@ -823,16 +823,6 @@ def run(args: Namespace) -> None:
         scheduler_class=CosineAnnealingLR,
         scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
     )
-    # trainer = Trainer(
-    #     imputer=imputer,
-    #     dataloader=dataset,
-    #     max_epochs=300,
-    #     grad_clip_val=5.0,
-    #     grad_clip_algorithm="norm",
-    # )
-    print(
-        f"{dataset.eval_mask[dm.train_slice].float().mean()=} {dataset.eval_mask[dm.val_slice].float().mean()=} {dataset.eval_mask[dm.test_slice].float().mean()=} "
-    )
     trainer = pl.Trainer(
         max_epochs=args.epochs,
         logger=[tb_logger, csv_logger],

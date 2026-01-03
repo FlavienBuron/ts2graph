@@ -4,7 +4,6 @@ import numpy as np
 import torch
 
 from datasets.scalers.abstract_scaler import AbstractScaler
-from datasets.utils.utils import torch_nanmax, torch_nanmin
 
 
 class MinMaxScaler(AbstractScaler):
@@ -23,13 +22,13 @@ class MinMaxScaler(AbstractScaler):
         return dict(bias=self.bias, scale=self.scale)
 
     def fit(self, x: torch.Tensor, mask=None, keepdims: bool = True):
+        x_np = x.numpy()
         if mask is not None:
-            x = torch.where(mask, np.nan, x)
-
-            self.bias = torch_nanmin(x, mask, axis=self.axis, keepdims=keepdims)
-            self.scale = (
-                torch_nanmax(x, mask, axis=self.axis, keepdims=keepdims) - self.bias
-            )
+            x_np = np.where(mask.numpy(), x_np, np.nan)
+            self.bias = np.nanmin(x_np, axis=self.axis, keepdims=keepdims)
+            self.scale = np.nanmax(x_np, axis=self.axis, keepdims=keepdims)
+            self.bias = torch.from_numpy(self.bias)
+            self.scale = torch.from_numpy(self.scale)
         else:
-            self.bias = x.min(axis=self.axis, keepdims=keepdims)
-            self.scale = x.max(axis=self.axis, keepdims=keepdims) - self.bias
+            self.bias = x_np.min(axis=self.axis, keepdims=keepdims)
+            self.scale = x_np.max(axis=self.axis, keepdims=keepdims) - self.bias

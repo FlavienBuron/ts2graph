@@ -123,7 +123,6 @@ class Imputer(pl.LightningModule):
         trend = batch_preprocessing.get("trend", 0.0)
         bias = batch_preprocessing.get("bias", 0.0)
         scale = batch_preprocessing.get("scale", 1.0)
-        print(f"{trend=} {bias.shape=} {scale.shape=}")
         return data * (scale + epsilon) + bias + trend
 
     def _unpack_batch(self, batch: Tuple[Dict, Dict]):
