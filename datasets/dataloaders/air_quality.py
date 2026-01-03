@@ -83,7 +83,7 @@ class AirQualityLoader(GraphLoader):
         masked_sensors: list | None = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame]:
         data, stations, eval_mask = self.load_raw(small=small)
-        missing_mask = ~np.isnan(data.values).astype("bool")  # 0=missing, 1=observed
+        missing_mask = (~np.isnan(data.values)).astype("bool")  # 0=missing, 1=observed
         if eval_mask is None:
             print("Infering eval mask")
             eval_mask = self._infer_mask(data)
