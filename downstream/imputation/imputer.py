@@ -123,6 +123,7 @@ class Imputer(pl.LightningModule):
         trend = batch_preprocessing.get("trend", 0.0)
         bias = batch_preprocessing.get("bias", 0.0)
         scale = batch_preprocessing.get("scale", 1.0)
+        print(f"DEBUG: post {bias.mean()=} {scale.mean()=}")
         return data * (scale + epsilon) + bias + trend
 
     def _unpack_batch(self, batch: Tuple[Dict, Dict]):
@@ -264,6 +265,9 @@ class Imputer(pl.LightningModule):
             imputation = self._postprocess(imputation, batch_preprocessing)
 
         val_loss = self.loss_fn(imputation, target, eval_mask)
+        print(
+            f"DEBUG: val 1. {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+        )
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
