@@ -105,14 +105,14 @@ class MaskedMRE(MaskedMetric):
         _check_same_shape(prediction, target)
         val = self.metric_fn(prediction, target)
         mask = self._check_mask(mask, val)
-        print(f"DEBUG: {val.sum()=}")
+        # print(f"DEBUG: {val.sum()=}")
         val = torch.where(
             mask, val, torch.tensor(0.0, device=target.device, dtype=torch.float)
         )
         target_masked = torch.where(
             mask, target, torch.tensor(0.0, device=target.device, dtype=torch.float)
         )
-        print(f"{val.sum()=} {mask.sum()=} {target_masked.sum()=}")
+        # print(f"{val.sum()=} {mask.sum()=} {target_masked.sum()=}")
         return val.sum(), mask.sum(), target_masked.sum()
 
     def _compute_std(self, prediction, target):
