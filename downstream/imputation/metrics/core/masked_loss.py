@@ -86,7 +86,7 @@ class MaskedLoss(nn.Module, ABC):
         if self.mask_inf:
             mask &= ~torch.isinf(values)
 
-        return mask
+        return mask.byte()
 
     @abstractmethod
     def _elementwise(
