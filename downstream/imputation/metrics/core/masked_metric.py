@@ -54,7 +54,7 @@ class MaskedMetric(Metric):
         value = self.metric_fn(prediction, target)
         mask = self._check_mask(mask, value)
         # value = torch.where(mask, value, torch.tensor(0.0, device=value.device).float())
-        value = value * mask.type(value.dtype)
+        value = value * mask.to(value.dtype)
         return value.sum(), mask.sum(), None
 
     def _compute_std(
