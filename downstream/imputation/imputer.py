@@ -223,13 +223,13 @@ class Imputer(pl.LightningModule):
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        # print(
-        #     f"DEBUG: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
-        # )
-        # print(f"DEBUG: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
-        # print(
-        #     f"DEBUG: {eval_mask.float().min()=} {eval_mask.float().max()=} {eval_mask.float().mean()=} {eval_mask.float().std()=}"
-        # )
+        print(
+            f"DEBUG: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+        )
+        print(f"DEBUG: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
+        print(
+            f"DEBUG: {eval_mask.float().min()=} {eval_mask.float().max()=} {eval_mask.float().mean()=} {eval_mask.float().std()=}"
+        )
 
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
@@ -266,6 +266,14 @@ class Imputer(pl.LightningModule):
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
+
+        print(
+            f"DEBUG val: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+        )
+        print(f"DEBUG val: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
+        print(
+            f"DEBUG val: {eval_mask.float().min()=} {eval_mask.float().max()=} {eval_mask.float().mean()=} {eval_mask.float().std()=}"
+        )
         self.val_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
             self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
