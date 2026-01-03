@@ -52,9 +52,10 @@ class MaskedMetric(Metric):
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         _check_same_shape(prediction, target)
         value = self.metric_fn(prediction, target)
-        print(f"value: {value.shape=}")
         mask = self._check_mask(mask, value)
+        print(f"1. compute masked {value.sum()=} {mask.sum()}")
         value = torch.where(mask, value, torch.tensor(0.0, device=value.device).float())
+        print(f"2. compute masked {value.sum()=} {mask.sum()}")
         return value.sum(), mask.sum(), None
 
     def _compute_std(
