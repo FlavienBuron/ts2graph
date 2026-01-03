@@ -106,10 +106,10 @@ class MaskedMRE(MaskedMetric):
         val = self.metric_fn(prediction, target)
         mask = self._check_mask(mask, val)
         val = torch.where(
-            ~mask, val, torch.tensor(0.0, device=target.device, dtype=torch.float)
+            mask, val, torch.tensor(0.0, device=target.device, dtype=torch.float)
         )
         target_masked = torch.where(
-            ~mask, target, torch.tensor(0.0, device=target.device, dtype=torch.float)
+            mask, target, torch.tensor(0.0, device=target.device, dtype=torch.float)
         )
         return val.sum(), mask.sum(), target_masked.sum()
 
