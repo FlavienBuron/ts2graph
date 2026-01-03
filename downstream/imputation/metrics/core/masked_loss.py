@@ -48,7 +48,7 @@ class MaskedLoss(nn.Module, ABC):
         mask = self._build_mask(value, mask)
 
         # apply mask
-        value2 = torch.where(mask, value, torch.tensor(0)
+        value2 = torch.where(mask, value, torch.tensor(0))
 
         if self.reduction == "sum":
             return value2.sum()
