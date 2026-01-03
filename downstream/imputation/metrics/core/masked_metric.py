@@ -53,10 +53,8 @@ class MaskedMetric(Metric):
         _check_same_shape(prediction, target)
         value = self.metric_fn(prediction, target)
         mask = self._check_mask(mask, value)
-        print(f"1. compute masked {value.sum()=} {mask.sum()=}")
         # value = torch.where(mask, value, torch.tensor(0.0, device=value.device).float())
-        value = value * mask.type(value.dtype).sum()
-        print(f"2. compute masked {value.sum()=} {mask.sum()=}")
+        value = value * mask.type(value.dtype)
         return value.sum(), mask.sum(), None
 
     def _compute_std(
@@ -87,9 +85,6 @@ class MaskedMetric(Metric):
             value, numel, _ = self._compute_std(prediction, target)
         self.value += value
         self.numel += numel
-        print(
-            f"Update: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {self.value=} {self.numel=}"
-        )
 
     def compute(self) -> torch.Tensor:
         if self.numel > 0:
