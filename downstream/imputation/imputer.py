@@ -123,6 +123,7 @@ class Imputer(pl.LightningModule):
         trend = batch_preprocessing.get("trend", 0.0)
         bias = batch_preprocessing.get("bias", 0.0)
         scale = batch_preprocessing.get("scale", 1.0)
+        print(f"{trend=} {bias.shape=} {scale.shape=}")
         return data * (scale + epsilon) + bias + trend
 
     def _unpack_batch(self, batch: Tuple[Dict, Dict]):
@@ -202,7 +203,6 @@ class Imputer(pl.LightningModule):
         ).byte()
         eval_mask = batch_data.pop("eval_mask")
         eval_mask = (mask.byte() | eval_mask.byte()) - batch_data["mask"]
-        print(f"{eval_mask.float().sum()=} {eval_mask.float().mean()=}")
         batch_data["mask"] = batch_data["mask"].bool()
 
         y = batch_data.pop("y")
