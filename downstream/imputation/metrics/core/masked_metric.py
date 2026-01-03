@@ -79,6 +79,8 @@ class MaskedMetric(Metric):
         target = target[:, self.at]
         if mask is not None:
             mask = mask[:, self.at]
+        else:
+            raise ValueError("Mask is None")
         if self.is_masked(mask):
             value, numel, _ = self._compute_masked(prediction, target, mask)
         else:
@@ -86,7 +88,7 @@ class MaskedMetric(Metric):
         self.value += value
         self.numel += numel
         print(
-            f"Update: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {self.value=} {self.numel=}"
+            f"Update: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {value=} {numel=} {self.value=} {self.numel=}"
         )
 
     def compute(self) -> torch.Tensor:
