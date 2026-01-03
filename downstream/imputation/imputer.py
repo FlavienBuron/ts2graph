@@ -228,7 +228,7 @@ class Imputer(pl.LightningModule):
         )
         print(f"DEBUG: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
         print(
-            f"DEBUG: {eval_mask.min()=} {eval_mask.max()=} {eval_mask.mean()=} {eval_mask.std()=}"
+            f"DEBUG: {eval_mask.float().min()=} {eval_mask.float().max()=} {eval_mask.float().mean()=} {eval_mask.float().std()=}"
         )
 
         self.train_metrics.update(imputation.detach(), y, eval_mask)
