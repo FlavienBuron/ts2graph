@@ -32,6 +32,12 @@ class MaskedLoss(nn.Module, ABC):
     ) -> torch.Tensor:
         prediction = prediction[:, self.at]
         target = target[:, self.at]
+        print(
+            f"{prediction.min()=} {prediction.max()=} {prediction.mean()=} {prediction.std()=} {prediction.sum()=}"
+        )
+        print(
+            f"{target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
+        )
         if mask is not None:
             mask = mask[:, self.at]
 
@@ -49,9 +55,15 @@ class MaskedLoss(nn.Module, ABC):
 
         # mean
         denom = mask.sum().clamp_min(self.eps)
-        # print(
-        #     f"Update: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {value.mean()=} {value2.mean()=} {denom.mean()=}"
-        # )
+        print(
+            f"{value.min()=} {value.max()=} {value.mean()=} {value.std()=} {value.sum()=}"
+        )
+        print(
+            f"{value2.min()=} {value2.max()=} {value2.mean()=} {value2.std()=} {value2.sum()=}"
+        )
+        print(
+            f"forward: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {value.mean()=} {value2.mean()=} {denom.mean()=}"
+        )
         return value2.sum() / denom
 
     def _build_mask(
