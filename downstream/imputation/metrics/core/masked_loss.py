@@ -32,12 +32,12 @@ class MaskedLoss(nn.Module, ABC):
     ) -> torch.Tensor:
         prediction = prediction[:, self.at]
         target = target[:, self.at]
-        print(
-            f"{prediction.min()=} {prediction.max()=} {prediction.mean()=} {prediction.std()=} {prediction.sum()=}"
-        )
-        print(
-            f"{target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
-        )
+        # print(
+        #     f"{prediction.min()=} {prediction.max()=} {prediction.mean()=} {prediction.std()=} {prediction.sum()=}"
+        # )
+        # print(
+        #     f"{target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
+        # )
         if mask is not None:
             mask = mask[:, self.at]
 
