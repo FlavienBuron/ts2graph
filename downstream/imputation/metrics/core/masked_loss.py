@@ -48,23 +48,14 @@ class MaskedLoss(nn.Module, ABC):
         mask = self._build_mask(value, mask)
 
         # apply mask
-        # value2 = torch.where(mask, value, torch.tensor(0))
-        value2 = value * mask.to(value.dtype)
+        value2 = torch.where(mask, value, torch.tensor(0))
 
         if self.reduction == "sum":
             return value2.sum()
 
         # mean
         denom = mask.sum().clamp_min(self.eps)
-        print(
-            f"{value.min()=} {value.max()=} {value.mean()=} {value.std()=} {value.sum()=}"
-        )
-        print(
-            f"{value2.min()=} {value2.max()=} {value2.mean()=} {value2.std()=} {value2.sum()=}"
-        )
-        print(
-            f"forward: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {value.mean()=} {value2.mean()=} {denom.mean()=}"
-        )
+
         return value2.sum() / denom
 
     def _build_mask(
@@ -86,7 +77,7 @@ class MaskedLoss(nn.Module, ABC):
         if self.mask_inf:
             mask &= ~torch.isinf(values)
 
-        return mask.byte()
+        return mask
 
     @abstractmethod
     def _elementwise(

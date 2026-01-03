@@ -201,7 +201,7 @@ class Imputer(pl.LightningModule):
         batch_data["mask"] = torch.bernoulli(
             mask.clone().detach().float() * self.keep_prob
         ).bool()
-        eval_mask = batch_data.pop("eval_mask")
+        eval_mask = batch_data.pop("eval_mask").detach().clone()
         eval_mask = (mask | eval_mask) & ~batch_data["mask"]
         # batch_data["mask"] = batch_data["mask"].bool()
         eval_mask = eval_mask.bool()
@@ -251,7 +251,7 @@ class Imputer(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
-        eval_mask = batch_data.pop("eval_mask", None)
+        eval_mask = batch_data.pop("eval_mask", None).detach().clone()
         y = batch_data.pop("y")
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
