@@ -49,9 +49,9 @@ class MaskedLoss(nn.Module, ABC):
 
         # mean
         denom = mask.sum().clamp_min(self.eps)
-        print(
-            f"Update: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {value.mean()=} {value2.mean()=} {denom.mean()=}"
-        )
+        # print(
+        #     f"Update: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {value.mean()=} {value2.mean()=} {denom.mean()=}"
+        # )
         return value2.sum() / denom
 
     def _build_mask(
