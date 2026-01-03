@@ -42,14 +42,17 @@ class MaskedLoss(nn.Module, ABC):
         mask = self._build_mask(value, mask)
 
         # apply mask
-        value = torch.where(mask, value, torch.zeros_like(value))
+        value2 = torch.where(mask, value, torch.zeros_like(value))
 
         if self.reduction == "sum":
-            return value.sum()
+            return value2.sum()
 
         # mean
         denom = mask.sum().clamp_min(self.eps)
-        return value.sum() / denom
+        print(
+            f"Update: {prediction.mean()=} {target.mean()=} {mask.float().mean()=} {value=} {value2=} {denom=}"
+        )
+        return value2.sum() / denom
 
     def _build_mask(
         self,
