@@ -270,6 +270,12 @@ class Imputer(pl.LightningModule):
         print(
             f"DEBUG: val 1. {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
         )
+        test = torch.where(eval_mask, imputation, 0)
+        test2 = torch.where(eval_mask, target, 0)
+        print(f"{test.min()=} {test.max()=} {test.mean()=} {test.std()=} {test.sum()=}")
+        print(
+            f"{test2.min()=} {test2.max()=} {test2.mean()=} {test2.std()=} {test2.sum()=}"
+        )
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
