@@ -268,7 +268,10 @@ class Imputer(pl.LightningModule):
 
         val_loss = self.loss_fn(imputation, target, eval_mask)
         print(
-            f"DEBUG: val 1. {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+            f"DEBUG: val 1. {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
+        )
+        print(
+            f"DEBUG: val 1. {target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
         )
         test = torch.where(eval_mask, imputation, 0)
         test2 = torch.where(eval_mask, target, 0)

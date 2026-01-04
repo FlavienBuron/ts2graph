@@ -79,11 +79,11 @@ class GRINet(nn.Module):
         if self.impute_only_holes and not self.training:
             print(f"DEBUG: forward {mask.float().mean()=} {mask.float().sum()=}")
             print(
-                f"DEBUG val: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()}"
+                f"DEBUG forward: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
             )
             imputation = torch.where(mask, x, imputation)
             print(
-                f"DEBUG val: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()}"
+                f"DEBUG forward: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
             )
         # out: [batches, channels, nodes, steps] -> [batches, steps, nodes, channels]
         imputation = torch.transpose(imputation, -3, -1)
