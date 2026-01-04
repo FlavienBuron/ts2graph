@@ -251,6 +251,9 @@ class Imputer(pl.LightningModule):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
         eval_mask = batch_data.pop("eval_mask", None).detach().clone()
+        print(
+            f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
+        )
         y = batch_data.pop("y")
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
