@@ -285,7 +285,7 @@ class Imputer(pl.LightningModule):
         print("Δ(target_y, target_x) max =", (target_y - target_x).abs().max())
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
-        print("Δ(target_y, imputation) max =", (target_y - target_x).abs().max())
+        print("Δ(target_y, imputation) max =", (target_y - imputation).abs().max())
         # print(
         #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
         # )
@@ -308,6 +308,8 @@ class Imputer(pl.LightningModule):
             # print(
             #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
             # )
+        print("Δ(prepro_target_y, target_x) max =", (target - target_x).abs().max())
+        print("Δ(prepro_target_y, imputation) max =", (target - imputation).abs().max())
 
         # masked_imp = torch.where(eval_mask, imputation, torch.tensor(float("nan")))
         # masked_tar = torch.where(eval_mask, target, torch.tensor(float("nan")))
