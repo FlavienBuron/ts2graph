@@ -205,9 +205,9 @@ class Imputer(pl.LightningModule):
             mask.clone().detach().float() * self.keep_prob
         ).bool()
         eval_mask = batch_data.pop("eval_mask").detach().clone()
-        print(
-            f"DEBUG: {mask.type()=} {eval_mask.type()=} {batch_data['mask'].type()=} "
-        )
+        # print(
+        #     f"DEBUG: {mask.type()=} {eval_mask.type()=} {batch_data['mask'].type()=} "
+        # )
         eval_mask = (mask | eval_mask) & ~batch_data["mask"]
         # batch_data["mask"] = batch_data["mask"].bool()
         eval_mask = eval_mask.bool()
@@ -215,10 +215,10 @@ class Imputer(pl.LightningModule):
         y = batch_data.pop("y")
 
         imputation, prediction = self._predict_batch(batch, preprocess=False)
-
-        mad = (imputation - y).abs()
-        mad = mad[eval_mask].mean()
-        print(f"DEBUG: MAD train {mad=}")
+        #
+        # mad = (imputation - y).abs()
+        # mad = mad[eval_mask].mean()
+        # print(f"DEBUG: MAD train {mad=}")
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
@@ -230,10 +230,10 @@ class Imputer(pl.LightningModule):
 
         mad = (imputation - target).abs()
         mad = mad[eval_mask].mean()
-        print(f"DEBUG: MAD train {mad=}")
-        print(
-            f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
-        )
+        # print(f"DEBUG: MAD train {mad=}")
+        # print(
+        #     f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
+        # )
 
         loss = self.loss_fn(imputation, target, mask)
         for h, _ in enumerate(prediction):
@@ -269,31 +269,41 @@ class Imputer(pl.LightningModule):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
         eval_mask = batch_data.pop("eval_mask", None).detach().clone()
-        print(
-            f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
-        )
+        # print(
+        #     f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
+        # )
         y = batch_data.pop("y")
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
+        print(
+            f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+        )
+        print(f"DEBUG: val {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
 
-        mad = (imputation - y).abs()
-        mad = mad[eval_mask].mean()
-        print(f"DEBUG: MAD val {mad=}")
+        # mad = (imputation - y).abs()
+        # mad = mad[eval_mask].mean()
+        # print(f"DEBUG: MAD val {mad=}")
 
         # imputation = self._postprocess(imputation, batch_preprocessing)
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
+            print(
+                f"DEBUG: val {target.min()=} {target.max()=} {target.mean()=} {target.std()=}"
+            )
         else:
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
+            print(
+                f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+            )
 
-        mad = (imputation - target).abs()
-        mad = mad[eval_mask].mean()
-        print(f"DEBUG: MAD val {mad=}")
-        print(
-            f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
-        )
+        # mad = (imputation - target).abs()
+        # mad = mad[eval_mask].mean()
+        # print(f"DEBUG: MAD val {mad=}")
+        # print(
+        #     f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
+        # )
 
         val_loss = self.loss_fn(imputation, target, eval_mask)
         # print(
@@ -312,15 +322,15 @@ class Imputer(pl.LightningModule):
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        mad = (imputation - target).abs()
-        mad = mad[eval_mask].mean()
-        print(f"DEBUG: MAD2 val {mad=}")
-        print(
-            f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
-        )
-        mad = (imputation - y).abs()
-        mad = mad[eval_mask].mean()
-        print(f"DEBUG: MAD2 val {mad=}")
+        # mad = (imputation - target).abs()
+        # mad = mad[eval_mask].mean()
+        # print(f"DEBUG: MAD2 val {mad=}")
+        # print(
+        #     f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
+        # )
+        # mad = (imputation - y).abs()
+        # mad = mad[eval_mask].mean()
+        # print(f"DEBUG: MAD2 val {mad=}")
         # print(
         #     f"DEBUG val: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
         # )
