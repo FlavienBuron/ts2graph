@@ -117,10 +117,10 @@ class Imputer(pl.LightningModule):
         trend = batch_preprocessing.get("trend", 0.0)
         bias = batch_preprocessing.get("bias", 0.0)
         scale = batch_preprocessing.get("scale", 1.0)
-        x = (data - trend - bias) / (scale + epsilon)
-        print(
-            f"DEBUG: _preprocess {bias.mean()=} {scale.mean()=} {data.mean()=} {x.mean()=}"
-        )
+        # x = (data - trend - bias) / (scale + epsilon)
+        # print(
+        #     f"DEBUG: _preprocess {bias.mean()=} {scale.mean()=} {data.mean()=} {x.mean()=}"
+        # )
         return (data - trend - bias) / (scale + epsilon)
 
     def _postprocess(self, data: torch.Tensor, batch_preprocessing: Dict):
@@ -205,7 +205,7 @@ class Imputer(pl.LightningModule):
             mask.clone().detach().float() * self.keep_prob
         ).bool()
         eval_mask = batch_data.pop("eval_mask").detach().clone()
-        print(f"{eval_mask.dtype=}")
+        # print(f"{eval_mask.dtype=}")
         # print(
         #     f"DEBUG: {mask.type()=} {eval_mask.type()=} {batch_data['mask'].type()=} "
         # )
@@ -269,8 +269,8 @@ class Imputer(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
-        eval_mask = batch_data.pop("eval_mask", None).detach().clone().byte()
-        print(f"{eval_mask.dtype=}")
+        eval_mask = batch_data.pop("eval_mask", None)
+        # print(f"{eval_mask.dtype=}")
         # print(
         #     f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
         # )
@@ -289,11 +289,13 @@ class Imputer(pl.LightningModule):
         # imputation = self._postprocess(imputation, batch_preprocessing)
 
         if self.scaled_target:
+            print("Sanity check preprocess")
             target = self._preprocess(y, batch_preprocessing)
             # print(
             #     f"DEBUG: val {target.min()=} {target.max()=} {target.mean()=} {target.std()=}"
             # )
         else:
+            print("Insanity check")
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
             # print(
