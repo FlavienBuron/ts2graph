@@ -273,7 +273,7 @@ class Imputer(pl.LightningModule):
         print(
             f"DEBUG: val 1. {target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
         )
-        test = torch.where(eval_mask, imputation, 0)
+        test = torch.where(~eval_mask, imputation, 0)
         test2 = torch.where(eval_mask, target, 0)
         print(f"{test.min()=} {test.max()=} {test.mean()=} {test.std()=} {test.sum()=}")
         print(
