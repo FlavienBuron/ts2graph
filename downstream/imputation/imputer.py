@@ -269,7 +269,7 @@ class Imputer(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
-        eval_mask = batch_data.pop("eval_mask", None).detach().clone()
+        eval_mask = batch_data.pop("eval_mask", None).detach().clone().byte()
         print(f"{eval_mask.dtype=}")
         # print(
         #     f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
