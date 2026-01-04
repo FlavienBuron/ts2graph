@@ -289,13 +289,11 @@ class Imputer(pl.LightningModule):
         # imputation = self._postprocess(imputation, batch_preprocessing)
 
         if self.scaled_target:
-            print("Sanity check preprocess")
             target = self._preprocess(y, batch_preprocessing)
             # print(
             #     f"DEBUG: val {target.min()=} {target.max()=} {target.mean()=} {target.std()=}"
             # )
         else:
-            print("Insanity check")
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
             # print(
@@ -329,6 +327,9 @@ class Imputer(pl.LightningModule):
         mad = (imputation - target).abs()
         mad = mad[eval_mask].mean()
         print(f"DEBUG: MAD2 val {mad=}")
+        mad3 = (imputation - y).abs()
+        mad3 = mad[eval_mask].mean()
+        print(f"DEBUG: MAD3 val {mad3=}")
         # print(
         #     f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
         # )
