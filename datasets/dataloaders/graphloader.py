@@ -78,6 +78,7 @@ class GraphLoader(Dataset, ABC):
         return len(self._indices)
 
     def __getitem__(self, item: int) -> Any:
+        print(f"{self.preprocess}")
         return self.get(item, self.preprocess)
 
     def __contains__(self, item):
