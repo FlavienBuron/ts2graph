@@ -177,6 +177,10 @@ class Imputer(pl.LightningModule):
         else:
             imputation, prediction, _ = self.forward(**batch_data)
 
+        masked_imp = torch.where(
+            batch_data["mask"], torch.tensor(float("nan")), imputation
+        )
+        print("Masked imputation:", masked_imp[0, :15, :15, 0])
         return imputation, prediction
 
     def predict_step(self, batch, batch_idx):
@@ -277,10 +281,6 @@ class Imputer(pl.LightningModule):
         y = batch_data.pop("y")
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
-        masked_imp = torch.where(
-            batch_data["mask"], torch.tensor(float("nan")), imputation
-        )
-        print("Masked imputation:", masked_imp[0, :15, :15, 0])
         # print(
         #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
         # )
