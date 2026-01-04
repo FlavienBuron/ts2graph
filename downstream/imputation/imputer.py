@@ -285,6 +285,7 @@ class Imputer(pl.LightningModule):
         print("Δ(target_y, target_x) max =", (target_y - target_x).abs().max())
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
+        print("Δ(target_y, imputation) max =", (target_y - target_x).abs().max())
         # print(
         #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
         # )
