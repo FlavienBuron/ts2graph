@@ -77,6 +77,7 @@ class GRINet(nn.Module):
         total_imputation_time = imputation_end - imputation_start
         # In evaluation stage impute only missing values
         if self.impute_only_holes and not self.training:
+            print(f"DEBUG: forward {mask.float().mean()=} {mask.float().sum()=}")
             imputation = torch.where(mask, x, imputation)
         # out: [batches, channels, nodes, steps] -> [batches, steps, nodes, channels]
         imputation = torch.transpose(imputation, -3, -1)
