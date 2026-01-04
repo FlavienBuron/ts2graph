@@ -87,6 +87,7 @@ class GRINet(nn.Module):
             masked_x = torch.where(mask, x, torch.tensor(float("nan")))
             print("Masked imputation:", masked_imp[0, :15, :15, 0])
             print("Masked target:", masked_x[0, :15, :15, 0])
+            print("Actual imputation:", imputation[0, :15, :15, 0])
             # print(
             #     f"DEBUG forward: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
             # )
