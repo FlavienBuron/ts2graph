@@ -216,6 +216,10 @@ class Imputer(pl.LightningModule):
 
         imputation, prediction = self._predict_batch(batch, preprocess=False)
 
+        mad = (imputation - y).abs()
+        mad = mad[eval_mask].mean()
+        print(f"DEBUG: MAD train {mad=}")
+
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
         else:
@@ -223,6 +227,13 @@ class Imputer(pl.LightningModule):
             imputation = self._postprocess(imputation, batch_preprocessing)
             for h, _ in enumerate(prediction):
                 prediction[h] = self._postprocess(prediction[h], batch_preprocessing)
+
+        mad = (imputation - target).abs()
+        mad = mad[eval_mask].mean()
+        print(f"DEBUG: MAD train {mad=}")
+        print(
+            f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
+        )
 
         loss = self.loss_fn(imputation, target, mask)
         for h, _ in enumerate(prediction):
