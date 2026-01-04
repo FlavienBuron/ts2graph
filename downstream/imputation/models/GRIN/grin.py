@@ -64,7 +64,9 @@ class GRINet(nn.Module):
             # mask = mask.unsqueeze(0)
             mask = rearrange(mask, "b s n c -> b c n s")
         else:
+            print("Mask is None")
             mask = torch.zeros_like(x)
+        print(f"{mask.float().mean()=} {mask.float().sum()=}")
 
         if u is not None:
             u = rearrange(u, "b s n c -> b c n s")

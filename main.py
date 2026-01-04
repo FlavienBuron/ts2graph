@@ -831,7 +831,7 @@ def run(args: Namespace) -> None:
         gradient_clip_val=0.5,
         enable_progress_bar=True,
         callbacks=[RichProgressBar(), ConsoleMetricsCallback()],
-        # num_sanity_val_steps=10,
+        num_sanity_val_steps=10,
     )
     trainer.fit(imputer, datamodule=dm)
     outputs = trainer.predict(imputer, datamodule=dm)
