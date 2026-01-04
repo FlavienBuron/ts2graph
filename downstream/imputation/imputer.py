@@ -261,6 +261,10 @@ class Imputer(pl.LightningModule):
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
 
+        mad = (imputation - y).abs()
+        mad = mad[eval_mask].mean()
+        print(f"DEBUG: MAD val {mad=}")
+
         # imputation = self._postprocess(imputation, batch_preprocessing)
 
         if self.scaled_target:
