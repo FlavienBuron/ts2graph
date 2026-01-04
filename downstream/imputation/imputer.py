@@ -280,6 +280,9 @@ class Imputer(pl.LightningModule):
         mad = (imputation - target).abs()
         mad = mad[eval_mask].mean()
         print(f"DEBUG: MAD val {mad=}")
+        print(
+            f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
+        )
 
         val_loss = self.loss_fn(imputation, target, eval_mask)
         # print(
