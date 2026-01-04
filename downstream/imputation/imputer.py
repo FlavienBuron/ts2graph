@@ -117,6 +117,10 @@ class Imputer(pl.LightningModule):
         trend = batch_preprocessing.get("trend", 0.0)
         bias = batch_preprocessing.get("bias", 0.0)
         scale = batch_preprocessing.get("scale", 1.0)
+        x = (data - trend - bias) / (scale + epsilon)
+        print(
+            f"DEBUG: _preprocess {bias.mean()=} {scale.mean()=} {data.mean()=} {x.mean()=}"
+        )
         return (data - trend - bias) / (scale + epsilon)
 
     def _postprocess(self, data: torch.Tensor, batch_preprocessing: Dict):
