@@ -201,6 +201,9 @@ class Imputer(pl.LightningModule):
             mask.clone().detach().float() * self.keep_prob
         ).bool()
         eval_mask = batch_data.pop("eval_mask").detach().clone()
+        print(
+            f"DEBUG: {mask.type()=} {eval_mask.type()=} {batch_data['mask'].type()=} "
+        )
         eval_mask = (mask | eval_mask) & ~batch_data["mask"]
         # batch_data["mask"] = batch_data["mask"].bool()
         eval_mask = eval_mask.bool()
@@ -251,9 +254,9 @@ class Imputer(pl.LightningModule):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
         eval_mask = batch_data.pop("eval_mask", None).detach().clone()
-        # print(
-        #     f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
-        # )
+        print(
+            f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
+        )
         y = batch_data.pop("y")
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
