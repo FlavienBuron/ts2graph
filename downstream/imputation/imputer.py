@@ -251,9 +251,9 @@ class Imputer(pl.LightningModule):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
         eval_mask = batch_data.pop("eval_mask", None).detach().clone()
-        print(
-            f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
-        )
+        # print(
+        #     f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
+        # )
         y = batch_data.pop("y")
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
@@ -266,30 +266,30 @@ class Imputer(pl.LightningModule):
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        val_loss = self.loss_fn(imputation, target, eval_mask)
-        print(
-            f"DEBUG: val 1. {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
-        )
-        print(
-            f"DEBUG: val 1. {target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
-        )
-        test = torch.where(eval_mask, 0, imputation)
-        test2 = torch.where(eval_mask, target, 0)
-        print(f"{test.min()=} {test.max()=} {test.mean()=} {test.std()=} {test.sum()=}")
-        print(
-            f"{test2.min()=} {test2.max()=} {test2.mean()=} {test2.std()=} {test2.sum()=}"
-        )
+        val_loss = self.loss_fn(imputation, target, ~eval_mask)
+        # print(
+        #     f"DEBUG: val 1. {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
+        # )
+        # print(
+        #     f"DEBUG: val 1. {target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
+        # )
+        # test = torch.where(eval_mask, 0, imputation)
+        # test2 = torch.where(eval_mask, target, 0)
+        # print(f"{test.min()=} {test.max()=} {test.mean()=} {test.std()=} {test.sum()=}")
+        # print(
+        #     f"{test2.min()=} {test2.max()=} {test2.mean()=} {test2.std()=} {test2.sum()=}"
+        # )
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        print(
-            f"DEBUG val: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
-        )
-        print(f"DEBUG val: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
-        print(
-            f"DEBUG val: {eval_mask.float().min()=} {eval_mask.float().max()=} {eval_mask.float().mean()=} {eval_mask.float().std()=}"
-        )
+        # print(
+        #     f"DEBUG val: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+        # )
+        # print(f"DEBUG val: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
+        # print(
+        #     f"DEBUG val: {eval_mask.float().min()=} {eval_mask.float().max()=} {eval_mask.float().mean()=} {eval_mask.float().std()=}"
+        # )
         self.val_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
             self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True

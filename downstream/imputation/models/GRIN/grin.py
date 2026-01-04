@@ -34,7 +34,7 @@ class GRINet(nn.Module):
         self.d_emb = int(d_emb) if d_emb is not None else 0
         self.register_buffer("adj", adj.detach().clone().float())
         self.impute_only_holes = impute_only_holes
-        print(f"DEBUG: {self.impute_only_holes=}")
+        # print(f"DEBUG: {self.impute_only_holes=}")
 
         self.bigrill = BiGRIL(
             input_size=self.d_in,
@@ -55,7 +55,7 @@ class GRINet(nn.Module):
     def forward(
         self, x, mask=None, u=None, **kwargs
     ) -> tuple[torch.Tensor, torch.Tensor, float]:
-        print(f"    {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
+        # print(f"    {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
         total_imputation_time = 0.0
         # x = x.unsqueeze(0)
         # x: [batches, steps, nodes, channels] -> [batches, channels, nodes, steps]
@@ -78,14 +78,14 @@ class GRINet(nn.Module):
         total_imputation_time = imputation_end - imputation_start
         # In evaluation stage impute only missing values
         if self.impute_only_holes and not self.training:
-            print(f"DEBUG: forward {mask.float().mean()=} {mask.float().sum()=}")
-            print(
-                f"DEBUG forward: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
-            )
+            # print(f"DEBUG: forward {mask.float().mean()=} {mask.float().sum()=}")
+            # print(
+            #     f"DEBUG forward: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
+            # )
             imputation = torch.where(mask, x, imputation)
-            print(
-                f"DEBUG forward: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
-            )
+            # print(
+            #     f"DEBUG forward: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
+            # )
         # out: [batches, channels, nodes, steps] -> [batches, steps, nodes, channels]
         imputation = torch.transpose(imputation, -3, -1)
         prediction = torch.transpose(prediction, -3, -1)
