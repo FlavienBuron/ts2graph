@@ -269,7 +269,11 @@ class Imputer(pl.LightningModule):
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        val_loss = self.loss_fn(imputation, target, ~eval_mask)
+        mad = (imputation - target).abs()
+        mad = mad[eval_mask].mean()
+        print(f"DEBUG: MAD val {mad=}")
+
+        val_loss = self.loss_fn(imputation, target, eval_mask)
         # print(
         #     f"DEBUG: val 1. {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
         # )
