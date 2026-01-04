@@ -205,6 +205,7 @@ class Imputer(pl.LightningModule):
             mask.clone().detach().float() * self.keep_prob
         ).bool()
         eval_mask = batch_data.pop("eval_mask").detach().clone()
+        print(f"{eval_mask.dtype=}")
         # print(
         #     f"DEBUG: {mask.type()=} {eval_mask.type()=} {batch_data['mask'].type()=} "
         # )
@@ -269,16 +270,17 @@ class Imputer(pl.LightningModule):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
         eval_mask = batch_data.pop("eval_mask", None).detach().clone()
+        print(f"{eval_mask.dtype=}")
         # print(
         #     f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
         # )
         y = batch_data.pop("y")
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
-        print(
-            f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
-        )
-        print(f"DEBUG: val {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
+        # print(
+        #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+        # )
+        # print(f"DEBUG: val {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
 
         # mad = (imputation - y).abs()
         # mad = mad[eval_mask].mean()
@@ -288,15 +290,15 @@ class Imputer(pl.LightningModule):
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
-            print(
-                f"DEBUG: val {target.min()=} {target.max()=} {target.mean()=} {target.std()=}"
-            )
+            # print(
+            #     f"DEBUG: val {target.min()=} {target.max()=} {target.mean()=} {target.std()=}"
+            # )
         else:
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
-            print(
-                f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
-            )
+            # print(
+            #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
+            # )
 
         # mad = (imputation - target).abs()
         # mad = mad[eval_mask].mean()
