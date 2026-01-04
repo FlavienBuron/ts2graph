@@ -301,7 +301,7 @@ class Imputer(pl.LightningModule):
             # )
 
         masked_imp = torch.where(eval_mask, imputation, torch.tensor(float("nan")))
-        masked_tar = torch.where(eval_mask, y, torch.tensor(float("nan")))
+        masked_tar = torch.where(eval_mask, target, torch.tensor(float("nan")))
         print("Masked imputation:", masked_imp[0, :15, :15, 0])
         print("Masked target:", masked_tar[0, :15, :15, 0])
         # mad = (imputation - target).abs()
