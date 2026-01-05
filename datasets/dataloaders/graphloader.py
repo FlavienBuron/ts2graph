@@ -14,7 +14,6 @@ class GraphLoader(Dataset, ABC):
         self,
         dataframe: pd.DataFrame,
         missing_mask: np.ndarray,
-        mask,
         eval_mask: np.ndarray | torch.Tensor | None = None,
         freq: str | None = None,
         aggr: str = "sum",
