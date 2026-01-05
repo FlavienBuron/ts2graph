@@ -249,24 +249,6 @@ class GraphLoader(Dataset, ABC):
 
         self.samples_per_day = int(86400 / pd.Timedelta(self.freq).total_seconds())
 
-    def _store_spatiotemporal_data(
-        self,
-        freq: str | pd.DatetimeIndex | None = None,
-        exogenous: dict | None = None,
-        trend=None,
-        scaler=None,
-        window: int = 24,
-        horizon: int = 24,
-        delay: int = 0,
-        stride: int = 1,
-    ):
-        if exogenous is not None:
-            for name, value in exogenous.items():
-                self._add_exogenous(value, name, for_window=True, for_horizon=False)
-
-        self.trend = trend
-        self.scaler = scaler
-
     def _resample(self, freq: str, aggr: str):
         resampler = self.df.resample(freq)
         if aggr == "sum":

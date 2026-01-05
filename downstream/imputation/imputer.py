@@ -338,10 +338,11 @@ class Imputer(pl.LightningModule):
             # print(
             #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
             # )
-        # post_imp = self._postprocess(imputation, batch_preprocessing)
+        post_imp = self._postprocess(imputation, batch_preprocessing)
         # print("Δ(target, preprocess_x) mean =", (target - preprocess_x).abs().mean())
         # print("Δ(target, imputation) mean =", (target - imputation).abs().mean())
         # print("Δ(target, postprocess_imp) mean =", (target - post_imp).abs().mean())
+        print("Δ(y, postprocess_imp) mean =", (y - post_imp).abs().mean())
 
         # masked_imp = torch.where(eval_mask, imputation, torch.tensor(float("nan")))
         # masked_tar = torch.where(eval_mask, target, torch.tensor(float("nan")))
