@@ -55,7 +55,7 @@ class GRINet(nn.Module):
     def forward(
         self, x, mask=None, u=None, **kwargs
     ) -> tuple[torch.Tensor, torch.Tensor, float]:
-        # dump_parameters(self)
+        dump_parameters(self)
         # print(f"    {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
         total_imputation_time = 0.0
         # x = x.unsqueeze(0)
