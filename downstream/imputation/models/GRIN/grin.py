@@ -55,13 +55,14 @@ class GRINet(nn.Module):
     def forward(
         self, x, mask=None, u=None, **kwargs
     ) -> tuple[torch.Tensor, torch.Tensor, float]:
+        dump_parameters(self)
         # print(f"    {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
         total_imputation_time = 0.0
         # x = x.unsqueeze(0)
         # x: [batches, steps, nodes, channels] -> [batches, channels, nodes, steps]
-        print(f"DEBUG GRIN 1.: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
+        # print(f"DEBUG GRIN 1.: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
         x = rearrange(x, "b s n c -> b c n s")
-        print(f"DEBUG GRIN 2.: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
+        # print(f"DEBUG GRIN 2.: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
         if mask is not None:
             # mask = mask.unsqueeze(0)
             mask = rearrange(mask, "b s n c -> b c n s")
@@ -125,3 +126,18 @@ class GRINet(nn.Module):
             "--impute-only-holes", type=bool, nargs="?", const=True, default=True
         )
         return parser
+
+
+def dump_parameters(model):
+    print("\n=== PARAMETERS ===")
+    for name, p in model.named_parameters():
+        if p is None:
+            print(f"{name}: None")
+        else:
+            print(
+                f"{name}: "
+                f"shape={tuple(p.shape)} "
+                f"mean={p.mean().item():.4g} "
+                f"std={p.std().item():.4g} "
+                f"max|x|={p.abs().max().item():.4g}"
+            )
