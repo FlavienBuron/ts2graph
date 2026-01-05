@@ -324,7 +324,7 @@ class Imputer(pl.LightningModule):
 
         diff = (imputation - y).abs()
         mad = diff[eval_mask].mean()
-        mad_inv = mad[~eval_mask].mean()
+        mad_inv = diff[~eval_mask].mean()
         print(f"DEBUG: MAD val {mad=} {mad_inv=}")
 
         # imputation = self._postprocess(imputation, batch_preprocessing)
