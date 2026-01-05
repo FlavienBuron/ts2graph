@@ -293,9 +293,10 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         x = batch_data.get("x")
-        print(
-            f"DEBUG validation: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}"
-        )
+        debug_mask_relationship(batch_data["mask"], eval_mask, name="val")
+        # print(
+        #     f"DEBUG validation: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}"
+        # )
         # print(f"{eval_mask.dtype=}")
         # print(
         #     f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
@@ -489,3 +490,32 @@ def dump_module_attrs(module, tag=""):
                 print(f"{k}: {type(v).__name__} = {v}")
         except Exception as e:
             print(f"{k}: <error: {e}>")
+
+
+def debug_mask_relationship(mask, eval_mask, name=""):
+    # ensure boolean
+    mask = mask.bool()
+    eval_mask = eval_mask.bool()
+
+    total = mask.numel()
+
+    overlap = (mask & eval_mask).sum()
+    mask_only = (mask & ~eval_mask).sum()
+    eval_only = (~mask & eval_mask).sum()
+    neither = (~mask & ~eval_mask).sum()
+
+    print(f"\n=== MASK DEBUG {name} ===")
+    print(f"total elements         : {total}")
+    print(f"mask true              : {mask.sum().item()} ({mask.float().mean():.4f})")
+    print(
+        f"eval_mask true         : {eval_mask.sum().item()} ({eval_mask.float().mean():.4f})"
+    )
+    print(f"overlap (mask & eval)  : {overlap.item()}")
+    print(f"mask only              : {mask_only.item()}")
+    print(f"eval_mask only         : {eval_only.item()}")
+    print(f"neither                : {neither.item()}")
+
+    # logical relations
+    print("mask == eval_mask      :", torch.equal(mask, eval_mask))
+    print("eval ⊆ mask            :", eval_only.item() == 0)
+    print("mask ⊆ eval            :", mask_only.item() == 0)
