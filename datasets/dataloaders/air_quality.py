@@ -42,6 +42,7 @@ class AirQualityLoader(GraphLoader):
         super().__init__(
             dataframe=data,
             missing_mask=missing_mask,
+            mask=self.training_mask,
             eval_mask=self.eval_mask,
             freq=freq,
             aggr="nearest",

@@ -763,7 +763,9 @@ def run(args: Namespace) -> None:
     for key, value in config_args.items():
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
-    debug_mask_relationship(torch.tensor(dataset.mask), torch.tensor(dataset.eval_mask))
+    debug_mask_relationship(
+        torch.tensor(dataset.mask), torch.tensor(dataset.eval_mask), name=" 1 "
+    )
     train, val, test = dataset.grin_split()
     print(f"DEBUG: {train.shape=} {val.shape=} {test.shape=}")
     dm = DataModule(
@@ -777,6 +779,7 @@ def run(args: Namespace) -> None:
     debug_mask_relationship(
         torch.tensor(dm.dataset.mask[dm.val_slice]),
         torch.tensor(dm.dataset.eval_mask[dm.val_slice]),
+        name=" 2 ",
     )
 
     # dataset._store_spatiotemporal_data()

@@ -14,6 +14,7 @@ class GraphLoader(Dataset, ABC):
         self,
         dataframe: pd.DataFrame,
         missing_mask: np.ndarray,
+        mask,
         eval_mask: np.ndarray | torch.Tensor | None = None,
         freq: str | None = None,
         aggr: str = "sum",
@@ -45,6 +46,8 @@ class GraphLoader(Dataset, ABC):
         self.data, self.index = self.as_numpy(return_idx=True)
         if self.index is None:
             raise AttributeError("Dataset index is returned as None")
+
+        self.mask = mask
 
         if exogenous is None:
             exogenous = dict()
