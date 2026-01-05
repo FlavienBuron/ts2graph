@@ -83,11 +83,11 @@ class GRINet(nn.Module):
         imputation_end = perf_counter()
         total_imputation_time = imputation_end - imputation_start
         # In evaluation stage impute only missing values
-        masked_imp = torch.where(mask, torch.tensor(float("nan")), imputation)
-        inv_masked_imp = torch.where(mask, imputation, torch.tensor(float("nan")))
-        print("Masked imputation:", masked_imp[0, :15, :15, 0])
-        print("Inverse Masked imputation:", inv_masked_imp[0, :15, :15, 0])
-        print("Actual x:", x[0, :15, :15, 0])
+        # masked_imp = torch.where(mask, torch.tensor(float("nan")), imputation)
+        # inv_masked_imp = torch.where(mask, imputation, torch.tensor(float("nan")))
+        # print("Masked imputation:", masked_imp[0, :15, :15, 0])
+        # print("Inverse Masked imputation:", inv_masked_imp[0, :15, :15, 0])
+        # print("Actual x:", x[0, :15, :15, 0])
         if self.impute_only_holes and not self.training:
             # print(f"DEBUG: forward {mask.float().mean()=} {mask.float().sum()=}")
             # print(
@@ -95,11 +95,11 @@ class GRINet(nn.Module):
             # )
             # masked_imp = torch.where(mask, torch.tensor(float("nan")), imputation)
             imputation = torch.where(mask, x, imputation)
-            masked_x = torch.where(mask, x, torch.tensor(float("nan")))
+            # masked_x = torch.where(mask, x, torch.tensor(float("nan")))
             # print("Masked imputation:", masked_imp[0, :15, :15, 0])
             # print("Masked x:", masked_x[0, :15, :15, 0])
-            print("Actual imputation:", imputation[0, :15, :15, 0])
-            print("Actual x:", x[0, :15, :15, 0])
+            # print("Actual imputation:", imputation[0, :15, :15, 0])
+            # print("Actual x:", x[0, :15, :15, 0])
             # print(
             #     f"DEBUG forward: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
             # )

@@ -27,7 +27,7 @@ from torch.utils.data import DataLoader
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from datasets.datamodule import DataModule
-from downstream.imputation.imputer import Imputer, debug_mask_relationship
+from downstream.imputation.imputer import Imputer
 from downstream.imputation.metrics.losses import MaskedMAELoss
 from downstream.imputation.metrics.metrics import (
     MaskedMAE,
@@ -763,11 +763,8 @@ def run(args: Namespace) -> None:
     for key, value in config_args.items():
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
-    debug_mask_relationship(
-        torch.tensor(dataset.mask), torch.tensor(dataset.eval_mask), name=" 1 "
-    )
+
     train, val, test = dataset.grin_split()
-    print(f"DEBUG: {train.shape=} {val.shape=} {test.shape=}")
     dm = DataModule(
         dataset,
         train_indices=train,
@@ -775,11 +772,6 @@ def run(args: Namespace) -> None:
         val_indices=val,
         samples_per_epoch=5120,
         scaling_type="std",
-    )
-    debug_mask_relationship(
-        torch.tensor(dm.dataset.mask[dm.val_slice]),
-        torch.tensor(dm.dataset.eval_mask[dm.val_slice]),
-        name=" 2 ",
     )
 
     # dataset._store_spatiotemporal_data()

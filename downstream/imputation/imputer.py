@@ -209,7 +209,6 @@ class Imputer(pl.LightningModule):
             mask.clone().detach().float() * self.keep_prob
         ).bool()
         eval_mask = batch_data.pop("eval_mask").detach().clone()
-        debug_mask_relationship(batch_data["mask"], eval_mask, name="train1")
         # print(f"{eval_mask.dtype=}")
         # print(
         #     f"DEBUG: {mask.type()=} {eval_mask.type()=} {batch_data['mask'].type()=} "
@@ -217,7 +216,6 @@ class Imputer(pl.LightningModule):
         eval_mask = (mask | eval_mask) & ~batch_data["mask"]
         # batch_data["mask"] = batch_data["mask"].bool()
         eval_mask = eval_mask.bool()
-        debug_mask_relationship(batch_data["mask"], eval_mask, name="train2")
 
         y = batch_data.pop("y")
         # preprocess_y = self._preprocess(y, batch_preprocessing)
