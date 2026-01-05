@@ -87,6 +87,7 @@ class GRINet(nn.Module):
         inv_masked_imp = torch.where(mask, imputation, torch.tensor(float("nan")))
         print("Masked imputation:", masked_imp[0, :15, :15, 0])
         print("Inverse Masked imputation:", inv_masked_imp[0, :15, :15, 0])
+        print("Actual x:", x[0, :15, :15, 0])
         if self.impute_only_holes and not self.training:
             # print(f"DEBUG: forward {mask.float().mean()=} {mask.float().sum()=}")
             # print(
