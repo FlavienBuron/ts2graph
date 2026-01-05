@@ -94,7 +94,7 @@ class GRINet(nn.Module):
             print("Masked imputation:", masked_imp[0, :15, :15, 0])
             print("Masked x:", masked_x[0, :15, :15, 0])
             print("Actual imputation:", imputation[0, :15, :15, 0])
-            print("Actual x:", imputation[0, :15, :15, 0])
+            print("Actual x:", x[0, :15, :15, 0])
             # print(
             #     f"DEBUG forward: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
             # )
