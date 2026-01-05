@@ -288,6 +288,7 @@ class Imputer(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
+        dump_module_attrs(self, tag="VAL")
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
         eval_mask = batch_data.pop("eval_mask", None)
@@ -468,3 +469,21 @@ class Imputer(pl.LightningModule):
             prog_bar=False,
             logger=True,
         )
+
+
+def dump_module_attrs(module, tag=""):
+    print(f"\n{'=' * 20} MODULE ATTRS [{tag}] {'=' * 20}")
+    for k in sorted(vars(module).keys()):
+        v = getattr(module, k)
+        try:
+            if torch.is_tensor(v):
+                print(
+                    f"{k}: tensor "
+                    f"shape={tuple(v.shape)} "
+                    f"mean={v.mean().item():.4g} "
+                    f"std={v.std().item():.4g}"
+                )
+            else:
+                print(f"{k}: {type(v).__name__} = {v}")
+        except Exception as e:
+            print(f"{k}: <error: {e}>")
