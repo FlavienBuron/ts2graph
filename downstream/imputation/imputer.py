@@ -322,10 +322,10 @@ class Imputer(pl.LightningModule):
         # )
         # print(f"DEBUG: val {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
 
-        diff = (imputation - y).abs()
-        mad = diff[eval_mask].mean()
-        mad_inv = diff[~eval_mask].mean()
-        print(f"DEBUG: MAD val {mad=} {mad_inv=}")
+        # diff = (imputation - y).abs()
+        # mad = diff[eval_mask].mean()
+        # mad_inv = diff[~eval_mask].mean()
+        # print(f"DEBUG: MAD val {mad=} {mad_inv=}")
 
         # imputation = self._postprocess(imputation, batch_preprocessing)
 
@@ -345,15 +345,15 @@ class Imputer(pl.LightningModule):
         # print("Δ(target, imputation) mean =", (target - imputation).abs().mean())
         # print("Δ(target, postprocess_imp) mean =", (target - post_imp).abs().mean())
         # print("Δ(y, postprocess_imp) mean =", (y - post_imp).abs().mean())
-
-        masked_imp = torch.where(eval_mask, imputation, torch.tensor(float("nan")))
-        masked_tar = torch.where(eval_mask, target, torch.tensor(float("nan")))
-        print("Masked imputation:", masked_imp[0, :15, :15, 0])
-        print("Masked target:", masked_tar[0, :15, :15, 0])
-        diff = (imputation - target).abs()
-        mad = diff[eval_mask].mean()
-        mad_inv = diff[~eval_mask].mean()
-        print(f"DEBUG: MAD val {mad=} {mad_inv=}")
+        #
+        # masked_imp = torch.where(eval_mask, imputation, torch.tensor(float("nan")))
+        # masked_tar = torch.where(eval_mask, target, torch.tensor(float("nan")))
+        # print("Masked imputation:", masked_imp[0, :15, :15, 0])
+        # print("Masked target:", masked_tar[0, :15, :15, 0])
+        # diff = (imputation - target).abs()
+        # mad = diff[eval_mask].mean()
+        # mad_inv = diff[~eval_mask].mean()
+        # print(f"DEBUG: MAD val {mad=} {mad_inv=}")
         # print(
         #     f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
         # )
