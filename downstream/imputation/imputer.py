@@ -350,9 +350,10 @@ class Imputer(pl.LightningModule):
         # masked_tar = torch.where(eval_mask, target, torch.tensor(float("nan")))
         # print("Masked imputation:", masked_imp[0, :15, :15, 0])
         # print("Masked target:", masked_tar[0, :15, :15, 0])
-        # mad = (imputation - target).abs()
-        # mad = mad[eval_mask].mean()
-        # print(f"DEBUG: MAD val {mad=}")
+        diff = (imputation - target).abs()
+        mad = diff[eval_mask].mean()
+        mad_inv = diff[~eval_mask].mean()
+        print(f"DEBUG: MAD val {mad=} {mad_inv=}")
         # print(
         #     f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
         # )
