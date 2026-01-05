@@ -55,7 +55,7 @@ class GRINet(nn.Module):
     def forward(
         self, x, mask=None, u=None, **kwargs
     ) -> tuple[torch.Tensor, torch.Tensor, float]:
-        dump_parameters(self)
+        # dump_parameters(self)
         # print(f"    {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
         total_imputation_time = 0.0
         # x = x.unsqueeze(0)
@@ -77,9 +77,9 @@ class GRINet(nn.Module):
         imputation, prediction = self.bigrill(
             x, self.adj, mask=mask, u=u, cached_support=self.training
         )
-        print(
-            f"DEBUG GRIN 1.: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.sum()=} {imputation.std()=}"
-        )
+        # print(
+        #     f"DEBUG GRIN 1.: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.sum()=} {imputation.std()=}"
+        # )
         imputation_end = perf_counter()
         total_imputation_time = imputation_end - imputation_start
         # In evaluation stage impute only missing values
