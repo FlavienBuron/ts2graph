@@ -218,25 +218,25 @@ class Imputer(pl.LightningModule):
         eval_mask = eval_mask.bool()
 
         y = batch_data.pop("y")
-        preprocess_y = self._preprocess(y, batch_preprocessing)
-        preprocess_x = self._preprocess(batch_data["x"], batch_preprocessing)
-
-        print(
-            "Δ(preprocess_y, x) mean =", (preprocess_y - batch_data["x"]).abs().mean()
-        )
-        print(
-            "Δ(preprocess_y, preprocess_x) max =",
-            (preprocess_y - preprocess_x).abs().mean(),
-        )
+        # preprocess_y = self._preprocess(y, batch_preprocessing)
+        # preprocess_x = self._preprocess(batch_data["x"], batch_preprocessing)
+        #
+        # print(
+        #     "Δ(preprocess_y, x) mean =", (preprocess_y - batch_data["x"]).abs().mean()
+        # )
+        # print(
+        #     "Δ(preprocess_y, preprocess_x) max =",
+        #     (preprocess_y - preprocess_x).abs().mean(),
+        # )
 
         imputation, prediction = self._predict_batch(batch, preprocess=False)
         #
         # mad = (imputation - y).abs()
         # mad = mad[eval_mask].mean()
         # print(f"DEBUG: MAD train {mad=}")
-        print(
-            "Δ(preprocess_y, imputaion) max =", (preprocess_y - imputation).abs().mean()
-        )
+        # print(
+        #     "Δ(preprocess_y, imputaion) max =", (preprocess_y - imputation).abs().mean()
+        # )
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
@@ -259,10 +259,10 @@ class Imputer(pl.LightningModule):
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
-        post_imp = self._postprocess(imputation, batch_preprocessing)
-        print("Δ(target, preprocess_x) mean =", (target - preprocess_x).abs().mean())
-        print("Δ(target, imputation) mean =", (target - imputation).abs().mean())
-        print("Δ(target, postprocess_imp) mean =", (target - post_imp).abs().mean())
+        # post_imp = self._postprocess(imputation, batch_preprocessing)
+        # print("Δ(target, preprocess_x) mean =", (target - preprocess_x).abs().mean())
+        # print("Δ(target, imputation) mean =", (target - imputation).abs().mean())
+        # print("Δ(target, postprocess_imp) mean =", (target - post_imp).abs().mean())
         #
         # print(
         #     f"DEBUG: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
@@ -291,27 +291,29 @@ class Imputer(pl.LightningModule):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
         eval_mask = batch_data.pop("eval_mask", None)
+        mask = batch_data.get("mask").float()
+        print(f"DEBUG validation: {mask.mean()=} {mask.sum()=} {mask.std()=}")
         # print(f"{eval_mask.dtype=}")
         # print(
         #     f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
         # )
         y = batch_data.pop("y")
-        preprocess_y = self._preprocess(y, batch_preprocessing)
-        preprocess_x = self._preprocess(batch_data["x"], batch_preprocessing)
-
-        print(
-            "Δ(preprocess_y, x) mean =", (preprocess_y - batch_data["x"]).abs().mean()
-        )
-        print(
-            "Δ(preprocess_y, preprocess_x) max =",
-            (preprocess_y - preprocess_x).abs().mean(),
-        )
+        # preprocess_y = self._preprocess(y, batch_preprocessing)
+        # preprocess_x = self._preprocess(batch_data["x"], batch_preprocessing)
+        #
+        # print(
+        #     "Δ(preprocess_y, x) mean =", (preprocess_y - batch_data["x"]).abs().mean()
+        # )
+        # print(
+        #     "Δ(preprocess_y, preprocess_x) max =",
+        #     (preprocess_y - preprocess_x).abs().mean(),
+        # )
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
 
-        print(
-            "Δ(preprocess_y, imputaion) max =", (preprocess_y - imputation).abs().mean()
-        )
+        # print(
+        #     "Δ(preprocess_y, imputaion) max =", (preprocess_y - imputation).abs().mean()
+        # )
         # print(
         #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
         # )
@@ -334,10 +336,10 @@ class Imputer(pl.LightningModule):
             # print(
             #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
             # )
-        post_imp = self._postprocess(imputation, batch_preprocessing)
-        print("Δ(target, preprocess_x) mean =", (target - preprocess_x).abs().mean())
-        print("Δ(target, imputation) mean =", (target - imputation).abs().mean())
-        print("Δ(target, postprocess_imp) mean =", (target - post_imp).abs().mean())
+        # post_imp = self._postprocess(imputation, batch_preprocessing)
+        # print("Δ(target, preprocess_x) mean =", (target - preprocess_x).abs().mean())
+        # print("Δ(target, imputation) mean =", (target - imputation).abs().mean())
+        # print("Δ(target, postprocess_imp) mean =", (target - post_imp).abs().mean())
 
         # masked_imp = torch.where(eval_mask, imputation, torch.tensor(float("nan")))
         # masked_tar = torch.where(eval_mask, target, torch.tensor(float("nan")))
