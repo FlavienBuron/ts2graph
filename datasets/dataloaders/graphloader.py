@@ -47,7 +47,7 @@ class GraphLoader(Dataset, ABC):
         if self.index is None:
             raise AttributeError("Dataset index is returned as None")
 
-        self.mask = mask
+        self.mask = self.training_mask
 
         if exogenous is None:
             exogenous = dict()
@@ -85,6 +85,10 @@ class GraphLoader(Dataset, ABC):
 
     def __contains__(self, item):
         return item in self._exogenous_keys
+
+    @property
+    def training_mask(self):
+        return self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
 
     @property
     def has_mask(self):
