@@ -293,7 +293,6 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         x = batch_data.get("x")
-        debug_mask_relationship(batch_data["mask"], eval_mask, name="val")
         # print(
         #     f"DEBUG validation: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}"
         # )
