@@ -764,6 +764,7 @@ def run(args: Namespace) -> None:
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
     train, val, test = dataset.grin_split()
+    print(f"DEBUG: {train.shape=} {val.shape=} {test.shape=}")
     dm = DataModule(
         dataset,
         train_indices=train,
