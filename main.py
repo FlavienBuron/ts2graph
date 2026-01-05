@@ -27,7 +27,7 @@ from torch.utils.data import DataLoader
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from datasets.datamodule import DataModule
-from downstream.imputation.imputer import Imputer
+from downstream.imputation.imputer import Imputer, debug_mask_relationship
 from downstream.imputation.metrics.losses import MaskedMAELoss
 from downstream.imputation.metrics.metrics import (
     MaskedMAE,
@@ -763,6 +763,9 @@ def run(args: Namespace) -> None:
     for key, value in config_args.items():
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
+    debug_mask_relationship(
+        torch.tensor(dataset.training_mask), torch.tensor(dataset.eval_mask)
+    )
     train, val, test = dataset.grin_split()
     print(f"DEBUG: {train.shape=} {val.shape=} {test.shape=}")
     dm = DataModule(
