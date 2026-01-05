@@ -322,9 +322,10 @@ class Imputer(pl.LightningModule):
         # )
         # print(f"DEBUG: val {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
 
-        # mad = (imputation - y).abs()
-        # mad = mad[eval_mask].mean()
-        # print(f"DEBUG: MAD val {mad=}")
+        mad = (imputation - y).abs()
+        mad = mad[eval_mask].mean()
+        mad_inv = mad[~eval_mask].mean()
+        print(f"DEBUG: MAD val {mad=} {mad_inv=}")
 
         # imputation = self._postprocess(imputation, batch_preprocessing)
 
