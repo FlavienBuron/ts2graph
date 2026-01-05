@@ -59,7 +59,9 @@ class GRINet(nn.Module):
         total_imputation_time = 0.0
         # x = x.unsqueeze(0)
         # x: [batches, steps, nodes, channels] -> [batches, channels, nodes, steps]
+        print(f"DEBUG GRIN 1.: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
         x = rearrange(x, "b s n c -> b c n s")
+        print(f"DEBUG GRIN 2.: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}")
         if mask is not None:
             # mask = mask.unsqueeze(0)
             mask = rearrange(mask, "b s n c -> b c n s")
@@ -73,6 +75,9 @@ class GRINet(nn.Module):
         imputation_start = perf_counter()
         imputation, prediction = self.bigrill(
             x, self.adj, mask=mask, u=u, cached_support=self.training
+        )
+        print(
+            f"DEBUG GRIN 1.: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.sum()=} {imputation.std()=}"
         )
         imputation_end = perf_counter()
         total_imputation_time = imputation_end - imputation_start
