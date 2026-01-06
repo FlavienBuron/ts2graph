@@ -439,18 +439,18 @@ class Imputer(pl.LightningModule):
         test_loss = self.loss_fn(imputation_post, y, eval_mask)
 
         # Logging
-        self.test_metrics.update(imputation.detach(), y, eval_mask)
-        self.log_dict(
-            self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
-        )
-        self.log(
-            "test_loss",
-            test_loss.detach(),
-            on_step=False,
-            on_epoch=True,
-            logger=True,
-            prog_bar=False,
-        )
+        # self.test_metrics.update(imputation.detach(), y, eval_mask)
+        # self.log_dict(
+        #     self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        # )
+        # self.log(
+        #     "test_loss",
+        #     test_loss.detach(),
+        #     on_step=False,
+        #     on_epoch=True,
+        #     logger=True,
+        #     prog_bar=False,
+        # )
         return {
             "loss": test_loss,
             "preds": imputation.detach().clone(),
