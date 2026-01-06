@@ -813,9 +813,7 @@ def run(args: Namespace) -> None:
         save_dir=savedir,
         name="csv",
     )
-    early_stop_callback = EarlyStopping(
-        monitor="val_mae", patience=args.patience, mode="min"
-    )
+    early_stop_callback = EarlyStopping(monitor="val_mae", patience=10, mode="min")
     imputer = Imputer(
         model_class=model,
         model_kwargs=model_kwargs,
