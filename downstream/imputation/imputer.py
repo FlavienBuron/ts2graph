@@ -183,24 +183,6 @@ class Imputer(pl.LightningModule):
         # print("Masked imputation:", masked_imp[0, :15, :15, 0])
         return imputation, prediction
 
-    def predict_step(self, batch, batch_idx):
-        batch_data, batch_preprocessing = self._unpack_batch(batch)
-
-        eval_mask = batch_data.pop("eval_mask", None)
-        target = batch_data.pop("y")
-
-        imputation, predictions = self._predict_batch(batch, preprocess=False)
-
-        # imputation = self._postprocess(imputation, batch_preprocessing)
-        # predictions = self._postprocess(predictions, batch_preprocessing)
-
-        return {
-            "target": target.detach(),
-            "imputation": imputation.detach(),
-            "prediction": predictions.detach(),
-            "mask": eval_mask.detach() if eval_mask is not None else None,
-        }
-
     def training_step(self, batch, batch_idx):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
@@ -413,6 +395,38 @@ class Imputer(pl.LightningModule):
         return val_loss
 
     def test_step(self, batch, batch_idx) -> Dict:
+        batch_data, batch_preprocessing = self._unpack_batch(batch)
+
+        eval_mask = batch_data.pop("eval_mask", None)
+        y = batch_data.pop("y")
+
+        imputation, _ = self._predict_batch(batch, preprocess=False)
+        imputation_post = self._postprocess(imputation, batch_preprocessing)
+        if batch_idx == 0:
+            print(f"{y.mean()=} {imputation.mean()=} {imputation_post.mean()=}")
+        test_loss = self.loss_fn(imputation_post, y, eval_mask)
+
+        # Logging
+        self.test_metrics.update(imputation.detach(), y, eval_mask)
+        self.log_dict(
+            self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        )
+        self.log(
+            "test_loss",
+            test_loss.detach(),
+            on_step=False,
+            on_epoch=True,
+            logger=True,
+            prog_bar=False,
+        )
+        return {
+            "loss": test_loss,
+            "preds": imputation.detach().clone(),
+            "target": y.detach().clone(),
+            "mask": eval_mask.detach().clone(),
+        }
+
+    def predict_step(self, batch, batch_idx) -> Dict:
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
         eval_mask = batch_data.pop("eval_mask", None)
