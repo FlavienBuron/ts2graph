@@ -12,7 +12,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import yaml
-from pytorch_lightning.callbacks import RichProgressBar
+from pytorch_lightning.callbacks import EarlyStopping, RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from sklearn.metrics import (
     mean_absolute_error,
@@ -813,6 +813,9 @@ def run(args: Namespace) -> None:
         save_dir=savedir,
         name="csv",
     )
+    early_stop_callback = EarlyStopping(
+        monitor="val_mae", patience=args.patience, mode="min"
+    )
     imputer = Imputer(
         model_class=model,
         model_kwargs=model_kwargs,
@@ -831,7 +834,7 @@ def run(args: Namespace) -> None:
         gradient_clip_algorithm="norm",
         gradient_clip_val=0.5,
         enable_progress_bar=True,
-        callbacks=[RichProgressBar(), ConsoleMetricsCallback()],
+        callbacks=[RichProgressBar(), ConsoleMetricsCallback(), early_stop_callback],
         # num_sanity_val_steps=10,
     )
     trainer.fit(imputer, datamodule=dm)
