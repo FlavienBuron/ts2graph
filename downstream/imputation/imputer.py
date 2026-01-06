@@ -419,7 +419,10 @@ class Imputer(pl.LightningModule):
         y = batch_data.pop("y")
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
-        test_loss = self.loss_fn(imputation, y, eval_mask)
+        imputation_post = self._postprocess(imputation, batch_preprocessing)
+        if batch_idx == 0:
+            print(f"{y.mean()=} {imputation.mean()=} {imputation_post.mean()=}")
+        test_loss = self.loss_fn(imputation_post, y, eval_mask)
 
         # Logging
         self.test_metrics.update(imputation.detach(), y, eval_mask)

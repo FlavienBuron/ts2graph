@@ -1,3 +1,4 @@
+import datetime
 import json
 import math
 import os
@@ -12,7 +13,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import yaml
-from pytorch_lightning.callbacks import EarlyStopping, RichProgressBar
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from sklearn.metrics import (
     mean_absolute_error,
@@ -813,7 +814,12 @@ def run(args: Namespace) -> None:
         save_dir=savedir,
         name="csv",
     )
+    exp_name = f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    logdir = os.path.join(args.save_path, args.dataset, args.model, exp_name)
     early_stop_callback = EarlyStopping(monitor="val_mae", patience=10, mode="min")
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=logdir, save_top_k=1, monitor="val_mae", mode="min"
+    )
     imputer = Imputer(
         model_class=model,
         model_kwargs=model_kwargs,
@@ -836,6 +842,11 @@ def run(args: Namespace) -> None:
         # num_sanity_val_steps=10,
     )
     trainer.fit(imputer, datamodule=dm)
+    imputer.load_state_dict(
+        torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
+            "state_dict"
+        ]
+    )
     outputs = trainer.predict(imputer, datamodule=dm)
     if outputs is None:
         print("Trainer prediction return None results")
