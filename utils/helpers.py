@@ -9,12 +9,9 @@ def aggregate_predictions(predictions):
 
     for pred in predictions:
         if pred["target"] is not None:
-            print(f"    DEBUG: {pred['target'].shape=}")
             targets.append(pred["target"])
         imputations.append(pred["imputation"])
-        print(f"    DEBUG: {pred['imputation'].shape=}")
         if pred["mask"] is not None:
-            print(f"    DEBUG: {pred['mask'].shape=}")
             masks.append(pred["mask"])
 
     target = torch.cat(targets, dim=0) if targets else None

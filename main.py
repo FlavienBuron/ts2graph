@@ -766,6 +766,7 @@ def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
 
     train, val, test = dataset.grin_split()
+    print(f"DEBUG: {len(train)=} {len(val)=} {len(test)=}")
     dm = DataModule(
         dataset,
         train_indices=train,
@@ -846,6 +847,7 @@ def run(args: Namespace) -> None:
         ],
         # num_sanity_val_steps=10,
     )
+    print(f"DEBUG: {len(dm.test_dataloader())=}")
     trainer.fit(imputer, datamodule=dm)
     imputer.load_state_dict(
         torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
