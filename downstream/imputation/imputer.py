@@ -137,7 +137,6 @@ class Imputer(pl.LightningModule):
         self,
         loader,
         preprocess: bool = False,
-        postprocess: bool = False,
     ):
         targets, imputations, masks = [], [], []
 
@@ -147,9 +146,7 @@ class Imputer(pl.LightningModule):
             target = batch_data.get("y")
             eval_mask = batch_data.get("eval_mask")
 
-            imputation, _ = self._predict_batch(
-                batch, preprocess=preprocess, postprocess=postprocess
-            )
+            imputation, _ = self._predict_batch(batch, preprocess=preprocess)
 
             imputation = self._postprocess(imputation, batch_preprocessing)
 
@@ -452,7 +449,7 @@ class Imputer(pl.LightningModule):
         #     prog_bar=False,
         # )
         return {
-            "loss": test_loss,
+            # "loss": test_loss,
             "preds": imputation.detach().clone(),
             "target": y.detach().clone(),
             "mask": eval_mask.detach().clone(),
