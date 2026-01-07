@@ -8,7 +8,6 @@ def aggregate_predictions(predictions):
     targets, imputations, masks = [], [], []
 
     for pred in predictions:
-        print(f"DEBUG: {pred=}")
         if pred["target"] is not None:
             targets.append(pred["target"])
         imputations.append(pred["imputation"])

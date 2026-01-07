@@ -450,7 +450,7 @@ class Imputer(pl.LightningModule):
         # )
         return {
             # "loss": test_loss,
-            "preds": imputation.detach().clone(),
+            "imputation": imputation.detach().clone(),
             "target": y.detach().clone(),
             "mask": eval_mask.detach().clone(),
         }
