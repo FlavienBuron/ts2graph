@@ -857,7 +857,7 @@ def run(args: Namespace) -> None:
         print("Trainer prediction return None results")
         return
 
-    print(f"DEBUG: {type(outputs)=}")
+    print(f"DEBUG: {type(outputs[0])=} {len(outputs)=}")
     target, imputation, mask = aggregate_predictions(outputs)
     imputation = imputation.squeeze(-1).cpu().numpy()
 
