@@ -847,7 +847,10 @@ def run(args: Namespace) -> None:
         ],
         # num_sanity_val_steps=10,
     )
-    print(f"DEBUG: {len(dm.test_dataloader())=}")
+
+    print(
+        f"DEBUG: {len(dm.train_dataloader())=} {len(dm.val_dataloader())=} {len(dm.test_dataloader())=}"
+    )
     trainer.fit(imputer, datamodule=dm)
     imputer.load_state_dict(
         torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
