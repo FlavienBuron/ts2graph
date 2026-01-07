@@ -114,7 +114,7 @@ class DataModule(pl.LightningDataModule):
 
     def test_dataloader(self, shuffle: bool = False):
         return DataLoader(
-            dataset=self.train_set,
+            dataset=self.test_set,
             shuffle=shuffle,
             batch_size=self.batch_size,
             num_workers=self.workers,
