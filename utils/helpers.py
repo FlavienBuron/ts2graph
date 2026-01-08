@@ -18,8 +18,6 @@ def aggregate_predictions(predictions):
     imputation = torch.cat(imputations, dim=0)
     mask = torch.cat(masks, dim=0) if masks else None
 
-    print(f"DEBUG: {target.shape=} {imputation.shape=} {mask.shape=}")
-
     return target, imputation, mask
 
 

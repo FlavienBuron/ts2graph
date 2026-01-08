@@ -50,7 +50,11 @@ class GraphLoader(Dataset, ABC):
 
         if exogenous is None:
             exogenous = dict()
-        exogenous["mask_window"] = torch.tensor(self.mask)
+        exogenous["mask_window"] = (
+            self.mask.detach().clone()
+            if isinstance(self.mask, torch.Tensor)
+            else torch.tensor(self.mask)
+        )
         if eval_mask is not None:
             exogenous["eval_mask_window"] = torch.tensor(eval_mask)
         for name, value in exogenous.items():

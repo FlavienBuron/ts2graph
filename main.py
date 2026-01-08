@@ -775,8 +775,6 @@ def run(args: Namespace) -> None:
         scaling_type="std",
     )
 
-    print(f"{len(dm.train_slice)=} {len(dm.val_slice)=} {len(dm.test_slice)=}")
-
     # dataset._store_spatiotemporal_data()
     adj, _ = get_spatial_graph(
         technique="loc", parameter=0.3, dataset=dataset, args=args
@@ -849,9 +847,6 @@ def run(args: Namespace) -> None:
         # num_sanity_val_steps=10,
     )
 
-    print(
-        f"DEBUG: {len(dm.train_dataloader())=} {len(dm.val_dataloader())=} {len(dm.test_dataloader())=}"
-    )
     trainer.fit(imputer, datamodule=dm)
     imputer.load_state_dict(
         torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
@@ -863,7 +858,6 @@ def run(args: Namespace) -> None:
         print("Trainer prediction return None results")
         return
 
-    print(f"DEBUG: {type(outputs[0])=} {len(outputs)=}")
     target, imputation, mask = aggregate_predictions(outputs)
     imputation = imputation.squeeze(-1).cpu().numpy()
 

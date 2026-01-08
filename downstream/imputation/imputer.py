@@ -117,10 +117,6 @@ class Imputer(pl.LightningModule):
         trend = batch_preprocessing.get("trend", 0.0)
         bias = batch_preprocessing.get("bias", 0.0)
         scale = batch_preprocessing.get("scale", 1.0)
-        # x = (data - trend - bias) / (scale + epsilon)
-        # print(
-        #     f"DEBUG: _preprocess {bias.mean()=} {scale.mean()=} {data.mean()=} {x.mean()=}"
-        # )
         return (data - trend - bias) / (scale + epsilon)
 
     def _postprocess(self, data: torch.Tensor, batch_preprocessing: Dict):
@@ -173,11 +169,6 @@ class Imputer(pl.LightningModule):
             imputation, prediction, _ = self.forward(x, **batch_data)
         else:
             imputation, prediction, _ = self.forward(**batch_data)
-
-        # masked_imp = torch.where(
-        #     batch_data["mask"], torch.tensor(float("nan")), imputation
-        # )
-        # print("Masked imputation:", masked_imp[0, :15, :15, 0])
         return imputation, prediction
 
     def training_step(self, batch, batch_idx):
@@ -188,34 +179,12 @@ class Imputer(pl.LightningModule):
             mask.clone().detach().float() * self.keep_prob
         ).bool()
         eval_mask = batch_data.pop("eval_mask").detach().clone()
-        # print(f"{eval_mask.dtype=}")
-        # print(
-        #     f"DEBUG: {mask.type()=} {eval_mask.type()=} {batch_data['mask'].type()=} "
-        # )
         eval_mask = (mask | eval_mask) & ~batch_data["mask"]
-        # batch_data["mask"] = batch_data["mask"].bool()
         eval_mask = eval_mask.bool()
 
         y = batch_data.pop("y")
-        # preprocess_y = self._preprocess(y, batch_preprocessing)
-        # preprocess_x = self._preprocess(batch_data["x"], batch_preprocessing)
-        #
-        # print(
-        #     "Δ(preprocess_y, x) mean =", (preprocess_y - batch_data["x"]).abs().mean()
-        # )
-        # print(
-        #     "Δ(preprocess_y, preprocess_x) max =",
-        #     (preprocess_y - preprocess_x).abs().mean(),
-        # )
 
         imputation, prediction = self._predict_batch(batch, preprocess=False)
-        #
-        # mad = (imputation - y).abs()
-        # mad = mad[eval_mask].mean()
-        # print(f"DEBUG: MAD train {mad=}")
-        # print(
-        #     "Δ(preprocess_y, imputaion) max =", (preprocess_y - imputation).abs().mean()
-        # )
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
@@ -227,10 +196,6 @@ class Imputer(pl.LightningModule):
 
         mad = (imputation - target).abs()
         mad = mad[eval_mask].mean()
-        # print(f"DEBUG: MAD train {mad=}")
-        # print(
-        #     f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
-        # )
 
         loss = self.loss_fn(imputation, target, mask)
         for h, _ in enumerate(prediction):
@@ -238,18 +203,6 @@ class Imputer(pl.LightningModule):
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
-        # post_imp = self._postprocess(imputation, batch_preprocessing)
-        # print("Δ(target, preprocess_x) mean =", (target - preprocess_x).abs().mean())
-        # print("Δ(target, imputation) mean =", (target - imputation).abs().mean())
-        # print("Δ(target, postprocess_imp) mean =", (target - post_imp).abs().mean())
-        #
-        # print(
-        #     f"DEBUG: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
-        # )
-        # print(f"DEBUG: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
-        # print(
-        #     f"DEBUG: {eval_mask.float().min()=} {eval_mask.float().max()=} {eval_mask.float().mean()=} {eval_mask.float().std()=}"
-        # )
 
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
@@ -267,112 +220,24 @@ class Imputer(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        # dump_module_attrs(self, tag="VAL")
         batch_data, batch_preprocessing = self._unpack_batch(batch)
 
         eval_mask = batch_data.pop("eval_mask", None)
-        x = batch_data.get("x")
-        # print(
-        #     f"DEBUG validation: {x.min()=} {x.max()=} {x.mean()=} {x.sum()=} {x.std()=}"
-        # )
-        # print(f"{eval_mask.dtype=}")
-        # print(
-        #     f"DEBUG: validation {eval_mask.float().mean()=} {eval_mask.float().sum()=}"
-        # )
         y = batch_data.pop("y")
-        # preprocess_y = self._preprocess(y, batch_preprocessing)
-        # preprocess_x = self._preprocess(batch_data["x"], batch_preprocessing)
-        #
-        # print(
-        #     "Δ(preprocess_y, x) mean =", (preprocess_y - batch_data["x"]).abs().mean()
-        # )
-        # print(
-        #     "Δ(preprocess_y, preprocess_x) max =",
-        #     (preprocess_y - preprocess_x).abs().mean(),
-        # )
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
 
-        # print(
-        #     "Δ(preprocess_y, imputaion) max =", (preprocess_y - imputation).abs().mean()
-        # )
-        # print(
-        #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
-        # )
-        # print(f"DEBUG: val {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
-
-        # diff = (imputation - y).abs()
-        # mad = diff[eval_mask].mean()
-        # mad_inv = diff[~eval_mask].mean()
-        # print(f"DEBUG: MAD val {mad=} {mad_inv=}")
-
-        # imputation = self._postprocess(imputation, batch_preprocessing)
-
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
-            # print(
-            #     f"DEBUG: val {target.min()=} {target.max()=} {target.mean()=} {target.std()=}"
-            # )
         else:
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
-            # print(
-            #     f"DEBUG: val {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
-            # )
-        # post_imp = self._postprocess(imputation, batch_preprocessing)
-        # print("Δ(target, preprocess_x) mean =", (target - preprocess_x).abs().mean())
-        # print("Δ(target, imputation) mean =", (target - imputation).abs().mean())
-        # print("Δ(target, postprocess_imp) mean =", (target - post_imp).abs().mean())
-        # print("Δ(y, postprocess_imp) mean =", (y - post_imp).abs().mean())
-        #
-        # masked_imp = torch.where(eval_mask, imputation, torch.tensor(float("nan")))
-        # masked_tar = torch.where(eval_mask, target, torch.tensor(float("nan")))
-        # print("Masked imputation:", masked_imp[0, :15, :15, 0])
-        # print("Masked target:", masked_tar[0, :15, :15, 0])
-        # diff = (imputation - target).abs()
-        # mad = diff[eval_mask].mean()
-        # mad_inv = diff[~eval_mask].mean()
-        # print(f"DEBUG: MAD val {mad=} {mad_inv=}")
-        # print(
-        #     f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
-        # )
 
         val_loss = self.loss_fn(imputation, target, eval_mask)
-        # print(
-        #     f"DEBUG: val 1. {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=} {imputation.sum()=}"
-        # )
-        # print(
-        #     f"DEBUG: val 1. {target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
-        # )
-        # test = torch.where(eval_mask, 0, imputation)
-        # test2 = torch.where(eval_mask, target, 0)
-        # print(f"{test.min()=} {test.max()=} {test.mean()=} {test.std()=} {test.sum()=}")
-        # print(
-        #     f"{test2.min()=} {test2.max()=} {test2.mean()=} {test2.std()=} {test2.sum()=}"
-        # )
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        # mad = (imputation - target).abs()
-        # mad = mad[eval_mask].mean()
-        # print(f"DEBUG: MAD2 val {mad=}")
-        # mad3 = (imputation - y).abs()
-        # mad3 = mad3[eval_mask].mean()
-        # print(f"DEBUG: MAD3 val {mad3=}")
-        # print(
-        #     f"CHECK: {torch.allclose(imputation, y, atol=1e-6)} {torch.allclose(imputation, target, atol=1e-6)} {(imputation - y).abs().max().item()} {(imputation - target).abs().max().item()}"
-        # )
-        # mad = (imputation - y).abs()
-        # mad = mad[eval_mask].mean()
-        # print(f"DEBUG: MAD2 val {mad=}")
-        # print(
-        #     f"DEBUG val: {imputation.min()=} {imputation.max()=} {imputation.mean()=} {imputation.std()=}"
-        # )
-        # print(f"DEBUG val: {y.min()=} {y.max()=} {y.mean()=} {y.std()=}")
-        # print(
-        #     f"DEBUG val: {eval_mask.float().min()=} {eval_mask.float().max()=} {eval_mask.float().mean()=} {eval_mask.float().std()=}"
-        # )
         self.val_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
             self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
@@ -385,9 +250,6 @@ class Imputer(pl.LightningModule):
             logger=True,
             prog_bar=False,
         )
-
-        # self.log("val_loss", val_loss, prog_bar=True, logger=True, on_epoch=True)
-        # self.log_dict(self.val_metrics, prog_bar=False, logger=True, on_epoch=True)
 
         return val_loss
 
@@ -433,23 +295,10 @@ class Imputer(pl.LightningModule):
         imputation_post = self._postprocess(imputation, batch_preprocessing)
         if batch_idx == 0:
             print(f"{y.mean()=} {imputation.mean()=} {imputation_post.mean()=}")
-        test_loss = self.loss_fn(imputation_post, y, eval_mask)
+        pred_loss = self.loss_fn(imputation_post, y, eval_mask)
 
-        # Logging
-        # self.test_metrics.update(imputation.detach(), y, eval_mask)
-        # self.log_dict(
-        #     self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
-        # )
-        # self.log(
-        #     "test_loss",
-        #     test_loss.detach(),
-        #     on_step=False,
-        #     on_epoch=True,
-        #     logger=True,
-        #     prog_bar=False,
-        # )
         return {
-            # "loss": test_loss,
+            "loss": pred_loss,
             "imputation": imputation_post.detach().clone(),
             "target": y.detach().clone(),
             "mask": eval_mask.detach().clone(),
