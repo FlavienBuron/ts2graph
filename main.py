@@ -766,7 +766,6 @@ def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
 
     train, val, test = dataset.grin_split()
-    print(f"DEBUG: {len(train)=} {len(val)=} {len(test)=}")
     dm = DataModule(
         dataset,
         train_indices=train,
@@ -775,6 +774,8 @@ def run(args: Namespace) -> None:
         samples_per_epoch=5120,
         scaling_type="std",
     )
+
+    print(f"{len(dm.train_slice)=} {len(dm.val_slice)=} {len(dm.test_slice)=}")
 
     # dataset._store_spatiotemporal_data()
     adj, _ = get_spatial_graph(
