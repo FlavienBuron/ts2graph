@@ -32,6 +32,7 @@ class DataModule(pl.LightningDataModule):
         self.train_set = Subset(self.dataset, train_indices)
         self.val_set = Subset(self.dataset, val_indices)
         self.test_set = Subset(self.dataset, test_indices)
+        print(f"{len(self.train_set)=} {len(self.val_set)=} {len(self.test_set)=}")
 
         # preprocessing
         self.scale = scale
