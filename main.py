@@ -854,12 +854,15 @@ def run(args: Namespace) -> None:
         ]
     )
     outputs = trainer.predict(imputer, datamodule=dm)
+    with torch.no_grad():
+        pred_target, pred_imp, pred_mask = imputer.predict_loader(dm.test_dataloader())
     if outputs is None:
         print("Trainer prediction return None results")
         return
 
     target, imputation, mask = aggregate_predictions(outputs)
     imputation = imputation.squeeze(-1).cpu().numpy()
+    pred_imp = pred_imp.squeeze(-1).cpu().numpy()
 
     eval_mask = dataset.eval_mask[dm.test_slice]
     df_true = dataset.df.iloc[dm.test_slice]
@@ -877,13 +880,25 @@ def run(args: Namespace) -> None:
     df_hats = prediction_dataframe(
         imputation, index, dataset.df.columns, aggregate_by=aggr_methods
     )
+    df_imps = prediction_dataframe(
+        pred_imp, index, dataset.df.columns, aggregate_by=aggr_methods
+    )
     df_hats = dict(zip(aggr_methods, df_hats))
+    df_imps = dict(zip(aggr_methods, df_imps))
     for aggr_by, df_hat in df_hats.items():
         # Compute error
         print(f"- AGGREGATE BY {aggr_by.upper()}")
         for metric_name, metric_fn in metrics.items():
             error = metric_fn(
                 df_hat.values, df_true.values, eval_mask.squeeze().numpy()
+            ).item()
+            print(f" {metric_name}: {error:.4f}")
+    for aggr_by, df_imp in df_imps.items():
+        # Compute error
+        print(f"- AGGREGATE BY {aggr_by.upper()}")
+        for metric_name, metric_fn in metrics.items():
+            error = metric_fn(
+                df_imp.values, df_true.values, eval_mask.squeeze().numpy()
             ).item()
             print(f" {metric_name}: {error:.4f}")
 
