@@ -181,6 +181,8 @@ class Imputer(pl.LightningModule):
         eval_mask = batch_data.pop("eval_mask").detach().clone()
         eval_mask = (mask | eval_mask) & ~batch_data["mask"]
         eval_mask = eval_mask.bool()
+        debug_mask_relationship(mask, eval_mask, "train mask")
+        debug_mask_relationship(batch_data["mask"], eval_mask, "batch mask")
 
         y = batch_data.pop("y")
 
