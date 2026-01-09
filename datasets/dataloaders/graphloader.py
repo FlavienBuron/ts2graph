@@ -49,7 +49,9 @@ class GraphLoader(Dataset, ABC):
         print(self.mask.shape)
         print(self.eval_mask.shape)
         debug_mask_relationship(
-            torch.tensor(self.mask), torch.tensor(self.eval_mask), "exogenous"
+            torch.tensor(self.mask),
+            torch.tensor(self.eval_mask).unsqueeze(2),
+            "exogenous",
         )
         exogenous["mask_window"] = (
             self.mask.detach().clone()
