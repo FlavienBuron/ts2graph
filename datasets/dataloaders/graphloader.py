@@ -45,14 +45,14 @@ class GraphLoader(Dataset, ABC):
         if self.index is None:
             raise AttributeError("Dataset index is returned as None")
 
-        self.mask = self.training_mask
+        # self.mask = self.training_mask
 
         if exogenous is None:
             exogenous = dict()
         exogenous["mask_window"] = (
-            self.mask.detach().clone()
-            if isinstance(self.mask, torch.Tensor)
-            else torch.tensor(self.mask)
+            self.training_mask.detach().clone()
+            if isinstance(self.training_mask, torch.Tensor)
+            else torch.tensor(self.training_mask)
         )
         if eval_mask is not None:
             exogenous["eval_mask_window"] = torch.tensor(eval_mask)
