@@ -32,7 +32,7 @@ class GraphLoader(Dataset, ABC):
             aggr=aggr,
         )
         debug_mask_relationship(
-            torch.tensor(self.mask), torch.tensor(self.eval_mask), "GraphLoader mask"
+            torch.tensor(self.mask), torch.tensor(eval_mask), "GraphLoader mask"
         )
 
         # Emulate GRIN's SpatioaTemporal classes, into one
