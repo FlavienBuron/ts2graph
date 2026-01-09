@@ -40,7 +40,7 @@ class GraphLoader(Dataset, ABC):
         if self.index is None:
             raise AttributeError("Dataset index is returned as None")
 
-        # self.mask = self.training_mask
+        self.mask = self.training_mask
 
         if exogenous is None:
             exogenous = dict()
