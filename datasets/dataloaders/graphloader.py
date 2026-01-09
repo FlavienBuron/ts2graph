@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import torch
 from einops import rearrange
-from torch import Tensor
 from torch.utils.data import Dataset
 
 
@@ -91,7 +90,7 @@ class GraphLoader(Dataset, ABC):
 
     @property
     def training_mask(self):
-        return self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
+        return self.mask if self.eval_mask is None else (self.mask & ~self.eval_mask)
 
     @property
     def has_mask(self):
@@ -300,32 +299,6 @@ class GraphLoader(Dataset, ABC):
         if return_idx:
             return self.df.values, self.df.index
         return self.df.values, None
-
-    def update_data(self, new_data: Tensor) -> None:
-        """
-        Safely updates the dataset data with new tensor values,
-        ensuring proper memory management.
-
-        Args:
-            new_data: The new data to replace self.data with
-        """
-        # Ensure tensor is detached from computational graph
-        if new_data.requires_grad:
-            new_data = new_data.detach()
-
-        # Move to CPU if on another device
-        if new_data.device.type != "cpu":
-            new_data = new_data.cpu()
-
-        # Only update missing values
-        self.current_data[self.missing_mask] = new_data[self.missing_mask]
-
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-    def reset_current_data(self) -> None:
-        """Reset the current data to the initial missing data state"""
-        self.current_data = self.missing_data.clone()
 
     def _add_exogenous(
         self, exo_data, name: str, for_window: bool = True, for_horizon: bool = False
