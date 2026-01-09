@@ -7,6 +7,8 @@ import torch
 from einops import rearrange
 from torch.utils.data import Dataset
 
+from utils.helpers import debug_mask_relationship
+
 
 class GraphLoader(Dataset, ABC):
     def __init__(
@@ -29,6 +31,7 @@ class GraphLoader(Dataset, ABC):
             freq=freq,
             aggr=aggr,
         )
+        debug_mask_relationship(self.mask, self.eval_mask, "GraphLoader")
 
         self.original_data: (
             torch.Tensor
