@@ -765,6 +765,9 @@ def run(args: Namespace) -> None:
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
 
+    print(
+        f"{dataset.mask.sum()=} {dataset.eval_mask.float().sum()=} {dataset.training_mask.float().sum()=}"
+    )
     train, val, test = dataset.grin_split()
     dm = DataModule(
         dataset,
