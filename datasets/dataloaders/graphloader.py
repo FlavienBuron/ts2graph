@@ -40,8 +40,8 @@ class GraphLoader(Dataset, ABC):
         if self.index is None:
             raise AttributeError("Dataset index is returned as None")
 
-        print(f"{self.mask.shape=} {self.training_mask.shape=}")
-        # self.mask = self.training_mask
+        # print(f"{self.mask.shape=} {self.training_mask.shape=}")
+        self.mask = self.training_mask
 
         if exogenous is None:
             exogenous = dict()
