@@ -20,7 +20,6 @@ class GraphLoader(Dataset, ABC):
         aggr: str = "sum",
         exogenous=None,
     ) -> None:
-        # self.eval_mask = self._check_input(torch.tensor(eval_mask))
         self.eval_mask = eval_mask
         self._exogenous_keys = dict()
         self._reserved_signature = {"data", "trend", "x", "y"}
@@ -33,7 +32,7 @@ class GraphLoader(Dataset, ABC):
             aggr=aggr,
         )
         debug_mask_relationship(
-            torch.tensor(self.mask), torch.tensor(eval_mask), "GraphLoader mask"
+            torch.tensor(self.mask), torch.tensor(self.eval_mask), "AirQuality mask"
         )
 
         # Emulate GRIN's SpatioaTemporal classes, into one
@@ -41,22 +40,14 @@ class GraphLoader(Dataset, ABC):
         if self.index is None:
             raise AttributeError("Dataset index is returned as None")
 
-        # print(f"{self.mask.shape=} {self.training_mask.shape=}")
-        self.mask = self.training_mask
+        # self.mask = self.training_mask
 
         if exogenous is None:
             exogenous = dict()
-        print(self.mask.shape)
-        print(self.eval_mask.shape)
-        debug_mask_relationship(
-            torch.tensor(self.mask),
-            torch.tensor(self.eval_mask).unsqueeze(2),
-            "exogenous",
-        )
         exogenous["mask_window"] = (
-            self.mask.detach().clone()
-            if isinstance(self.mask, torch.Tensor)
-            else torch.tensor(self.mask)
+            self.training_mask.detach().clone()
+            if isinstance(self.training_mask, torch.Tensor)
+            else torch.tensor(self.training_mask)
         )
         if eval_mask is not None:
             exogenous["eval_mask_window"] = torch.tensor(eval_mask)
@@ -94,7 +85,6 @@ class GraphLoader(Dataset, ABC):
 
     @property
     def training_mask(self):
-        print(f"DEBUG: training_mask {self.mask.shape=} {self.eval_mask.shape=}")
         return self.mask if self.eval_mask is None else (self.mask & ~self.eval_mask)
 
     @property
