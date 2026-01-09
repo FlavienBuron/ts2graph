@@ -35,16 +35,6 @@ class GraphLoader(Dataset, ABC):
             torch.tensor(self.mask), torch.tensor(self.eval_mask), "AirQuality mask"
         )
 
-        self.original_data: (
-            torch.Tensor
-        )  # The original data with/without missing values. Static
-        self.missing_data: torch.Tensor  # The original data with the missing values
-        self.current_data: torch.Tensor  # The working copy, used during training
-        self.missing_mask: torch.Tensor
-        self.test_mask: torch.Tensor
-
-        # self.test_months = []
-
         # Emulate GRIN's SpatioaTemporal classes, into one
         self.data, self.index = self.as_numpy(return_idx=True)
         if self.index is None:
