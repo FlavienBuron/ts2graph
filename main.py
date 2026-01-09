@@ -46,7 +46,11 @@ from graphs_transformations.utils import (
 )
 from utils import numpy_metrics
 from utils.callbacks import ConsoleMetricsCallback
-from utils.helpers import aggregate_predictions, prediction_dataframe
+from utils.helpers import (
+    aggregate_predictions,
+    debug_mask_relationship,
+    prediction_dataframe,
+)
 
 random.seed(42)
 np.random.seed(42)
@@ -767,6 +771,13 @@ def run(args: Namespace) -> None:
 
     print(
         f"{dataset.mask.sum()=} {dataset.eval_mask.float().sum()=} {dataset.training_mask.float().sum()=}"
+    )
+    debug_mask_relationship(dataset.mask, dataset.eval_mask, "mask vs eval_mask")
+    debug_mask_relationship(
+        dataset.mask, dataset.training_mask, "mask vs training_mask"
+    )
+    debug_mask_relationship(
+        dataset.training_mask, dataset.eval_mask, "training_mask vs eval_mask"
     )
     train, val, test = dataset.grin_split()
     dm = DataModule(
