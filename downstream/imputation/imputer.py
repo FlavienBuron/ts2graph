@@ -214,6 +214,7 @@ class Imputer(pl.LightningModule):
         mad = (imputation - y).abs()
         mad = mad[eval_mask].mean()
         print(f"DEBUG: MAD train scaled {mad=}")
+        print(f"{imputation.mean()=} {y.mean()=}")
 
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
