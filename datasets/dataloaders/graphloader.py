@@ -86,7 +86,7 @@ class GraphLoader(Dataset, ABC):
 
     @property
     def training_mask(self):
-        print(f"DEBUG: training_mask {self.masks.shape=} {self.eval_mask.shape=}")
+        print(f"DEBUG: training_mask {self.mask.shape=} {self.eval_mask.shape=}")
         return self.mask if self.eval_mask is None else (self.mask & ~self.eval_mask)
 
     @property
