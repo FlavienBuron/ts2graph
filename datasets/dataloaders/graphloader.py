@@ -32,7 +32,7 @@ class GraphLoader(Dataset, ABC):
             aggr=aggr,
         )
         debug_mask_relationship(
-            torch.tensor(self.mask), torch.tensor(self.eval_mask), "AirQuality mask"
+            torch.tensor(self.mask), torch.tensor(self.eval_mask), "GraphLoader mask"
         )
 
         # Emulate GRIN's SpatioaTemporal classes, into one
@@ -41,7 +41,7 @@ class GraphLoader(Dataset, ABC):
             raise AttributeError("Dataset index is returned as None")
 
         print(f"{self.mask.shape=} {self.training_mask.shape=}")
-        self.mask = self.training_mask
+        # self.mask = self.training_mask
 
         if exogenous is None:
             exogenous = dict()
