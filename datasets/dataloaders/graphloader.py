@@ -32,7 +32,7 @@ class GraphLoader(Dataset, ABC):
             aggr=aggr,
         )
         debug_mask_relationship(
-            torch.tensor(self.mask), torch.tensor(self.eval_mask), "AirQuality mask"
+            torch.tensor(self.mask), torch.tensor(self.eval_mask), "GraphLoader mask"
         )
 
         # Emulate GRIN's SpatioaTemporal classes, into one
@@ -201,6 +201,9 @@ class GraphLoader(Dataset, ABC):
             for attr in self._exo_window_keys:
                 key = attr if attr not in self._exo_common_keys else (attr + "_window")
                 res[key] = getattr(self, attr)[idx : idx + self.window]
+
+            debug_mask_relationship(res["mask"], res["eval_mask"], "get")
+
         for attr in self._exo_horizon_keys:
             key = attr if attr not in self._exo_common_keys else (attr + "_horizon")
             res[key] = getattr(self, attr)[
