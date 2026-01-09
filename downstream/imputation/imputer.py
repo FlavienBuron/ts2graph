@@ -196,13 +196,24 @@ class Imputer(pl.LightningModule):
 
         mad = (imputation - target).abs()
         mad = mad[eval_mask].mean()
+        print(f"DEBUG: MAD train {mad=}")
+        mad2 = (imputation - target).abs()
+        mad2 = mad2[mask].mean()
+        print(f"DEBUG: MAD mask train {mad2=}")
 
         loss = self.loss_fn(imputation, target, mask)
+        print(f"imputation loss: {loss}")
         for h, _ in enumerate(prediction):
-            loss += self.tradeoff * self.loss_fn(prediction[h], target, mask)
+            pred_loss = self.tradeoff * self.loss_fn(prediction[h], target, mask)
+            print(f"predictions loss: {pred_loss}")
+            loss += pred_loss
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
+
+        mad = (imputation - y).abs()
+        mad = mad[eval_mask].mean()
+        print(f"DEBUG: MAD train scaled {mad=}")
 
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
