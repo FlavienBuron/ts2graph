@@ -179,6 +179,7 @@ class Imputer(pl.LightningModule):
             mask.clone().detach().float() * self.keep_prob
         ).bool()
         eval_mask = batch_data.pop("eval_mask").detach().clone()
+        print(f"{eval_mask.sum()=}")
         eval_mask = (mask | eval_mask) & ~batch_data["mask"]
         eval_mask = eval_mask.bool()
         print(f"{eval_mask.sum()=} {mask.sum()=} {batch_data['mask'].sum()=}")
