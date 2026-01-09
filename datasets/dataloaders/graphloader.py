@@ -325,16 +325,17 @@ class GraphLoader(Dataset, ABC):
     def get_geolocation_graph(self, *args, **kwargs) -> Any:
         pass
 
-    @abstractmethod
-    def get_dataloader(
-        self,
-        test_percent: float = 0.2,
-        total_missing_percent: float = 0.4,
-        mask_pattern: str = "default",
-        shuffle: bool = False,
-        batch_size: int = 128,
-    ) -> Any:
-        pass
+    #
+    # @abstractmethod
+    # def get_dataloader(
+    #     self,
+    #     test_percent: float = 0.2,
+    #     total_missing_percent: float = 0.4,
+    #     mask_pattern: str = "default",
+    #     shuffle: bool = False,
+    #     batch_size: int = 128,
+    # ) -> Any:
+    #     pass
 
     @abstractmethod
     def load_raw(self) -> Any:
