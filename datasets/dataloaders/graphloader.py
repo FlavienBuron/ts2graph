@@ -46,6 +46,9 @@ class GraphLoader(Dataset, ABC):
 
         if exogenous is None:
             exogenous = dict()
+        debug_mask_relationship(
+            torch.tensor(self.mask), torch.tensor(self.eval_mask), "exogenous"
+        )
         exogenous["mask_window"] = (
             self.mask.detach().clone()
             if isinstance(self.mask, torch.Tensor)
