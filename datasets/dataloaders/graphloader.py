@@ -200,13 +200,13 @@ class GraphLoader(Dataset, ABC):
 
     def get(self, item: int, preprocess: bool = False):
         idx = self._indices[item]
+        print(f"{idx=} {idx+self.window=}")
         res, transform = dict(), dict()
         if self.window > 0:
             res["x"] = self.data[idx : idx + self.window]
             for attr in self._exo_window_keys:
                 key = attr if attr not in self._exo_common_keys else (attr + "_window")
                 res[key] = getattr(self, attr)[idx : idx + self.window]
-                print(f"{key=}")
 
             # debug_mask_relationship(res["mask"], res["eval_mask"], "get")
 
