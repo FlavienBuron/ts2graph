@@ -98,7 +98,9 @@ class GraphLoader(Dataset, ABC):
         #     if self.eval_mask is None
         #     else (self._mask & (1 - self.eval_mask))
         # )
-        return self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
+        train = self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
+        print(f"{train.sum()=}")
+        return train
 
     @property
     def has_mask(self):
@@ -246,6 +248,8 @@ class GraphLoader(Dataset, ABC):
 
         res["x"] = torch.where(res["mask"], res["x"], torch.zeros_like(res["x"]))
         res["mask"] = res["mask"].bool()
+        for k, v in res.items():
+            print(f"get {k=} {v.sum()}")
 
         return res, transform
 
