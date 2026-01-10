@@ -60,6 +60,7 @@ class GraphLoader(Dataset, ABC):
         for name, value in exogenous.items():
             self._add_exogenous(value, name, for_window=True, for_horizon=True)
 
+        self._exogenous_keys["eval_mask"] = dict(for_window=True, for_horizon=True)
         try:
             freq = freq or self.index.freq or self.index.inferred_freq
             self.freq = pd.tseries.frequencies.to_offset(freq)
