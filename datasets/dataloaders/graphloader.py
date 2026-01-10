@@ -325,6 +325,7 @@ class GraphLoader(Dataset, ABC):
         for_window = suffix_idx == -7
         for_horizon = suffix_idx == -8
         exo_data = self._check_input(exo_data)
+        print(f"{name=} {exo_data.sum()}")
         setattr(self, name, exo_data)
         self._exogenous_keys[name] = dict(
             for_window=for_window, for_horizon=for_horizon
