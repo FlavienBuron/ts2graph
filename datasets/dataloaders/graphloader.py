@@ -32,7 +32,7 @@ class GraphLoader(Dataset, ABC):
             aggr=aggr,
         )
         debug_mask_relationship(
-            torch.tensor(self.mask), torch.tensor(self.eval_mask), "GraphLoader mask"
+            torch.tensor(self._mask), torch.tensor(self.eval_mask), "GraphLoader mask"
         )
         debug_mask_relationship(
             torch.tensor(self.training_mask),
