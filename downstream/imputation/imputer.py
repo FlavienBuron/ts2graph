@@ -177,12 +177,12 @@ class Imputer(pl.LightningModule):
         mask = batch_data["mask"].clone().detach()
         batch_data["mask"] = torch.bernoulli(
             mask.clone().detach().float() * self.keep_prob
-        ).bool()
+        ).byte()
         eval_mask = batch_data.pop("eval_mask").detach().clone()
         print(f"{eval_mask.sum()=}")
         debug_mask_relationship(mask, eval_mask, "Before ")
-        eval_mask = (mask | eval_mask) & ~batch_data["mask"]
-        eval_mask = eval_mask.bool()
+        eval_mask = (mask | eval_mask) - batch_data["mask"]
+        # eval_mask = eval_mask.bool()
         print(f"{eval_mask.sum()=} {mask.sum()=} {batch_data['mask'].sum()=}")
         debug_mask_relationship(mask, eval_mask, "train mask")
         debug_mask_relationship(batch_data["mask"], eval_mask, "batch mask")
