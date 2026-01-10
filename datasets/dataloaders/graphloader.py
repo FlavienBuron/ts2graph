@@ -261,7 +261,7 @@ class GraphLoader(Dataset, ABC):
 
         self.start, self.end = self.index.min(), self.index.max()
 
-        self._mask = self._check_input(torch.tensor(mask))
+        self._mask = mask
 
         if freq is not None:
             self._resample(freq=freq, aggr=aggr)
@@ -273,6 +273,7 @@ class GraphLoader(Dataset, ABC):
                 raise ValueError("Inferred frequencies returned None")
 
         self.samples_per_day = int(86400 / pd.Timedelta(self.freq).total_seconds())
+        self._mask = self._check_input(torch.tensor(mask))
 
     def _resample(self, freq: str, aggr: str):
         resampler = self.df.resample(freq)
