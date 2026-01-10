@@ -55,12 +55,12 @@ class GraphLoader(Dataset, ABC):
             if isinstance(self.training_mask, torch.Tensor)
             else torch.tensor(self.training_mask)
         )
-        # if eval_mask is not None:
-        #     exogenous["eval_mask_window"] = torch.tensor(eval_mask)
+        if eval_mask is not None:
+            exogenous["eval_mask_window"] = torch.tensor(eval_mask)
         for name, value in exogenous.items():
             self._add_exogenous(value, name, for_window=True, for_horizon=True)
 
-        self._exogenous_keys["eval_mask"] = dict(for_window=True, for_horizon=True)
+        # self._exogenous_keys["eval_mask"] = dict(for_window=True, for_horizon=True)
         try:
             freq = freq or self.index.freq or self.index.inferred_freq
             self.freq = pd.tseries.frequencies.to_offset(freq)
