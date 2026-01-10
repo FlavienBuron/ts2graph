@@ -222,7 +222,7 @@ class GraphLoader(Dataset, ABC):
             #     (~self.mask[1527:1563] & self.eval_mask[1527:1563]).sum().item() == 0,
             # )
 
-            # debug_mask_relationship(res["mask"], res["eval_mask"], "get")
+            debug_mask_relationship(res["mask"], res["eval_mask"], "get")
 
         for attr in self._exo_horizon_keys:
             key = attr if attr not in self._exo_common_keys else (attr + "_horizon")
