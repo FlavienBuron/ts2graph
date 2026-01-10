@@ -45,7 +45,7 @@ class GraphLoader(Dataset, ABC):
 
         # self.mask = self.training_mask
         debug_mask_relationship(
-            torch.tensor(self._mask), torch.tensor(self.eval_mask), "GraphLoader mask"
+            torch.tensor(self.mask), torch.tensor(self.eval_mask), "GraphLoader mask"
         )
 
         if exogenous is None:
@@ -102,29 +102,29 @@ class GraphLoader(Dataset, ABC):
 
     @property
     def has_mask(self):
-        return self._mask is not None
+        return self.missing_mask is not None
 
     @property
     def shape(self):
         return self.df.values.shape
 
-    # @property
-    # def mask(self):
-    #     if self.has_mask:
-    #         return self._mask
-    #     return np.zeros_like(self.shape).astype("bool")
-    #
-    # @mask.setter
-    # def mask(self, value: np.ndarray | torch.Tensor):
-    #     assert value is not None
-    #     # Convert to tensor if needed, using proper method
-    #     if isinstance(value, torch.Tensor):
-    #         # Already a tensor - use detach().clone()
-    #         tensor_value = value.detach().clone()
-    #     else:
-    #         # Numpy array - convert to tensor
-    #         tensor_value = torch.from_numpy(value)
-    #     self._mask = self._check_input(tensor_value)
+    @property
+    def mask(self):
+        if self.has_mask:
+            return self.missing_mask
+        return np.zeros_like(self.shape).astype("bool")
+
+    @mask.setter
+    def mask(self, value: np.ndarray | torch.Tensor):
+        assert value is not None
+        # Convert to tensor if needed, using proper method
+        if isinstance(value, torch.Tensor):
+            # Already a tensor - use detach().clone()
+            tensor_value = value.detach().clone()
+        else:
+            # Numpy array - convert to tensor
+            tensor_value = torch.from_numpy(value)
+        self.missing_mask = self._check_input(tensor_value)
 
     @property
     def data(self):
