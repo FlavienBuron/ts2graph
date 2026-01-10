@@ -31,7 +31,7 @@ class GraphLoader(Dataset, ABC):
             freq=freq,
             aggr=aggr,
         )
-        self._mask = self._check_input(torch.tensor(self._mask))
+        # self._mask = self._check_input(torch.tensor(self._mask))
         debug_mask_relationship(
             torch.tensor(self.training_mask),
             torch.tensor(self.eval_mask),
@@ -55,8 +55,8 @@ class GraphLoader(Dataset, ABC):
             if isinstance(self.training_mask, torch.Tensor)
             else torch.tensor(self.training_mask)
         )
-        if eval_mask is not None:
-            exogenous["eval_mask_window"] = torch.tensor(eval_mask)
+        # if eval_mask is not None:
+        #     exogenous["eval_mask_window"] = torch.tensor(eval_mask)
         for name, value in exogenous.items():
             self._add_exogenous(value, name, for_window=True, for_horizon=True)
 
@@ -261,7 +261,7 @@ class GraphLoader(Dataset, ABC):
 
         self.start, self.end = self.index.min(), self.index.max()
 
-        self._mask = mask
+        self._mask = self._check_input(torch.tensor(mask))
 
         if freq is not None:
             self._resample(freq=freq, aggr=aggr)
