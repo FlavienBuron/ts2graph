@@ -286,9 +286,11 @@ class GraphLoader(Dataset, ABC):
         else:
             raise ValueError(f"{aggr} is not a valid aggregation method")
 
-        if self.has_mask:
-            resampler = pd.DataFrame(self._mask, index=self.df.index).resample(freq)
-            self._mask = resampler.min().to_numpy()
+        # if self.has_mask:
+        #     resampler = pd.DataFrame(self._mask, index=self.df.index).resample(freq)
+        #     self._mask = resampler.min().to_numpy()
+        resampler = pd.DataFrame(self._mask, index=self.df.index).resample(freq)
+        self._mask = resampler.min().to_numpy()
         self.freq = freq
 
     def _check_input(self, data: torch.Tensor):
