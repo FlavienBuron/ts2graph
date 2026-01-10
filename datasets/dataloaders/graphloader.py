@@ -78,6 +78,7 @@ class GraphLoader(Dataset, ABC):
         ]
 
         self.scaler = None
+        print(f"{self.data.shape=} {self.mask.shape=}")
 
     def __len__(self) -> int:
         return len(self._indices)
