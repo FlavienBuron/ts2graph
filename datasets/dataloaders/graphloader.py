@@ -44,9 +44,9 @@ class GraphLoader(Dataset, ABC):
             raise AttributeError("Dataset index is returned as None")
 
         # self.mask = self.training_mask
-        debug_mask_relationship(
-            torch.tensor(self.mask), torch.tensor(self.eval_mask), "GraphLoader mask"
-        )
+        # debug_mask_relationship(
+        #     torch.tensor(self.mask), torch.tensor(self.eval_mask), "GraphLoader mask"
+        # )
 
         if exogenous is None:
             exogenous = dict()
