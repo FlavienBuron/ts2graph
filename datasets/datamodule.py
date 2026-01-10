@@ -48,7 +48,7 @@ class DataModule(pl.LightningDataModule):
         if self.scale:
             scaling_axes = self.get_scaling_axes(self.scaling_axis)
             train = self.dataset.data[self.train_slice]
-            train_mask = self.dataset.mask[self.train_slice]
+            train_mask = self.dataset._mask[self.train_slice]
             eval = self.dataset.eval_mask[self.train_slice]
             debug_mask_relationship(torch.tensor(train_mask), eval)
             scaler = self.get_scaler(axis=scaling_axes)
