@@ -31,6 +31,7 @@ class GraphLoader(Dataset, ABC):
             freq=freq,
             aggr=aggr,
         )
+        self.mask = torch.tensor(self._mask)
         debug_mask_relationship(
             torch.tensor(self.mask), torch.tensor(self.eval_mask), "GraphLoader mask"
         )
