@@ -97,7 +97,7 @@ class GraphLoader(Dataset, ABC):
         #     if self.eval_mask is None
         #     else (self._mask & (1 - self.eval_mask))
         # )
-        return self.mask if self.eval_mask is None else (self.mask & ~self.eval_mask)
+        return self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
 
     @property
     def has_mask(self):
