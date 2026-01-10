@@ -47,17 +47,17 @@ class GraphLoader(Dataset, ABC):
 
         # self.mask = self.training_mask
 
-        if exogenous is None:
-            exogenous = dict()
-        exogenous["mask_window"] = (
-            self.training_mask.detach().clone()
-            if isinstance(self.training_mask, torch.Tensor)
-            else torch.tensor(self.training_mask)
-        )
-        if eval_mask is not None:
-            exogenous["eval_mask_window"] = torch.tensor(eval_mask)
-        for name, value in exogenous.items():
-            self._add_exogenous(value, name, for_window=True, for_horizon=True)
+        # if exogenous is None:
+        #     exogenous = dict()
+        # exogenous["mask_window"] = (
+        #     self.training_mask.detach().clone()
+        #     if isinstance(self.training_mask, torch.Tensor)
+        #     else torch.tensor(self.training_mask)
+        # )
+        # if eval_mask is not None:
+        #     exogenous["eval_mask_window"] = torch.tensor(eval_mask)
+        # for name, value in exogenous.items():
+        #     self._add_exogenous(value, name, for_window=True, for_horizon=True)
 
         try:
             freq = freq or self.index.freq or self.index.inferred_freq
@@ -242,7 +242,7 @@ class GraphLoader(Dataset, ABC):
                     res["x"] = self.scaler.transform(res["x"])
 
         res["x"] = torch.where(res["mask"], res["x"], torch.zeros_like(res["x"]))
-        # res["mask"] = res["mask"].bool()
+        res["mask"] = res["mask"].bool()
 
         return res, transform
 
