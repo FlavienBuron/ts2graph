@@ -1,6 +1,7 @@
 from typing import List
 
 import pytorch_lightning as pl
+import torch
 from torch.utils.data import DataLoader, RandomSampler, Subset
 
 from datasets.dataloaders.graphloader import GraphLoader
@@ -8,6 +9,7 @@ from datasets.scalers.abstract_scaler import AbstractScaler
 from datasets.scalers.grin_scaler import StandardScaler as GSS
 from datasets.scalers.min_max_scaler import MinMaxScaler
 from datasets.scalers.standard_scaler import StandardScaler
+from utils.helpers import debug_mask_relationship
 
 
 class DataModule(pl.LightningDataModule):
@@ -58,6 +60,11 @@ class DataModule(pl.LightningDataModule):
                     scaler.fit(exo[self.train_slice], keepdims=True)
                     scaler = scaler.to_torch()
                     setattr(self, label, scaler.transform(exo))
+        debug_mask_relationship(
+            torch.tensor(self.dataset.mask[self.train_slice]),
+            torch.tensor(self.dataset.eval_mask[self.train_slice]),
+            "DataModule",
+        )
 
     @property
     def n_nodes(self):

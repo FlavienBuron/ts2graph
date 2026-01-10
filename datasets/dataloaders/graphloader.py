@@ -212,10 +212,10 @@ class GraphLoader(Dataset, ABC):
             for attr in self._exo_window_keys:
                 key = attr if attr not in self._exo_common_keys else (attr + "_window")
                 res[key] = getattr(self, attr)[idx : idx + self.window]
-            print(
-                "eval ⊆ mask            :",
-                (~self.mask[1527:1563] & self.eval_mask[1527:1563]).sum().item() == 0,
-            )
+            # print(
+            #     "eval ⊆ mask            :",
+            #     (~self.mask[1527:1563] & self.eval_mask[1527:1563]).sum().item() == 0,
+            # )
 
             # debug_mask_relationship(res["mask"], res["eval_mask"], "get")
 
