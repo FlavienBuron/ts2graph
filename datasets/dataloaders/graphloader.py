@@ -39,7 +39,7 @@ class GraphLoader(Dataset, ABC):
             torch.tensor(self.eval_mask),
             "GraphLoader mask",
         )
-        self.mask = torch.tensor(self._mask)
+        # self.mask = torch.tensor(self._mask)
 
         # Emulate GRIN's SpatioaTemporal classes, into one
         self.data, self.index = self.as_numpy(return_idx=True)
@@ -48,17 +48,17 @@ class GraphLoader(Dataset, ABC):
 
         # self.mask = self.training_mask
 
-        # if exogenous is None:
-        #     exogenous = dict()
-        # exogenous["mask_window"] = (
-        #     self.training_mask.detach().clone()
-        #     if isinstance(self.training_mask, torch.Tensor)
-        #     else torch.tensor(self.training_mask)
-        # )
+        if exogenous is None:
+            exogenous = dict()
+        exogenous["mask_window"] = (
+            self.training_mask.detach().clone()
+            if isinstance(self.training_mask, torch.Tensor)
+            else torch.tensor(self.training_mask)
+        )
         # if eval_mask is not None:
         #     exogenous["eval_mask_window"] = torch.tensor(eval_mask)
-        # for name, value in exogenous.items():
-        #     self._add_exogenous(value, name, for_window=True, for_horizon=True)
+        for name, value in exogenous.items():
+            self._add_exogenous(value, name, for_window=True, for_horizon=True)
 
         try:
             freq = freq or self.index.freq or self.index.inferred_freq
@@ -79,7 +79,7 @@ class GraphLoader(Dataset, ABC):
         ]
 
         self.scaler = None
-        print(f"{self.data.shape=} {self.mask.shape=}")
+        # print(f"{self.data.shape=} {self.mask.shape=}")
 
     def __len__(self) -> int:
         return len(self._indices)
@@ -107,23 +107,23 @@ class GraphLoader(Dataset, ABC):
     def shape(self):
         return self.df.values.shape
 
-    @property
-    def mask(self):
-        if self.has_mask:
-            return self._mask
-        return np.zeros_like(self.shape).astype("uint8")
-
-    @mask.setter
-    def mask(self, value: np.ndarray | torch.Tensor):
-        assert value is not None
-        # Convert to tensor if needed, using proper method
-        if isinstance(value, torch.Tensor):
-            # Already a tensor - use detach().clone()
-            tensor_value = value.detach().clone()
-        else:
-            # Numpy array - convert to tensor
-            tensor_value = torch.from_numpy(value)
-        self._mask = self._check_input(tensor_value)
+    # @property
+    # def mask(self):
+    #     if self.has_mask:
+    #         return self._mask
+    #     return np.zeros_like(self.shape).astype("bool")
+    #
+    # @mask.setter
+    # def mask(self, value: np.ndarray | torch.Tensor):
+    #     assert value is not None
+    #     # Convert to tensor if needed, using proper method
+    #     if isinstance(value, torch.Tensor):
+    #         # Already a tensor - use detach().clone()
+    #         tensor_value = value.detach().clone()
+    #     else:
+    #         # Numpy array - convert to tensor
+    #         tensor_value = torch.from_numpy(value)
+    #     self._mask = self._check_input(tensor_value)
 
     @property
     def data(self):
