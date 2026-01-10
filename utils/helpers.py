@@ -79,6 +79,7 @@ def debug_mask_relationship(mask, eval_mask, name=""):
     # ensure boolean
     mask = mask.bool()
     eval_mask = eval_mask.bool()
+    print(f"{mask.shape=} {eval_mask.shape=}")
 
     total = mask.numel()
 
