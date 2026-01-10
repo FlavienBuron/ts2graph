@@ -163,28 +163,28 @@ class GraphLoader(Dataset, ABC):
     def indices(self):
         return self._indices
 
-    @property
-    def signature(self):
-        attrs = []
-        if self.window > 0:
-            attrs.append("x")
-            for attr in self._exo_window_keys:
-                attrs.append(
-                    attr if attr not in self._exo_common_keys else (attr + "_window")
-                )
-        for attr in self._exo_horizon_keys:
-            attrs.append(
-                attr if attr not in self._exo_common_keys else (attr + "_horizon")
-            )
-        attrs.append("y")
-        attrs = tuple(attrs)
-        preprocess = []
-        if self.trend is not None:
-            preprocess.append("trend")
-        if self.scaler is not None:
-            preprocess.extend(self.scaler.params())
-        preprocess = tuple(preprocess)
-        return dict(data=attrs, preprocessing=preprocess)
+    # @property
+    # def signature(self):
+    #     attrs = []
+    #     if self.window > 0:
+    #         attrs.append("x")
+    #         for attr in self._exo_window_keys:
+    #             attrs.append(
+    #                 attr if attr not in self._exo_common_keys else (attr + "_window")
+    #             )
+    #     for attr in self._exo_horizon_keys:
+    #         attrs.append(
+    #             attr if attr not in self._exo_common_keys else (attr + "_horizon")
+    #         )
+    #     attrs.append("y")
+    #     attrs = tuple(attrs)
+    #     preprocess = []
+    #     if self.trend is not None:
+    #         preprocess.append("trend")
+    #     if self.scaler is not None:
+    #         preprocess.extend(self.scaler.params())
+    #     preprocess = tuple(preprocess)
+    #     return dict(data=attrs, preprocessing=preprocess)
 
     @property
     def _exo_window_keys(self):
@@ -206,6 +206,7 @@ class GraphLoader(Dataset, ABC):
             for attr in self._exo_window_keys:
                 key = attr if attr not in self._exo_common_keys else (attr + "_window")
                 res[key] = getattr(self, attr)[idx : idx + self.window]
+                print(f"{key=}")
 
             # debug_mask_relationship(res["mask"], res["eval_mask"], "get")
 
