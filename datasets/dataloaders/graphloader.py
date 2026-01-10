@@ -202,7 +202,7 @@ class GraphLoader(Dataset, ABC):
                 key = attr if attr not in self._exo_common_keys else (attr + "_window")
                 res[key] = getattr(self, attr)[idx : idx + self.window]
 
-            debug_mask_relationship(res["mask"], res["eval_mask"], "get")
+            # debug_mask_relationship(res["mask"], res["eval_mask"], "get")
 
         for attr in self._exo_horizon_keys:
             key = attr if attr not in self._exo_common_keys else (attr + "_horizon")

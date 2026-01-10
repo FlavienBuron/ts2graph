@@ -48,7 +48,6 @@ from utils import numpy_metrics
 from utils.callbacks import ConsoleMetricsCallback
 from utils.helpers import (
     aggregate_predictions,
-    debug_mask_relationship,
     prediction_dataframe,
 )
 
@@ -770,13 +769,13 @@ def run(args: Namespace) -> None:
     dataset = get_dataset(args.dataset)
 
     # print(f"{dataset.mask.sum()=} {dataset.eval_mask.float().sum()=}")
-    debug_mask_relationship(dataset.mask, dataset.eval_mask, "mask vs eval_mask")
-    debug_mask_relationship(
-        dataset.mask, dataset.training_mask, "mask vs training_mask"
-    )
-    debug_mask_relationship(
-        dataset.training_mask, dataset.eval_mask, "training_mask vs eval_mask"
-    )
+    # debug_mask_relationship(dataset.mask, dataset.eval_mask, "mask vs eval_mask")
+    # debug_mask_relationship(
+    #     dataset.mask, dataset.training_mask, "mask vs training_mask"
+    # )
+    # debug_mask_relationship(
+    #     dataset.training_mask, dataset.eval_mask, "training_mask vs eval_mask"
+    # )
     train, val, test = dataset.grin_split()
     dm = DataModule(
         dataset,
