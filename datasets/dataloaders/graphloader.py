@@ -311,10 +311,21 @@ class GraphLoader(Dataset, ABC):
     def _add_exogenous(
         self, exo_data, name: str, for_window: bool = True, for_horizon: bool = False
     ):
-        suffix_idx = -7 if "window" in name else -8
-        name = name[:suffix_idx]
-        for_window = suffix_idx == -7
-        for_horizon = suffix_idx == -8
+        assert isinstance(name, str)
+        if name.endswith("_window"):
+            name = name[:-7]
+            for_window, for_horizon = True, False
+        if name.endswith("_horizon"):
+            name = name[:-8]
+            for_window, for_horizon = False, True
+        if name in self._reserved_signature:
+            raise ValueError(
+                "Channel '{0}' cannot be added in this way. Use obj.{0} instead.".format(
+                    name
+                )
+            )
+        if not (for_window or for_horizon):
+            raise ValueError("Either for_window or for_horizon must be True.")
         exo_data = self._check_input(exo_data)
         setattr(self, name, exo_data)
         self._exogenous_keys[name] = dict(
