@@ -7,8 +7,6 @@ import torch
 from einops import rearrange
 from torch.utils.data import Dataset
 
-from utils.helpers import debug_mask_relationship
-
 
 class GraphLoader(Dataset, ABC):
     def __init__(
@@ -32,11 +30,11 @@ class GraphLoader(Dataset, ABC):
             aggr=aggr,
         )
         # self._mask = self._check_input(torch.tensor(self._mask))
-        debug_mask_relationship(
-            torch.tensor(self.training_mask),
-            torch.tensor(self.eval_mask),
-            "GraphLoader mask",
-        )
+        # debug_mask_relationship(
+        #     torch.tensor(self.training_mask),
+        #     torch.tensor(self.eval_mask),
+        #     "GraphLoader mask",
+        # )
 
         # Emulate GRIN's SpatioaTemporal classes, into one
         self.data, self.index = self.as_numpy(return_idx=True)
