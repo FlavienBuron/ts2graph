@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader, RandomSampler, Subset
 
 from datasets.dataloaders.graphloader import GraphLoader
 from datasets.scalers.abstract_scaler import AbstractScaler
-from datasets.scalers.grin_scaler import StandardScaler as GSS
 from datasets.scalers.min_max_scaler import MinMaxScaler
 from datasets.scalers.standard_scaler import StandardScaler
 
@@ -138,7 +137,8 @@ class DataModule(pl.LightningDataModule):
 
     def get_scaler(self, axis) -> AbstractScaler:
         if self.scaling_type == "std":
-            return GSS(axis=axis)
+            return StandardScaler(axis=axis)
+            # return GSS(axis=axis)
         elif self.scaling_type == "minmax":
             return MinMaxScaler(axis=axis)
         else:

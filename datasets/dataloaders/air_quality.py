@@ -9,7 +9,6 @@ from torch_geometric.utils import to_dense_adj
 
 from datasets.dataloaders.graphloader import GraphLoader
 from graphs_transformations.proximity_graphs import from_geo_nn, from_knn, from_radius
-from utils.helpers import debug_mask_relationship
 
 EARTH_RADIUS = 6371.0088
 
@@ -39,9 +38,9 @@ class AirQualityLoader(GraphLoader):
         self.masked_sensors = (
             list(masked_sensors) if masked_sensors is not None else list()
         )
-        debug_mask_relationship(
-            torch.tensor(missing_mask), torch.tensor(self.eval_mask), "AirQuality mask"
-        )
+        # debug_mask_relationship(
+        #     torch.tensor(missing_mask), torch.tensor(self.eval_mask), "AirQuality mask"
+        # )
         super().__init__(
             dataframe=data,
             missing_mask=missing_mask,

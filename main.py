@@ -785,6 +785,9 @@ def run(args: Namespace) -> None:
         samples_per_epoch=5120,
         scaling_type="std",
     )
+    # if out of sample in air, add values removed for evaluation in train set
+    if args.dataset_name[:3] == "air":
+        dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
 
     # dataset._store_spatiotemporal_data()
     adj, _ = get_spatial_graph(
