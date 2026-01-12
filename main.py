@@ -855,7 +855,7 @@ def run(args: Namespace) -> None:
             early_stop_callback,
             checkpoint_callback,
         ],
-        num_sanity_val_steps=0,
+        num_sanity_val_steps=2,
     )
 
     trainer.fit(imputer, datamodule=dm)
