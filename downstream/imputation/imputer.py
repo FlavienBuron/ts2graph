@@ -241,8 +241,8 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
-        mask = batch_data.get("mask")
-        batch_data["mask"] = mask & ~eval_mask
+        # mask = batch_data.get("mask")
+        # batch_data["mask"] = mask & ~eval_mask
         # mask2 = batch_data["mask"].detach().clone()
         #
         # debug_mask_relationship(mask2, eval_mask, "val_step")
@@ -279,8 +279,8 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
-        mask = batch_data.get("mask")
-        batch_data["mask"] = mask & ~eval_mask
+        # mask = batch_data.get("mask")
+        # batch_data["mask"] = mask & ~eval_mask
         # mask2 = batch_data["mask"].detach().clone()
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
