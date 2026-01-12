@@ -199,27 +199,27 @@ class Imputer(pl.LightningModule):
             for h, _ in enumerate(prediction):
                 prediction[h] = self._postprocess(prediction[h], batch_preprocessing)
 
-        mad = (imputation - target).abs()
-        mad = mad[eval_mask].mean()
-        print(f"DEBUG: MAD train {mad=}")
-        mad2 = (imputation - target).abs()
-        mad2 = mad2[mask].mean()
-        print(f"DEBUG: MAD mask train {mad2=}")
+        # mad = (imputation - target).abs()
+        # mad = mad[eval_mask].mean()
+        # print(f"DEBUG: MAD train {mad=}")
+        # mad2 = (imputation - target).abs()
+        # mad2 = mad2[mask].mean()
+        # print(f"DEBUG: MAD mask train {mad2=}")
 
         loss = self.loss_fn(imputation, target, mask)
-        print(f"imputation loss: {loss}")
+        # print(f"imputation loss: {loss}")
         for h, _ in enumerate(prediction):
             pred_loss = self.tradeoff * self.loss_fn(prediction[h], target, mask)
-            print(f"predictions loss: {pred_loss}")
+            # print(f"predictions loss: {pred_loss}")
             loss += pred_loss
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        mad = (imputation - y).abs()
-        mad = mad[eval_mask].mean()
-        print(f"DEBUG: MAD train scaled {mad=}")
-        print(f"{imputation.mean()=} {y.mean()=}")
+        # mad = (imputation - y).abs()
+        # mad = mad[eval_mask].mean()
+        # print(f"DEBUG: MAD train scaled {mad=}")
+        # print(f"{imputation.mean()=} {y.mean()=}")
 
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.log_dict(
@@ -241,7 +241,11 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
+        mask = batch_data.get("mask")
+        batch_data["mask"] = mask & (1 - eval_mask)
+        mask2 = batch_data["mask"].detach().clone()
 
+        debug_mask_relationship(mask2, eval_mask, "val_step")
         imputation, _ = self._predict_batch(batch, preprocess=False)
 
         if self.scaled_target:
@@ -275,6 +279,9 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
+        mask = batch_data.get("mask")
+        batch_data["mask"] = mask & (1 - eval_mask)
+        mask2 = batch_data["mask"].detach().clone()
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
         imputation_post = self._postprocess(imputation, batch_preprocessing)
@@ -307,6 +314,8 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
+        mask = batch_data.get("mask")
+        batch_data["mask"] = mask & (1 - eval_mask)
 
         imputation, _ = self._predict_batch(batch, preprocess=False)
         imputation_post = self._postprocess(imputation, batch_preprocessing)

@@ -248,8 +248,8 @@ class GraphLoader(Dataset, ABC):
 
         res["x"] = torch.where(res["mask"], res["x"], torch.zeros_like(res["x"]))
         res["mask"] = res["mask"].bool()
-        for k, v in res.items():
-            print(f"get {k=} {v.sum()}")
+        # for k, v in res.items():
+        #     print(f"get {k=} {v.sum()}")
 
         return res, transform
 
