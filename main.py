@@ -788,7 +788,7 @@ def run(args: Namespace) -> None:
 
     # dataset._store_spatiotemporal_data()
     adj, _ = get_spatial_graph(
-        technique="loc", parameter=0.3, dataset=dataset, args=args
+        technique="loc", parameter=0.1, dataset=dataset, args=args
     )
     model = GRINet
     loss_fn = MaskedMAELoss()

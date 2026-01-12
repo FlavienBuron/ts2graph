@@ -24,7 +24,7 @@ class DataModule(pl.LightningDataModule):
         val_indices: List = [],
         test_indices: List = [],
         batch_size: int = 32,
-        workers=2,
+        workers=8,
         samples_per_epoch: int = 0,
     ):
         super().__init__()
