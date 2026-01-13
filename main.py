@@ -57,8 +57,9 @@ np.random.seed(42)
 torch.manual_seed(42)
 
 os.environ["PYTHONHASHSEED"] = str(42)
-torch.set_num_threads(20)
-torch.set_num_interop_threads(10)
+# torch.set_num_threads(20)
+# torch.set_num_interop_threads(10)
+#
 
 
 def parse_args() -> Namespace:
