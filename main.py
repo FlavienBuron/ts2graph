@@ -778,7 +778,8 @@ def run(args: Namespace) -> None:
     # debug_mask_relationship(
     #     dataset.training_mask, dataset.eval_mask, "training_mask vs eval_mask"
     # )
-    train, val, test = dataset.grin_split(in_sample=True)
+    in_sample = True
+    train, val, test = dataset.grin_split(in_sample=in_sample)
     dm = DataModule(
         copy.deepcopy(dataset),
         train_indices=train,
@@ -788,7 +789,7 @@ def run(args: Namespace) -> None:
         scaling_type="std",
     )
     # if out of sample in air, add values removed for evaluation in train set
-    if "air" in args.dataset:
+    if "air" in args.dataset and not in_sample:
         dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
 
     # dataset._store_spatiotemporal_data()
