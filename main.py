@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 import math
@@ -778,7 +779,7 @@ def run(args: Namespace) -> None:
     # )
     train, val, test = dataset.grin_split()
     dm = DataModule(
-        dataset,
+        copy.deepcopy(dataset),
         train_indices=train,
         test_indices=test,
         val_indices=val,
