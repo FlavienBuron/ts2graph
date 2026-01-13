@@ -115,6 +115,7 @@ class AirQualityLoader(GraphLoader):
             train_idxs = np.arange(len(self))
             val_months = [(m - 1) % 12 for m in self.test_months]
             _, val_idxs = self._disjoint_months(months=val_months, sync_mode="horizon")
+            print(f"{train_idxs.shape=} {val_months=} {val_idxs.shape=}")
         else:
             val_len = (
                 int(val_len * len(nontest_idxs)) if val_len < 1 else val_len
