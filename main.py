@@ -778,7 +778,7 @@ def run(args: Namespace) -> None:
     # debug_mask_relationship(
     #     dataset.training_mask, dataset.eval_mask, "training_mask vs eval_mask"
     # )
-    train, val, test = dataset.grin_split()
+    train, val, test = dataset.grin_split(in_sample=True)
     dm = DataModule(
         copy.deepcopy(dataset),
         train_indices=train,
