@@ -763,21 +763,28 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 
 
 def run(args: Namespace) -> None:
-    args = parse_args()
+    print("#" * 100)
+    print(args)
+    model = args.model.lower()
+    _device = args.device
+    stgi_mode = args.mode
+    if stgi_mode.lower() in ["st"]:
+        use_spatial = True
+        use_temporal = True
+    elif stgi_mode.lower() in ["t"]:
+        use_spatial = False
+        use_temporal = True
+    else:
+        use_spatial = True
+        use_temporal = False
+
+    print(f"{use_spatial=} {use_temporal=}")
     with open("./downstream/imputation/models/GRIN/config.yaml", "r") as f:
         config_args = yaml.safe_load(f)
     for key, value in config_args.items():
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
 
-    # print(f"{dataset.mask.sum()=} {dataset.eval_mask.float().sum()=}")
-    # debug_mask_relationship(dataset.mask, dataset.eval_mask, "mask vs eval_mask")
-    # debug_mask_relationship(
-    #     dataset.mask, dataset.training_mask, "mask vs training_mask"
-    # )
-    # debug_mask_relationship(
-    #     dataset.training_mask, dataset.eval_mask, "training_mask vs eval_mask"
-    # )
     in_sample = True
     train, val, test = dataset.grin_split(in_sample=in_sample)
     dm = DataModule(
@@ -822,13 +829,12 @@ def run(args: Namespace) -> None:
         "merge": args.merge,
         "impute_only_holes": args.impute_only_holes,
     }
-    savedir = "./experiments/results/"
     tb_logger = TensorBoardLogger(
-        save_dir=savedir,
+        save_dir=args.save_path,
         name="tensorboard",
     )
     csv_logger = CSVLogger(
-        save_dir=savedir,
+        save_dir=args.save_path,
         name="csv",
     )
     exp_name = f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
@@ -851,7 +857,7 @@ def run(args: Namespace) -> None:
     trainer = pl.Trainer(
         max_epochs=args.epochs,
         logger=[tb_logger, csv_logger],
-        default_root_dir=savedir,
+        default_root_dir=args.save_path,
         gradient_clip_algorithm="norm",
         gradient_clip_val=0.5,
         enable_progress_bar=True,
