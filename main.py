@@ -783,10 +783,6 @@ def run(args: Namespace) -> None:
 
     print(f"{use_spatial=} {use_temporal=}")
 
-    with open("./downstream/imputation/models/GRIN/config.yaml", "r") as f:
-        config_args = yaml.safe_load(f)
-    for key, value in config_args.items():
-        setattr(args, key, value)
     dataset = get_dataset(args.dataset)
 
     spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
@@ -859,7 +855,7 @@ def run(args: Namespace) -> None:
         }
         gnn_model = STGI
     elif model == "grin":
-        with open("./downstream/imputation/GRIN/config.yaml", "r") as f:
+        with open("./downstream/imputation/models/GRIN/config.yaml", "r") as f:
             config_args = yaml.safe_load(f)
         for key, value in config_args.items():
             setattr(args, key, value)
