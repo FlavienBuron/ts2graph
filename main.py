@@ -764,7 +764,6 @@ def run(args: Namespace) -> None:
     print("#" * 100)
     print(args)
     model = args.model.lower()
-    _device = args.device
     stgi_mode = args.mode
     if stgi_mode.lower() in ["st"]:
         use_spatial = True
