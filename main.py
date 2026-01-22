@@ -25,6 +25,7 @@ from torch.nn.functional import mse_loss
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
+from torch_geometric.utils import dense_to_sparse
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
@@ -39,11 +40,13 @@ from downstream.imputation.metrics.metrics import (
     MaskedMSE,
 )
 from downstream.imputation.models.GRIN.grin import GRINet
+from downstream.imputation.models.STGI.stgi import STGI
 from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
     compute_edge_difference_smoothness,
     compute_laplacian_smoothness,
+    save_graph_characteristics,
 )
 from utils import numpy_metrics
 from utils.callbacks import ConsoleMetricsCallback
@@ -57,8 +60,8 @@ np.random.seed(42)
 torch.manual_seed(42)
 
 os.environ["PYTHONHASHSEED"] = str(42)
-# torch.set_num_threads(20)
-# torch.set_num_interop_threads(10)
+torch.set_num_threads(8)
+torch.set_num_interop_threads(1)
 #
 
 
@@ -779,11 +782,50 @@ def run(args: Namespace) -> None:
         use_temporal = False
 
     print(f"{use_spatial=} {use_temporal=}")
+
     with open("./downstream/imputation/models/GRIN/config.yaml", "r") as f:
         config_args = yaml.safe_load(f)
     for key, value in config_args.items():
         setattr(args, key, value)
     dataset = get_dataset(args.dataset)
+
+    spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
+    temporal_graph_technique = args.temporal_graph_technique[0]
+    temporal_graph_params = args.temporal_graph_technique[1:]
+    spatial_graph_param = float(spatial_graph_param)
+
+    metrics = {}
+    metrics.update(vars(args))
+
+    spatial_graph_time = 0.0
+    if use_spatial:
+        spatial_adj_matrix, spatial_graph_time = get_spatial_graph(
+            spatial_graph_technique, spatial_graph_param, dataset, args
+        )
+    else:
+        spatial_adj_matrix = torch.tensor([[]])
+
+    if use_temporal:
+        temporal_graph_fn = get_temporal_graph_function(
+            temporal_graph_technique,
+            temporal_graph_params,
+        )
+    else:
+        temporal_graph_fn = get_temporal_graph_function(
+            "",
+            temporal_graph_params,
+        )
+
+    metrics.update({"spatial_graph_time": spatial_graph_time})
+
+    if args.graph_stats:
+        save_stats_path = args.save_path
+        if use_spatial:
+            save_path = os.path.join(
+                save_stats_path,
+                f"{args.dataset}_{spatial_graph_technique}_{spatial_graph_param}",
+            )
+            save_graph_characteristics(spatial_adj_matrix, save_path)
 
     in_sample = True
     train, val, test = dataset.grin_split(in_sample=in_sample)
@@ -799,12 +841,67 @@ def run(args: Namespace) -> None:
     if "air" in args.dataset and not in_sample:
         dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
 
-    # dataset._store_spatiotemporal_data()
-    adj, _ = get_spatial_graph(
-        technique="loc", parameter=0.1, dataset=dataset, args=args
-    )
-    model = GRINet
+    # if args.downstream_task:
+    gnn_model = None
+    spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
+    print(f"Running using model {args.model}")
+    if model == "stgi":
+        model_kwargs = {
+            "in_dim": 1,
+            "hidden_dim": args.d_hidden,
+            "num_layers": args.layer_num,
+            "layer_type": args.layer_type,
+            "kernel_size": args.kernel_size,
+            "use_spatial": use_spatial,
+            "use_temporal": use_temporal,
+            "temporal_graph_fn": temporal_graph_fn,
+            "add_self_loops": False,
+        }
+        gnn_model = STGI
+    elif model == "grin":
+        with open("./downstream/imputation/GRIN/config.yaml", "r") as f:
+            config_args = yaml.safe_load(f)
+        for key, value in config_args.items():
+            setattr(args, key, value)
+        model_kwargs = {
+            "adj": spatial_adj_matrix,
+            "d_in": dm.d_in,
+            "d_hidden": args.d_hidden,
+            "d_ff": args.d_ff,
+            "ff_dropout": args.ff_dropout,
+            "n_layers": args.layer_num,
+            "kernel_size": args.kernel_size,
+            "decoder_order": args.decoder_order,
+            "global_att": args.global_att,
+            "d_u": args.d_u,
+            "d_emb": args.d_emb,
+            "layer_norm": args.layer_norm,
+            "merge": args.merge,
+            "impute_only_holes": args.impute_only_holes,
+        }
+        gnn_model = GRINet
+    else:
+        raise ValueError(f"Unsupported model {model}")
+
+    assert gnn_model is not None, "Model instantiation failed"
+
     loss_fn = MaskedMAELoss()
+    task = Imputer(
+        model_class=gnn_model,
+        model_kwargs=model_kwargs,
+        optim_class=torch.optim.Adam,
+        optim_kwargs={"lr": args.learning_rate, "weight_decay": 0.0},
+        loss_fn=loss_fn,
+        scaled_target=True,
+        metrics=metrics,
+        scheduler_class=CosineAnnealingLR,
+        scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
+    )
+
+    # dataset._store_spatiotemporal_data()
+    # adj, _ = get_spatial_graph(
+    #     technique="loc", parameter=0.1, dataset=dataset, args=args
+    # )
     # loss_fn = MaskedMAE()
     metrics = {
         "mae": MaskedMAE(compute_on_step=False),
@@ -812,22 +909,6 @@ def run(args: Namespace) -> None:
         "mse": MaskedMSE(compute_on_step=False),
         "mre": MaskedMRE(compute_on_step=False),
         "mre2": MaskedMRE2(compute_on_step=False),
-    }
-    model_kwargs = {
-        "adj": adj,
-        "d_in": dm.d_in,
-        "d_hidden": args.d_hidden,
-        "d_ff": args.d_ff,
-        "ff_dropout": args.ff_dropout,
-        "n_layers": args.layer_num,
-        "kernel_size": args.kernel_size,
-        "decoder_order": args.decoder_order,
-        "global_att": args.global_att,
-        "d_u": args.d_u,
-        "d_emb": args.d_emb,
-        "layer_norm": args.layer_norm,
-        "merge": args.merge,
-        "impute_only_holes": args.impute_only_holes,
     }
     tb_logger = TensorBoardLogger(
         save_dir=args.save_path,
@@ -842,17 +923,6 @@ def run(args: Namespace) -> None:
     early_stop_callback = EarlyStopping(monitor="val_mae", patience=40, mode="min")
     checkpoint_callback = ModelCheckpoint(
         dirpath=logdir, save_top_k=1, monitor="val_mae", mode="min"
-    )
-    imputer = Imputer(
-        model_class=model,
-        model_kwargs=model_kwargs,
-        optim_class=torch.optim.Adam,
-        optim_kwargs={"lr": args.learning_rate, "weight_decay": 0.0},
-        loss_fn=loss_fn,
-        scaled_target=True,
-        metrics=metrics,
-        scheduler_class=CosineAnnealingLR,
-        scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
     )
     trainer = pl.Trainer(
         max_epochs=args.epochs,
@@ -870,13 +940,13 @@ def run(args: Namespace) -> None:
         num_sanity_val_steps=2,
     )
 
-    trainer.fit(imputer, datamodule=dm)
-    imputer.load_state_dict(
+    trainer.fit(task, datamodule=dm)
+    task.load_state_dict(
         torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
             "state_dict"
         ]
     )
-    outputs = trainer.predict(imputer, datamodule=dm)
+    outputs = trainer.predict(task, datamodule=dm)
     # with torch.no_grad():
     #     pred_target, pred_imp, pred_mask = imputer.predict_loader(dm.test_dataloader())
     if outputs is None:
@@ -916,14 +986,9 @@ def run(args: Namespace) -> None:
                 df_hat.values, df_true.values, eval_mask.squeeze().numpy()
             ).item()
             print(f" {metric_name}: {error:.4f}")
-    # for aggr_by, df_imp in df_imps.items():
-    #     # Compute error
-    #     print(f"- AGGREGATE BY {aggr_by.upper()}")
-    #     for metric_name, metric_fn in metrics.items():
-    #         error = metric_fn(
-    #             df_imp.values, df_true.values, eval_mask.squeeze().numpy()
-    #         ).item()
-    #         print(f" {metric_name}: {error:.4f}")
+
+    with open(args.save_path, "w") as f:
+        json.dump(metrics, f, indent=2)
 
 
 if __name__ == "__main__":
