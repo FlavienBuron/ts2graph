@@ -784,8 +784,8 @@ def run(args: Namespace) -> None:
     temporal_graph_params = args.temporal_graph_technique[1:]
     spatial_graph_param = float(spatial_graph_param)
 
-    metrics = {}
-    metrics.update(vars(args))
+    metrics_data = {}
+    metrics_data.update(vars(args))
 
     spatial_graph_time = 0.0
     if use_spatial:
@@ -806,7 +806,7 @@ def run(args: Namespace) -> None:
             temporal_graph_params,
         )
 
-    metrics.update({"spatial_graph_time": spatial_graph_time})
+    metrics_data.update({"spatial_graph_time": spatial_graph_time})
 
     if args.graph_stats:
         save_stats_path = args.save_path
@@ -876,17 +876,6 @@ def run(args: Namespace) -> None:
     assert gnn_model is not None, "Model instantiation failed"
 
     loss_fn = MaskedMAELoss()
-    task = Imputer(
-        model_class=gnn_model,
-        model_kwargs=model_kwargs,
-        optim_class=torch.optim.Adam,
-        optim_kwargs={"lr": args.learning_rate, "weight_decay": 0.0},
-        loss_fn=loss_fn,
-        scaled_target=True,
-        metrics=metrics,
-        scheduler_class=CosineAnnealingLR,
-        scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
-    )
 
     # dataset._store_spatiotemporal_data()
     # adj, _ = get_spatial_graph(
@@ -913,6 +902,17 @@ def run(args: Namespace) -> None:
     early_stop_callback = EarlyStopping(monitor="val_mae", patience=40, mode="min")
     checkpoint_callback = ModelCheckpoint(
         dirpath=logdir, save_top_k=1, monitor="val_mae", mode="min"
+    )
+    task = Imputer(
+        model_class=gnn_model,
+        model_kwargs=model_kwargs,
+        optim_class=torch.optim.Adam,
+        optim_kwargs={"lr": args.learning_rate, "weight_decay": 0.0},
+        loss_fn=loss_fn,
+        scaled_target=True,
+        metrics=metrics,
+        scheduler_class=CosineAnnealingLR,
+        scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
     )
     trainer = pl.Trainer(
         max_epochs=args.epochs,
@@ -978,7 +978,7 @@ def run(args: Namespace) -> None:
             print(f" {metric_name}: {error:.4f}")
 
     with open(args.save_path, "w") as f:
-        json.dump(metrics, f, indent=2)
+        json.dump(metrics_data, f, indent=2)
 
 
 if __name__ == "__main__":
