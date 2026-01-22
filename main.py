@@ -67,12 +67,7 @@ torch.set_num_interop_threads(1)
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
-    parser.add_argument(
-        "--device",
-        type=str,
-        help="The device to use",
-        default="cuda" if torch.cuda.is_available() else "cpu",
-    )
+
     parser.add_argument(
         "--model",
         type=str,
