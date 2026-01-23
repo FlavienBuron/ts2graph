@@ -1,7 +1,7 @@
 import torch
 
 
-class RuntimeAccumulator:
+class Runtime:
     """Accumulate batch timings and compute total, mean, std per epoch."""
 
     def __init__(self):
