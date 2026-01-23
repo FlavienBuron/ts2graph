@@ -929,7 +929,7 @@ def run(args: Namespace) -> None:
             ConsoleMetricsCallback(),
             early_stop_callback,
             checkpoint_callback,
-            report_callback,
+            # report_callback,
         ],
         num_sanity_val_steps=2,
     )
