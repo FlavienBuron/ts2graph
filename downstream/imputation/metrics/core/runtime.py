@@ -16,8 +16,12 @@ class Runtime:
 
     def compute(self):
         if not self._timings:
-            t = torch.tensor([0.0])
+            timing = torch.tensor([0.0])
         else:
-            t = torch.tensor(self._timings)
+            timing = torch.tensor(self._timings)
 
-        return {"total_time": t.sum(), "avg_time": t.mean(), "std_time": t.std()}
+        return {
+            "total_time": timing.sum(),
+            "avg_time": timing.mean(),
+            "std_time": timing.std(),
+        }

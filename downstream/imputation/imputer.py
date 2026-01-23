@@ -243,14 +243,15 @@ class Imputer(pl.LightningModule):
         self.log_dict(
             self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
-        self.log(
-            "train_timing",
-            self.train_timing,
-            on_step=False,
-            on_epoch=True,
-            logger=True,
-            prog_bar=False,
-        )
+        for k, v in self.train_timing.items():
+            self.log(
+                f"train_{k}",
+                v,
+                on_step=False,
+                on_epoch=True,
+                logger=True,
+                prog_bar=False,
+            )
 
         self.log(
             "train_loss",
@@ -291,14 +292,17 @@ class Imputer(pl.LightningModule):
         self.log_dict(
             self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
-        self.log(
-            "val_timing",
-            self.val_timing,
-            on_step=False,
-            on_epoch=True,
-            logger=True,
-            prog_bar=False,
-        )
+
+        for k, v in self.val_timing.items():
+            self.log(
+                f"val_{k}",
+                v,
+                on_step=False,
+                on_epoch=True,
+                logger=True,
+                prog_bar=False,
+            )
+
         self.log(
             "val_loss",
             val_loss.detach(),
@@ -331,14 +335,17 @@ class Imputer(pl.LightningModule):
         self.log_dict(
             self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
-        self.log(
-            "test_timing",
-            self.test_timing,
-            on_step=False,
-            on_epoch=True,
-            logger=True,
-            prog_bar=False,
-        )
+
+        for k, v in self.test_timing.items():
+            self.log(
+                f"test_{k}",
+                v,
+                on_step=False,
+                on_epoch=True,
+                logger=True,
+                prog_bar=False,
+            )
+
         self.log(
             "test_loss",
             test_loss.detach(),
