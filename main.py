@@ -30,7 +30,9 @@ from torch_geometric.utils import dense_to_sparse
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from datasets.datamodule import DataModule
+from downstream.imputation.helpers import EpochReport
 from downstream.imputation.imputer import Imputer
+from downstream.imputation.metrics.core.runtime import Runtime
 from downstream.imputation.metrics.losses import MaskedMAELoss
 from downstream.imputation.metrics.metrics import (
     MaskedMAE,
@@ -49,7 +51,7 @@ from graphs_transformations.utils import (
     save_graph_characteristics,
 )
 from utils import numpy_metrics
-from utils.callbacks import ConsoleMetricsCallback
+from utils.callbacks import ConsoleMetricsCallback, EpochReportCallback
 from utils.helpers import (
     aggregate_predictions,
     prediction_dataframe,
@@ -888,7 +890,10 @@ def run(args: Namespace) -> None:
         "mse": MaskedMSE(compute_on_step=False),
         "mre": MaskedMRE(compute_on_step=False),
         "mre2": MaskedMRE2(compute_on_step=False),
+        "timing": Runtime(),
     }
+    report = EpochReport()
+    report_callback = EpochReportCallback(report=report)
     tb_logger = TensorBoardLogger(
         save_dir=args.save_path,
         name="tensorboard",
@@ -926,11 +931,13 @@ def run(args: Namespace) -> None:
             ConsoleMetricsCallback(),
             early_stop_callback,
             checkpoint_callback,
+            report_callback,
         ],
         num_sanity_val_steps=2,
     )
 
     trainer.fit(task, datamodule=dm)
+    print(f"{report.as_dict()=}")
     task.load_state_dict(
         torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
             "state_dict"

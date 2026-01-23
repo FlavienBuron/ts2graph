@@ -1,11 +1,15 @@
 import inspect
 from copy import deepcopy
+from time import perf_counter
 from typing import Dict, Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
+from downstream.imputation.metrics.core.graph_metrics import GraphMetrics
 from torchmetrics import MetricCollection
+from torchmetrics.metric import Metric
 
+from downstream.imputation.helpers import EpochReport
 from downstream.imputation.metrics.core.masked_loss import MaskedLoss
 from downstream.imputation.metrics.core.masked_metric import MaskedMetric
 
@@ -24,7 +28,7 @@ class Imputer(pl.LightningModule):
         whiten_prob=0.05,
         pred_loss_weigth=1.0,
         warm_up=0,
-        metrics: Optional[Dict] = None,
+        metrics: Optional[dict[str, MaskedMetric]] = None,
         scheduler_class=None,
         scheduler_kwargs=None,
     ) -> None:
@@ -43,11 +47,15 @@ class Imputer(pl.LightningModule):
         assert 0.0 <= whiten_prob <= 1.0
         self.keep_prob = 1.0 - whiten_prob
         metrics = metrics if metrics is not None else dict()
-        self._set_metrics(metrics)
+        timing = metrics.pop("timing")
+        self._set_metrics(metrics, timing)
         self.model = self.model_class(**self.model_kwargs)
 
         self.tradeoff = pred_loss_weigth
         self.trimming = (warm_up, warm_up)
+
+        self.epoch_report = EpochReport()
+        self.graph_metrics = GraphMetrics()
 
     def reset_model(self):
         self.model = self.model_cls(**self.model_kwargs)
@@ -57,7 +65,7 @@ class Imputer(pl.LightningModule):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
     @staticmethod
-    def _check_metric(metric, on_step=False):
+    def _check_metric(metric, on_step=False) -> MaskedMetric | MaskedLoss:
         if not isinstance(metric, MaskedMetric) and not isinstance(metric, MaskedLoss):
             if "reduction" in inspect.getfullargspec(metric).args:
                 metric_kwargs = {"reduction": "none"}
@@ -68,11 +76,12 @@ class Imputer(pl.LightningModule):
             )
         return deepcopy(metric)
 
-    def _set_metrics(self, metrics):
+    def _set_metrics(self, metrics: dict[str, MaskedMetric], timing: Metric):
         self.train_metrics = MetricCollection(
             {
                 f"train_{k}": self._check_metric(metric, on_step=True)
                 for k, metric in metrics.items()
+                if isinstance(metric, MaskedMetric)
             }
         )
         self.val_metrics = MetricCollection(
@@ -81,6 +90,11 @@ class Imputer(pl.LightningModule):
         self.test_metrics = MetricCollection(
             {f"test_{k}": self._check_metric(m) for k, m in metrics.items()}
         )
+        self.train_timing = MetricCollection(
+            {"train_timing": self._check_metric(timing)}
+        )
+        self.val_timing = MetricCollection({"val_timing": self._check_metric(timing)})
+        self.test_timing = MetricCollection({"test_timing": self._check_metric(timing)})
 
     def reset_metrics(self) -> None:
         if hasattr(self, "train_metrics") and self.train_metrics is not None:
@@ -142,7 +156,7 @@ class Imputer(pl.LightningModule):
             target = batch_data.get("y")
             eval_mask = batch_data.get("eval_mask")
 
-            imputation, _ = self._predict_batch(batch, preprocess=preprocess)
+            imputation, _, _ = self._predict_batch(batch, preprocess=preprocess)
 
             imputation = self._postprocess(imputation, batch_preprocessing)
 
@@ -161,15 +175,20 @@ class Imputer(pl.LightningModule):
         self,
         batch: Tuple[Dict, Dict],
         preprocess: bool = False,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, float]:
         batch_data, batch_preprocessing = self._unpack_batch(batch)
         if preprocess:
             x = batch_data.pop("x")
             x = self._preprocess(x, batch_preprocessing)
+            forward_start = perf_counter()
             imputation, prediction, _ = self.forward(x, **batch_data)
+            forward_end = perf_counter()
         else:
+            forward_start = perf_counter()
             imputation, prediction, _ = self.forward(**batch_data)
-        return imputation, prediction
+            forward_end = perf_counter()
+        forward_time = forward_end - forward_start
+        return imputation, prediction, forward_time
 
     def training_step(self, batch, batch_idx):
         batch_data, batch_preprocessing = self._unpack_batch(batch)
@@ -189,7 +208,9 @@ class Imputer(pl.LightningModule):
 
         y = batch_data.pop("y")
 
-        imputation, prediction = self._predict_batch(batch, preprocess=False)
+        imputation, prediction, forward_time = self._predict_batch(
+            batch, preprocess=False
+        )
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
@@ -222,8 +243,12 @@ class Imputer(pl.LightningModule):
         # print(f"{imputation.mean()=} {y.mean()=}")
 
         self.train_metrics.update(imputation.detach(), y, eval_mask)
+        self.train_timing.update(timing=forward_time)
         self.log_dict(
             self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        )
+        self.log_dict(
+            self.train_timing, on_step=False, on_epoch=True, logger=True, prog_bar=False
         )
 
         self.log(
@@ -246,7 +271,8 @@ class Imputer(pl.LightningModule):
         # mask2 = batch_data["mask"].detach().clone()
         #
         # debug_mask_relationship(mask2, eval_mask, "val_step")
-        imputation, _ = self._predict_batch(batch, preprocess=False)
+
+        imputation, _, forward_time = self._predict_batch(batch, preprocess=False)
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
@@ -260,6 +286,7 @@ class Imputer(pl.LightningModule):
             imputation = self._postprocess(imputation, batch_preprocessing)
 
         self.val_metrics.update(imputation.detach(), y, eval_mask)
+        self.val_timing.update(timing=forward_time)
         self.log_dict(
             self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
@@ -283,7 +310,7 @@ class Imputer(pl.LightningModule):
         # batch_data["mask"] = mask & ~eval_mask
         # mask2 = batch_data["mask"].detach().clone()
 
-        imputation, _ = self._predict_batch(batch, preprocess=False)
+        imputation, _, forward_time = self._predict_batch(batch, preprocess=False)
         imputation_post = self._postprocess(imputation, batch_preprocessing)
         # if batch_idx == 0:
         #     print(f"{y.mean()=} {imputation.mean()=} {imputation_post.mean()=}")
@@ -291,6 +318,7 @@ class Imputer(pl.LightningModule):
 
         # Logging
         self.test_metrics.update(imputation.detach(), y, eval_mask)
+        self.test_timing.update(timing=forward_time)
         self.log_dict(
             self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
@@ -317,7 +345,7 @@ class Imputer(pl.LightningModule):
         mask = batch_data.get("mask")
         batch_data["mask"] = mask & mask & ~eval_mask
 
-        imputation, _ = self._predict_batch(batch, preprocess=False)
+        imputation, _, _ = self._predict_batch(batch, preprocess=False)
         imputation_post = self._postprocess(imputation, batch_preprocessing)
         # if batch_idx == 0:
         #     print(f"{y.mean()=} {imputation.mean()=} {imputation_post.mean()=}")
@@ -359,6 +387,30 @@ class Imputer(pl.LightningModule):
             on_epoch=False,
             prog_bar=False,
             logger=True,
+        )
+
+    def on_train_epoch_end(self) -> None:
+        perf = self.compute_metrics("train")
+        graph_metrics = self.graph_metrics.compute()
+
+        self.epoch_report.add(
+            phase="train", epoch=int(self.current_epoch), **graph_metrics, **perf
+        )
+
+    def on_validation_epoch_end(self) -> None:
+        perf = self.compute_metrics("val")
+        graph_metrics = self.graph_metrics.compute()
+
+        self.epoch_report.add(
+            phase="train", epoch=int(self.current_epoch), **graph_metrics, **perf
+        )
+
+    def on_test_epoch_end(self) -> None:
+        perf = self.compute_metrics("test")
+        graph_metrics = self.graph_metrics.compute()
+
+        self.epoch_report.add(
+            phase="train", epoch=int(self.current_epoch), **graph_metrics, **perf
         )
 
 

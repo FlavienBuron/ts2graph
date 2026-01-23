@@ -2,7 +2,7 @@
 
 . .venv/bin/activate
 
-EPOCHS=30
+EPOCHS=200
 BATCH_SIZES=()
 HIDDEN_DIM=32
 LAYER_NUMBER=1
