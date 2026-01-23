@@ -1,31 +1,23 @@
 import torch
-from torchmetrics import Metric
 
 
-class Runtime(Metric):
-    full_state_update = False
+class RuntimeAccumulator:
+    """Accumulate batch timings and compute total, mean, std per epoch."""
 
     def __init__(self):
-        super().__init__(dist_sync_on_step=False)
+        self.reset()
 
-        self.add_state("sum_time", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("sum_sq_time", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("count", default=torch.tensor(0), dist_reduce_fx="sum")
+    def reset(self):
+        self._timings = []
 
     @torch.no_grad()
     def update(self, timing: float):
-        t = torch.tensor(timing, device=self.sum_time.device)
-        self.sum_time += t
-        self.sum_sq_time += t * t
-        self.count += 1
+        self._timings.append(float(timing))
 
     def compute(self):
-        mean = self.sum_time / self.count.clamp(min=1)
-        var = self.sum_sq_time / self.count.clamp(min=1) - mean**2
-        std = torch.sqrt(torch.clamp(var, min=0))
+        if not self._timings:
+            t = torch.tensor([0.0])
+        else:
+            t = torch.tensor(self._timings)
 
-        return {
-            "total_time": self.sum_time,
-            "avg_time": mean,
-            "std_time": std,
-        }
+        return {"total_time": t.sum(), "avg_time": t.mean(), "std_time": t.std()}

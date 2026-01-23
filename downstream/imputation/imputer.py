@@ -88,9 +88,9 @@ class Imputer(pl.LightningModule):
         self.test_metrics = MetricCollection(
             {f"test_{k}": self._check_metric(m) for k, m in metrics.items()}
         )
-        self.train_timing = MetricCollection({"train_timing": deepcopy(timing)})
-        self.val_timing = MetricCollection({"val_timing": deepcopy(timing)})
-        self.test_timing = MetricCollection({"test_timing": deepcopy(timing)})
+        self.train_timing = deepcopy(timing)
+        self.val_timing = deepcopy(timing)
+        self.test_timing = deepcopy(timing)
 
     def reset_metrics(self) -> None:
         if hasattr(self, "train_metrics") and self.train_metrics is not None:
@@ -243,8 +243,13 @@ class Imputer(pl.LightningModule):
         self.log_dict(
             self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
-        self.log_dict(
-            self.train_timing, on_step=False, on_epoch=True, logger=True, prog_bar=False
+        self.log(
+            "train_timing",
+            self.train_timing,
+            on_step=False,
+            on_epoch=True,
+            logger=True,
+            prog_bar=False,
         )
 
         self.log(
@@ -287,6 +292,14 @@ class Imputer(pl.LightningModule):
             self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
         self.log(
+            "val_timing",
+            self.val_timing,
+            on_step=False,
+            on_epoch=True,
+            logger=True,
+            prog_bar=False,
+        )
+        self.log(
             "val_loss",
             val_loss.detach(),
             on_step=False,
@@ -317,6 +330,14 @@ class Imputer(pl.LightningModule):
         self.test_timing.update(timing=forward_time)
         self.log_dict(
             self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        )
+        self.log(
+            "test_timing",
+            self.test_timing,
+            on_step=False,
+            on_epoch=True,
+            logger=True,
+            prog_bar=False,
         )
         self.log(
             "test_loss",
