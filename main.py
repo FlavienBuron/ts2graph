@@ -935,7 +935,8 @@ def run(args: Namespace) -> None:
     )
 
     trainer.fit(task, datamodule=dm)
-    print(f"{report.as_dict()=}")
+    fit_report = report.as_dict()
+    metrics_data.update(fit_report)
     task.load_state_dict(
         torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
             "state_dict"
@@ -973,6 +974,7 @@ def run(args: Namespace) -> None:
     # )
     df_hats = dict(zip(aggr_methods, df_hats))
     # df_imps = dict(zip(aggr_methods, df_imps))
+    prediction_metrics = {"prediction_metrics": {}}
     for aggr_by, df_hat in df_hats.items():
         # Compute error
         print(f"- AGGREGATE BY {aggr_by.upper()}")
@@ -981,6 +983,9 @@ def run(args: Namespace) -> None:
                 df_hat.values, df_true.values, eval_mask.squeeze().numpy()
             ).item()
             print(f" {metric_name}: {error:.4f}")
+            prediction_metrics["prediction_metrics"].update({metric_name: error})
+
+    metrics_data.update(prediction_metrics)
 
     with open(args.save_path, "w") as f:
         json.dump(metrics_data, f, indent=2)
