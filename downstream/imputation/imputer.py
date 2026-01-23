@@ -385,29 +385,29 @@ class Imputer(pl.LightningModule):
             logger=True,
         )
 
-    def on_train_epoch_end(self) -> None:
-        perf = self.compute_metrics("train")
-        graph_metrics = self.graph_metrics.compute()
-
-        self.epoch_report.add(
-            phase="train", epoch=int(self.current_epoch), **graph_metrics, **perf
-        )
-
-    def on_validation_epoch_end(self) -> None:
-        perf = self.compute_metrics("val")
-        graph_metrics = self.graph_metrics.compute()
-
-        self.epoch_report.add(
-            phase="train", epoch=int(self.current_epoch), **graph_metrics, **perf
-        )
-
-    def on_test_epoch_end(self) -> None:
-        perf = self.compute_metrics("test")
-        graph_metrics = self.graph_metrics.compute()
-
-        self.epoch_report.add(
-            phase="train", epoch=int(self.current_epoch), **graph_metrics, **perf
-        )
+    # def on_train_epoch_end(self) -> None:
+    #     perf = self.compute_metrics("train")
+    #     graph_metrics = self.graph_metrics.compute()
+    #
+    #     self.epoch_report.add(
+    #         phase="train", epoch=int(self.current_epoch), **graph_metrics, **perf
+    #     )
+    #
+    # def on_validation_epoch_end(self) -> None:
+    #     perf = self.compute_metrics("val")
+    #     graph_metrics = self.graph_metrics.compute()
+    #
+    #     self.epoch_report.add(
+    #         phase="train", epoch=int(self.current_epoch), **graph_metrics, **perf
+    #     )
+    #
+    # def on_test_epoch_end(self) -> None:
+    #     perf = self.compute_metrics("test")
+    #     graph_metrics = self.graph_metrics.compute()
+    #
+    #     self.epoch_report.add(
+    #         phase="train", epoch=int(self.current_epoch), **graph_metrics, **perf
+    #     )
 
 
 def dump_module_attrs(module, tag=""):
