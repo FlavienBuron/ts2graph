@@ -28,7 +28,7 @@ class EpochReportCallback(pl.Callback):
     def _collect(self, trainer, phase: str):
         metrics = {}
         for k, v in trainer.callback_metrics.items():
-            if not k.startwith(phase):
+            if not k.startswith(phase):
                 continue
             k = k.replace(phase + "_", "")
             if torch.is_tensor(v):
