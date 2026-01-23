@@ -5,7 +5,6 @@ from typing import Dict, Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
-from downstream.imputation.metrics.core.graph_metrics import GraphMetrics
 from torchmetrics import MetricCollection
 from torchmetrics.metric import Metric
 
@@ -55,7 +54,6 @@ class Imputer(pl.LightningModule):
         self.trimming = (warm_up, warm_up)
 
         self.epoch_report = EpochReport()
-        self.graph_metrics = GraphMetrics()
 
     def reset_model(self):
         self.model = self.model_cls(**self.model_kwargs)
