@@ -265,7 +265,7 @@ class Imputer(pl.LightningModule):
             self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
         self.log_dict(
-            self.train_timing, on_step=False, on_epoch=True, logger=True, prog_bar=False
+            self.train_timing, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
 
         self.log(
@@ -307,6 +307,9 @@ class Imputer(pl.LightningModule):
         self.log_dict(
             self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
+        self.log_dict(
+            self.val_timing, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        )
         self.log(
             "val_loss",
             val_loss.detach(),
@@ -338,6 +341,9 @@ class Imputer(pl.LightningModule):
         self.test_timing.update(timing=forward_time)
         self.log_dict(
             self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
+        )
+        self.log_dict(
+            self.test_timing, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
         self.log(
             "test_loss",
