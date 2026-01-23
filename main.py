@@ -32,7 +32,6 @@ from datasets.dataloaders.graphloader import GraphLoader
 from datasets.datamodule import DataModule
 from downstream.imputation.helpers import EpochReport
 from downstream.imputation.imputer import Imputer
-from downstream.imputation.metrics.core.runtime import Runtime
 from downstream.imputation.metrics.losses import MaskedMAELoss
 from downstream.imputation.metrics.metrics import (
     MaskedMAE,
@@ -890,7 +889,6 @@ def run(args: Namespace) -> None:
         "mse": MaskedMSE(compute_on_step=False),
         "mre": MaskedMRE(compute_on_step=False),
         "mre2": MaskedMRE2(compute_on_step=False),
-        "timing": Runtime(),
     }
     report = EpochReport()
     report_callback = EpochReportCallback(report=report)

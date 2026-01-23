@@ -6,11 +6,15 @@ from typing import Dict, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 from torchmetrics import MetricCollection
-from torchmetrics.metric import Metric
 
 from downstream.imputation.helpers import EpochReport
 from downstream.imputation.metrics.core.masked_loss import MaskedLoss
 from downstream.imputation.metrics.core.masked_metric import MaskedMetric
+from downstream.imputation.metrics.core.runtime import (
+    MeanRuntime,
+    StdRuntime,
+    TotalRuntime,
+)
 
 epsilon = 1e-6
 
@@ -46,8 +50,7 @@ class Imputer(pl.LightningModule):
         assert 0.0 <= whiten_prob <= 1.0
         self.keep_prob = 1.0 - whiten_prob
         metrics = metrics if metrics is not None else dict()
-        timing = metrics.pop("timing")
-        self._set_metrics(metrics, timing)
+        self._set_metrics(metrics)
         self.model = self.model_class(**self.model_kwargs)
 
         self.tradeoff = pred_loss_weigth
@@ -74,7 +77,7 @@ class Imputer(pl.LightningModule):
             )
         return deepcopy(metric)
 
-    def _set_metrics(self, metrics: dict[str, MaskedMetric], timing: Metric):
+    def _set_metrics(self, metrics: dict[str, MaskedMetric]):
         self.train_metrics = MetricCollection(
             {
                 f"train_{k}": self._check_metric(metric, on_step=True)
@@ -88,28 +91,25 @@ class Imputer(pl.LightningModule):
         self.test_metrics = MetricCollection(
             {f"test_{k}": self._check_metric(m) for k, m in metrics.items()}
         )
-        train_timing = deepcopy(timing)
         self.train_timing = MetricCollection(
             {
-                "train_total_time": train_timing.compute_total_time,
-                "train_avg_time": train_timing.compute_avg_time,
-                "train_std_time": train_timing.compute_std_time,
+                "train_timing_total": TotalRuntime(),
+                "train_timing_mean": MeanRuntime(),
+                "train_timing_std": StdRuntime(),
             }
         )
-        val_timing = deepcopy(timing)
         self.val_timing = MetricCollection(
             {
-                "val_total_time": val_timing.compute_total_time,
-                "val_avg_time": val_timing.compute_avg_time,
-                "val_std_time": val_timing.compute_std_time,
+                "val_timing_total": TotalRuntime(),
+                "val_timing_mean": MeanRuntime(),
+                "val_timing_std": StdRuntime(),
             }
         )
-        test_timing = deepcopy(timing)
         self.test_timing = MetricCollection(
             {
-                "test_total_time": test_timing.compute_total_time,
-                "test_avg_time": test_timing.compute_avg_time,
-                "test_std_time": test_timing.compute_std_time,
+                "test_timing_total": TotalRuntime(),
+                "test_timing_mean": MeanRuntime(),
+                "test_timing_std": StdRuntime(),
             }
         )
 
