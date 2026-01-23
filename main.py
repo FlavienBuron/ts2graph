@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import yaml
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from sklearn.metrics import (
     mean_absolute_error,
@@ -902,7 +902,7 @@ def run(args: Namespace) -> None:
     )
     exp_name = f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
     logdir = os.path.join(args.save_path, args.dataset, args.model, exp_name)
-    early_stop_callback = EarlyStopping(monitor="val_mae", patience=40, mode="min")
+    early_stop_callback = EarlyStopping(monitor="val_mae", patience=10, mode="min")
     checkpoint_callback = ModelCheckpoint(
         dirpath=logdir, save_top_k=1, monitor="val_mae", mode="min"
     )
@@ -925,7 +925,7 @@ def run(args: Namespace) -> None:
         gradient_clip_val=0.5,
         enable_progress_bar=True,
         callbacks=[
-            # RichProgressBar(),
+            RichProgressBar(),
             ConsoleMetricsCallback(),
             early_stop_callback,
             checkpoint_callback,
