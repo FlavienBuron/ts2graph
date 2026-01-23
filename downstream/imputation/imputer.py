@@ -88,9 +88,30 @@ class Imputer(pl.LightningModule):
         self.test_metrics = MetricCollection(
             {f"test_{k}": self._check_metric(m) for k, m in metrics.items()}
         )
-        self.train_timing = deepcopy(timing)
-        self.val_timing = deepcopy(timing)
-        self.test_timing = deepcopy(timing)
+        train_timing = deepcopy(timing)
+        self.train_timing = MetricCollection(
+            {
+                "train_total_time": train_timing.compute_total_time,
+                "train_avg_time": train_timing.compute_avg_time,
+                "train_std_time": train_timing.compute_std_time,
+            }
+        )
+        val_timing = deepcopy(timing)
+        self.val_timing = MetricCollection(
+            {
+                "val_total_time": val_timing.compute_total_time,
+                "val_avg_time": val_timing.compute_avg_time,
+                "val_std_time": val_timing.compute_std_time,
+            }
+        )
+        test_timing = deepcopy(timing)
+        self.test_timing = MetricCollection(
+            {
+                "test_total_time": test_timing.compute_total_time,
+                "test_avg_time": test_timing.compute_avg_time,
+                "test_std_time": test_timing.compute_std_time,
+            }
+        )
 
     def reset_metrics(self) -> None:
         if hasattr(self, "train_metrics") and self.train_metrics is not None:
@@ -239,19 +260,13 @@ class Imputer(pl.LightningModule):
         # print(f"{imputation.mean()=} {y.mean()=}")
 
         self.train_metrics.update(imputation.detach(), y, eval_mask)
-        train_timing = self.train_timing.update(timing=forward_time)
+        self.train_timing.update(timing=forward_time)
         self.log_dict(
             self.train_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
-        for k, v in train_timing.items():
-            self.log(
-                f"train_{k}",
-                v,
-                on_step=False,
-                on_epoch=True,
-                logger=True,
-                prog_bar=False,
-            )
+        self.log_dict(
+            self.train_timing, on_step=False, on_epoch=True, logger=True, prog_bar=False
+        )
 
         self.log(
             "train_loss",
@@ -288,21 +303,10 @@ class Imputer(pl.LightningModule):
             imputation = self._postprocess(imputation, batch_preprocessing)
 
         self.val_metrics.update(imputation.detach(), y, eval_mask)
-        val_timing = self.val_timing.update(timing=forward_time)
+        self.val_timing.update(timing=forward_time)
         self.log_dict(
             self.val_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
-
-        for k, v in val_timing.items():
-            self.log(
-                f"val_{k}",
-                v,
-                on_step=False,
-                on_epoch=True,
-                logger=True,
-                prog_bar=False,
-            )
-
         self.log(
             "val_loss",
             val_loss.detach(),
@@ -331,21 +335,10 @@ class Imputer(pl.LightningModule):
 
         # Logging
         self.test_metrics.update(imputation.detach(), y, eval_mask)
-        test_timing = self.test_timing.update(timing=forward_time)
+        self.test_timing.update(timing=forward_time)
         self.log_dict(
             self.test_metrics, on_step=False, on_epoch=True, logger=True, prog_bar=True
         )
-
-        for k, v in test_timing.items():
-            self.log(
-                f"test_{k}",
-                v,
-                on_step=False,
-                on_epoch=True,
-                logger=True,
-                prog_bar=False,
-            )
-
         self.log(
             "test_loss",
             test_loss.detach(),
