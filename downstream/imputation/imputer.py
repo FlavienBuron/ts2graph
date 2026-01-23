@@ -88,11 +88,9 @@ class Imputer(pl.LightningModule):
         self.test_metrics = MetricCollection(
             {f"test_{k}": self._check_metric(m) for k, m in metrics.items()}
         )
-        self.train_timing = MetricCollection(
-            {"train_timing": self._check_metric(timing)}
-        )
-        self.val_timing = MetricCollection({"val_timing": self._check_metric(timing)})
-        self.test_timing = MetricCollection({"test_timing": self._check_metric(timing)})
+        self.train_timing = MetricCollection({"train_timing": deepcopy(timing)})
+        self.val_timing = MetricCollection({"val_timing": deepcopy(timing)})
+        self.test_timing = MetricCollection({"test_timing": deepcopy(timing)})
 
     def reset_metrics(self) -> None:
         if hasattr(self, "train_metrics") and self.train_metrics is not None:
