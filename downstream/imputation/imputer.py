@@ -9,6 +9,7 @@ from torchmetrics import MetricCollection
 from torchmetrics.metric import Metric
 
 from downstream.imputation.helpers import EpochReport
+from downstream.imputation.metrics.core.masked_loss import MaskedLoss
 from downstream.imputation.metrics.core.masked_metric import MaskedMetric
 from downstream.imputation.metrics.core.runtime import (
     MeanRuntime,
@@ -67,7 +68,7 @@ class Imputer(pl.LightningModule):
 
     def _check_metric(self, metric, on_step=False):
         # If metric is a Metric subclass, just deepcopy it
-        if isinstance(metric, Metric):
+        if isinstance(metric, Metric) | isinstance(metric, MaskedLoss):
             return deepcopy(metric)
 
         # Otherwise assume it is a function like F.mse_loss
