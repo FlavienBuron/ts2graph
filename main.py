@@ -58,7 +58,6 @@ from graphs_transformations.utils import (
     compute_laplacian_smoothness,
     save_graph_characteristics,
 )
-from utils import numpy_metrics
 from utils.callbacks import ConsoleMetricsCallback, EpochReportCallback
 from utils.helpers import (
     aggregate_predictions,
@@ -965,12 +964,6 @@ def run(args: Namespace) -> None:
 
     eval_mask = dataset.eval_mask[dm.test_slice]
     df_true = dataset.df.iloc[dm.test_slice]
-    np_metrics = {
-        "mae": numpy_metrics.masked_mae,
-        "mse": numpy_metrics.masked_mse,
-        "mre": numpy_metrics.masked_mre,
-        "mape": numpy_metrics.masked_mape,
-    }
 
     index = dataset.data_timestamps(dm.test_set.indices, flatten=False)["horizon"]
 
@@ -984,7 +977,7 @@ def run(args: Namespace) -> None:
     # )
     df_hats = dict(zip(aggr_methods, df_hats))
     # df_imps = dict(zip(aggr_methods, df_imps))
-    prediction_metrics = {"prediction_metrics": {}, "prediction_metrics_numpy": {}}
+    prediction_metrics = {"prediction_metrics": {}}
     # for aggr_by, df_hat in df_hats.items():
     #     # Compute error
     #     print(f"- AGGREGATE BY {aggr_by.upper()}")
@@ -1011,14 +1004,7 @@ def run(args: Namespace) -> None:
             error = metric_fn.compute().item()
             print(f" {metric_name}: {error:.4f}")
             prediction_metrics["prediction_metrics"].update({metric_name: error})
-        for np_metric_name, metric_fn in np_metrics.items():
-            error = metric_fn(
-                df_hat.values, df_true.values, eval_mask.squeeze().numpy()
-            ).item()
-            print(f" {np_metric_name}: {error:.4f}")
-            prediction_metrics["prediction_metrics_numpy"].update(
-                {np_metric_name: error}
-            )
+
     metrics_data.update(prediction_metrics)
 
     df_pred = df_hats["mean"]
