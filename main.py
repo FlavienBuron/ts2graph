@@ -879,11 +879,6 @@ def run(args: Namespace) -> None:
 
     loss_fn = MaskedMAELoss()
 
-    # dataset._store_spatiotemporal_data()
-    # adj, _ = get_spatial_graph(
-    #     technique="loc", parameter=0.1, dataset=dataset, args=args
-    # )
-    # loss_fn = MaskedMAE()
     metrics = {
         "mae": MaskedMAE(compute_on_step=False),
         "mape": MaskedMAPE(compute_on_step=False),
@@ -944,8 +939,6 @@ def run(args: Namespace) -> None:
         ]
     )
     outputs = trainer.predict(task, datamodule=dm)
-    # with torch.no_grad():
-    #     pred_target, pred_imp, pred_mask = imputer.predict_loader(dm.test_dataloader())
     if outputs is None:
         print("Trainer prediction return None results")
         return

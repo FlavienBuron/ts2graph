@@ -215,13 +215,8 @@ class Imputer(pl.LightningModule):
             mask.clone().detach().float() * self.keep_prob
         ).bool()
         eval_mask = batch_data.pop("eval_mask").detach().clone()
-        # print(f"{eval_mask.sum()=}")
-        # debug_mask_relationship(mask, eval_mask, "Before ")
         eval_mask = (mask | eval_mask) & ~batch_data["mask"]
         eval_mask = eval_mask.bool()
-        # print(f"{eval_mask.sum()=} {mask.sum()=} {batch_data['mask'].sum()=}")
-        # debug_mask_relationship(mask, eval_mask, "train mask")
-        # debug_mask_relationship(batch_data["mask"], eval_mask, "batch mask")
 
         y = batch_data.pop("y")
 
@@ -237,27 +232,13 @@ class Imputer(pl.LightningModule):
             for h, _ in enumerate(prediction):
                 prediction[h] = self._postprocess(prediction[h], batch_preprocessing)
 
-        # mad = (imputation - target).abs()
-        # mad = mad[eval_mask].mean()
-        # print(f"DEBUG: MAD train {mad=}")
-        # mad2 = (imputation - target).abs()
-        # mad2 = mad2[mask].mean()
-        # print(f"DEBUG: MAD mask train {mad2=}")
-
         loss = self.loss_fn(imputation, target, mask)
-        # print(f"imputation loss: {loss}")
         for h, _ in enumerate(prediction):
             pred_loss = self.tradeoff * self.loss_fn(prediction[h], target, mask)
-            # print(f"predictions loss: {pred_loss}")
             loss += pred_loss
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
-
-        # mad = (imputation - y).abs()
-        # mad = mad[eval_mask].mean()
-        # print(f"DEBUG: MAD train scaled {mad=}")
-        # print(f"{imputation.mean()=} {y.mean()=}")
 
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.train_timing.update(timing=forward_time)
@@ -283,11 +264,6 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
-        # mask = batch_data.get("mask")
-        # batch_data["mask"] = mask & ~eval_mask
-        # mask2 = batch_data["mask"].detach().clone()
-        #
-        # debug_mask_relationship(mask2, eval_mask, "val_step")
 
         imputation, _, forward_time = self._predict_batch(batch, preprocess=False)
 
@@ -326,17 +302,11 @@ class Imputer(pl.LightningModule):
 
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
-        # mask = batch_data.get("mask")
-        # batch_data["mask"] = mask & ~eval_mask
-        # mask2 = batch_data["mask"].detach().clone()
 
         imputation, _, forward_time = self._predict_batch(batch, preprocess=False)
         imputation_post = self._postprocess(imputation, batch_preprocessing)
-        # if batch_idx == 0:
-        #     print(f"{y.mean()=} {imputation.mean()=} {imputation_post.mean()=}")
         test_loss = self.loss_fn(imputation_post, y, eval_mask)
 
-        # Logging
         self.test_metrics.update(imputation.detach(), y, eval_mask)
         self.test_timing.update(timing=forward_time)
         self.log_dict(
@@ -370,8 +340,6 @@ class Imputer(pl.LightningModule):
 
         imputation, _, _ = self._predict_batch(batch, preprocess=False)
         imputation_post = self._postprocess(imputation, batch_preprocessing)
-        # if batch_idx == 0:
-        #     print(f"{y.mean()=} {imputation.mean()=} {imputation_post.mean()=}")
         pred_loss = self.loss_fn(imputation_post, y, eval_mask)
 
         return {

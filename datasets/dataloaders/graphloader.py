@@ -78,7 +78,6 @@ class GraphLoader(Dataset, ABC):
         ]
 
         self.scaler = None
-        # print(f"{self.data.shape=} {self.mask.shape=}")
 
     def __len__(self) -> int:
         return len(self._indices)
@@ -91,13 +90,7 @@ class GraphLoader(Dataset, ABC):
 
     @property
     def training_mask(self):
-        # return (
-        #     self._mask
-        #     if self.eval_mask is None
-        #     else (self._mask & (1 - self.eval_mask))
-        # )
         train = self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
-        print(f"{train.sum()=}")
         return train
 
     @property
@@ -171,29 +164,6 @@ class GraphLoader(Dataset, ABC):
     def indices(self):
         return self._indices
 
-    # @property
-    # def signature(self):
-    #     attrs = []
-    #     if self.window > 0:
-    #         attrs.append("x")
-    #         for attr in self._exo_window_keys:
-    #             attrs.append(
-    #                 attr if attr not in self._exo_common_keys else (attr + "_window")
-    #             )
-    #     for attr in self._exo_horizon_keys:
-    #         attrs.append(
-    #             attr if attr not in self._exo_common_keys else (attr + "_horizon")
-    #         )
-    #     attrs.append("y")
-    #     attrs = tuple(attrs)
-    #     preprocess = []
-    #     if self.trend is not None:
-    #         preprocess.append("trend")
-    #     if self.scaler is not None:
-    #         preprocess.extend(self.scaler.params())
-    #     preprocess = tuple(preprocess)
-    #     return dict(data=attrs, preprocessing=preprocess)
-
     @property
     def _exo_window_keys(self):
         return {k for k, v in self._exogenous_keys.items() if v["for_window"]}
@@ -208,19 +178,12 @@ class GraphLoader(Dataset, ABC):
 
     def get(self, item: int, preprocess: bool = False):
         idx = self._indices[item]
-        # print(f"{idx=} {idx+self.window=}")
         res, transform = dict(), dict()
         if self.window > 0:
             res["x"] = self.data[idx : idx + self.window]
             for attr in self._exo_window_keys:
                 key = attr if attr not in self._exo_common_keys else (attr + "_window")
                 res[key] = getattr(self, attr)[idx : idx + self.window]
-            # print(
-            #     "eval ⊆ mask            :",
-            #     (~self.mask[1527:1563] & self.eval_mask[1527:1563]).sum().item() == 0,
-            # )
-
-            # debug_mask_relationship(res["mask"], res["eval_mask"], "get")
 
         for attr in self._exo_horizon_keys:
             key = attr if attr not in self._exo_common_keys else (attr + "_horizon")
@@ -246,8 +209,6 @@ class GraphLoader(Dataset, ABC):
 
         res["x"] = torch.where(res["mask"], res["x"], torch.zeros_like(res["x"]))
         res["mask"] = res["mask"].bool()
-        # for k, v in res.items():
-        #     print(f"get {k=} {v.sum()}")
 
         return res, transform
 
@@ -287,10 +248,6 @@ class GraphLoader(Dataset, ABC):
             self.df = resampler.nearest()
         else:
             raise ValueError(f"{aggr} is not a valid aggregation method")
-
-        # if self.has_mask:
-        #     resampler = pd.DataFrame(self._mask, index=self.df.index).resample(freq)
-        #     self._mask = resampler.min().to_numpy()
         resampler = pd.DataFrame(self._mask, index=self.df.index).resample(freq)
         self._mask = resampler.min().to_numpy()
         self.freq = freq
@@ -329,7 +286,6 @@ class GraphLoader(Dataset, ABC):
         for_window = suffix_idx == -7
         for_horizon = suffix_idx == -8
         exo_data = self._check_input(exo_data)
-        print(f"{name=} {exo_data.sum()}")
         setattr(self, name, exo_data)
         self._exogenous_keys[name] = dict(
             for_window=for_window, for_horizon=for_horizon
