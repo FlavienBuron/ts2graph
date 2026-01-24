@@ -764,6 +764,7 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 def run(args: Namespace) -> None:
     print("#" * 100)
     print(args)
+    save_path_dir = os.path.dirname(args.save_path)
     model = args.model.lower()
     stgi_mode = args.mode
     if stgi_mode.lower() in ["st"]:
@@ -893,15 +894,15 @@ def run(args: Namespace) -> None:
     report = EpochReport()
     report_callback = EpochReportCallback(report=report)
     tb_logger = TensorBoardLogger(
-        save_dir=args.save_path,
+        save_dir=save_path_dir,
         name="tensorboard",
     )
     csv_logger = CSVLogger(
-        save_dir=args.save_path,
+        save_dir=save_path_dir,
         name="csv",
     )
     exp_name = f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-    logdir = os.path.join(args.save_path, args.dataset, args.model, exp_name)
+    logdir = os.path.join(save_path_dir, args.dataset, args.model, exp_name)
     early_stop_callback = EarlyStopping(monitor="val_mae", patience=10, mode="min")
     checkpoint_callback = ModelCheckpoint(
         dirpath=logdir, save_top_k=1, monitor="val_mae", mode="min"
@@ -920,7 +921,7 @@ def run(args: Namespace) -> None:
     trainer = pl.Trainer(
         max_epochs=args.epochs,
         logger=[tb_logger, csv_logger],
-        default_root_dir=args.save_path,
+        default_root_dir=save_path_dir,
         gradient_clip_algorithm="norm",
         gradient_clip_val=0.5,
         enable_progress_bar=True,
