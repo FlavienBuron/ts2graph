@@ -919,6 +919,7 @@ def run(args: Namespace) -> None:
         default_root_dir=save_path_dir,
         gradient_clip_algorithm="norm",
         gradient_clip_val=0.5,
+        enable_model_summary=False,
         enable_progress_bar=True,
         callbacks=[
             RichProgressBar(),
