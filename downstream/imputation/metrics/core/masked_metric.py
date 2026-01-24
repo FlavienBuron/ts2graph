@@ -51,21 +51,9 @@ class MaskedMetric(Metric):
         mask: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         _check_same_shape(prediction, target)
-        # print(
-        #     f"{prediction.min()=} {prediction.max()=} {prediction.mean()=} {prediction.std()=} {prediction.sum()=}"
-        # )
-        # print(
-        #     f"{target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
-        # )
         value = self.metric_fn(prediction, target)
-        print(
-            f"DEBUG: metrics {prediction.shape=} {target.shape=} {mask.shape=} {value=} {self.metric_fn=}"
-        )
         mask = self._check_mask(mask, value)
-        # print(f"1. compute masked {value.sum()=} {mask.sum()}")
         value = torch.where(mask, value, torch.tensor(0.0, device=value.device).float())
-        # print(f"2. compute masked {value.sum()=} {mask.sum()}")
-        # value = value * mask.to(value.dtype)
         return value.sum(), mask.sum(), None
 
     def _compute_std(
