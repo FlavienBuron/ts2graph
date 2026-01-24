@@ -9,6 +9,7 @@ from functools import partial
 from time import perf_counter
 from typing import Callable, Optional
 
+import h5py
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -987,12 +988,7 @@ def run(args: Namespace) -> None:
     # for aggr_by, df_hat in df_hats.items():
     #     # Compute error
     #     print(f"- AGGREGATE BY {aggr_by.upper()}")
-    #     for metric_name, metric_fn in metrics.items():
-    #         error = metric_fn(
-    #             df_hat.values, df_true.values, eval_mask.squeeze().numpy()
-    #         ).item()
-    #         print(f" {metric_name}: {error:.4f}")
-    #         prediction_metrics["prediction_metrics"].update({metric_name: error})
+
     for aggr_by, df_hat in df_hats.items():
         print(f"- AGGREGATE BY {aggr_by.upper()}")
 
@@ -1015,10 +1011,47 @@ def run(args: Namespace) -> None:
             error = metric_fn.compute().item()
             print(f" {metric_name}: {error:.4f}")
             prediction_metrics["prediction_metrics"].update({metric_name: error})
+        for np_metric_name, metric_fn in np_metrics.items():
+            error = metric_fn(
+                df_hat.values, df_true.values, eval_mask.squeeze().numpy()
+            ).item()
+            print(f" {np_metric_name}: {error:.4f}")
+            prediction_metrics["prediction_metrics_numpy"].update(
+                {np_metric_name: error}
+            )
     metrics_data.update(prediction_metrics)
+
+    df_pred = df_hats["mean"]
+    df_true = dataset.df.iloc[dm.test_slice]
+    eval_mask = dataset.eval_mask[dm.test_slice]
 
     with open(args.save_path, "w") as f:
         json.dump(metrics_data, f, indent=2)
+
+    imputation_path = os.path.join(save_path_dir, "imputation_results.h5")
+    with h5py.File(imputation_path, "w") as f:
+        f.create_dataset(
+            "prediction",
+            data=df_pred.values,
+            compression="gzip",
+            compression_opts=4,
+        )
+        f.create_dataset(
+            "target",
+            data=df_true.values,
+            compression="gzip",
+            compression_opts=4,
+        )
+        f.create_dataset(
+            "mask",
+            data=eval_mask.numpy().astype(np.uint8),  # bool → uint8 is safer in HDF5
+            compression="gzip",
+            compression_opts=4,
+        )
+        f.create_dataset(
+            "time",
+            data=df_pred.index.values,
+        )
 
 
 if __name__ == "__main__":
