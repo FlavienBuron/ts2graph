@@ -231,7 +231,7 @@ class MaskedWAPE(MaskedMetric):
         at=None,
     ):
         super().__init__(
-            metric_fn=wape,  # use your existing wape function
+            metric_fn=wape,  # not used directly
             mask_nans=mask_nans,
             mask_inf=mask_inf,
             compute_on_step=compute_on_step,
@@ -241,6 +241,10 @@ class MaskedWAPE(MaskedMetric):
             metric_kwargs=None,
             at=at,
         )
+        # override value and numel to store numerator & denominator
+        self.value = torch.tensor(0.0)
+        self.numel = torch.tensor(0.0)
+        self.add_state("tot", dist_reduce_fx="sum", default=torch.tensor(0.0))
 
     def _compute_masked(
         self,
@@ -248,7 +252,6 @@ class MaskedWAPE(MaskedMetric):
         target: torch.Tensor,
         mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # select the feature slice
         prediction = prediction[:, self.at]
         target = target[:, self.at]
         mask = (
@@ -257,22 +260,25 @@ class MaskedWAPE(MaskedMetric):
             else torch.ones_like(target, dtype=torch.bool)
         )
 
-        # apply NaN/Inf masking
         mask = self._check_mask(mask, target)
 
-        # if nothing to compute, return zeros
         if mask.sum() == 0:
             return (
                 torch.tensor(0.0, device=prediction.device),
-                torch.tensor(0, device=prediction.device),
-                torch.tensor(0.0),
+                torch.tensor(0.0, device=prediction.device),
+                torch.tensor(0.0, device=prediction.device),
             )
 
-        # compute masked WAPE using the base function
         pred_masked = prediction[mask]
         target_masked = target[mask]
 
-        value = wape(pred_masked, target_masked)
-        numel = torch.tensor(pred_masked.numel())  # for aggregation
-        tot = target_masked.sum()
-        return value, numel, tot
+        numerator = torch.abs(pred_masked - target_masked).sum()
+        denominator = target_masked.sum() + 1e-8  # avoid divide by zero
+        numel = torch.tensor(pred_masked.numel(), device=prediction.device)
+
+        return numerator, numel, denominator
+
+    def compute(self) -> torch.Tensor:
+        if self.tot > 0:
+            return self.value / self.tot
+        return torch.tensor(0.0, device=self.value.device)
