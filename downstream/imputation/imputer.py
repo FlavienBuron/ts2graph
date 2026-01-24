@@ -246,6 +246,7 @@ class Imputer(pl.LightningModule):
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
 
+        print(f"DEBUG: {imputation.shape=} {y.shape=} {eval_mask.shape=}")
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.train_timing.update(timing=forward_time)
         self.log_dict(
