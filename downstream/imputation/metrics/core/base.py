@@ -27,11 +27,24 @@ def wape(prediction: torch.Tensor, target: torch.Tensor):
     return abs_diff.sum() / (target.sum() + epsilon)
 
 
-def smape(prediction: torch.Tensor, target: torch.Tensor):
+def smape(prediction: torch.Tensor, target: torch.Tensor, reduction="none"):
+    epsilon = 1e-6
     denom = torch.abs(prediction) + torch.abs(target)
     valid = denom > epsilon
     val = torch.zeros_like(denom)
-    val[valid] = 2 * torch.abs(prediction[valid] - target[valid]) / denom[valid]
+    val[valid] = (
+        2 * torch.abs(prediction[valid] - target[valid]) / (denom[valid] + epsilon)
+    )
+
+    if reduction == "sum":
+        return val.sum()
+    elif reduction == "mean":
+        # Only average over valid elements
+        return (
+            val[valid].mean()
+            if valid.sum() > 0
+            else torch.tensor(0.0, device=val.device)
+        )
     return val
 
 

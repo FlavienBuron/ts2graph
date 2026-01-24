@@ -58,6 +58,9 @@ class MaskedMetric(Metric):
         #     f"{target.min()=} {target.max()=} {target.mean()=} {target.std()=} {target.sum()=}"
         # )
         value = self.metric_fn(prediction, target)
+        print(
+            f"DEBUG: metrics {prediction.shape=} {target.shape=} {mask.shape=} {value.shape=}"
+        )
         mask = self._check_mask(mask, value)
         # print(f"1. compute masked {value.sum()=} {mask.sum()}")
         value = torch.where(mask, value, torch.tensor(0.0, device=value.device).float())
