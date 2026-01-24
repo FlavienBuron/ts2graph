@@ -1036,7 +1036,7 @@ def run(args: Namespace) -> None:
         )
         f.create_dataset(
             "time",
-            data=df_pred.index.values,
+            data=df_pred.index.values.astype("datetime64[ns]").astype("int64"),
         )
 
 
