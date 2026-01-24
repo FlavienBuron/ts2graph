@@ -283,6 +283,7 @@ class Imputer(pl.LightningModule):
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
 
+        print(f"DEBUG: {imputation.shape=} {target.shape=} {eval_mask.shape=}")
         val_loss = self.loss_fn(imputation, target, eval_mask)
 
         if self.scaled_target:
