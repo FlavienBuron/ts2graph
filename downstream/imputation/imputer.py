@@ -247,7 +247,6 @@ class Imputer(pl.LightningModule):
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        print(f"DEBUG: {imputation.shape=} {y.shape=} {eval_mask.shape=}")
         self.train_metrics.update(imputation.detach(), y, eval_mask)
         self.train_timing.update(timing=forward_time)
         self.log_dict(
@@ -273,10 +272,7 @@ class Imputer(pl.LightningModule):
         eval_mask = batch_data.pop("eval_mask", None)
         y = batch_data.pop("y")
 
-        print(f"DEBUG: {y.shape=} {eval_mask.shape=}")
-
         imputation, _, forward_time = self._predict_batch(batch, preprocess=False)
-        print(imputation.shape)
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
@@ -284,13 +280,11 @@ class Imputer(pl.LightningModule):
             target = y
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        print(f"DEBUG: {imputation.shape=} {target.shape=} {eval_mask.shape=}")
         val_loss = self.loss_fn(imputation, target, eval_mask)
 
         if self.scaled_target:
             imputation = self._postprocess(imputation, batch_preprocessing)
 
-        print(f"DEBUG: {imputation.shape=} {y.shape=} {eval_mask.shape=}")
         self.val_metrics.update(imputation.detach(), y, eval_mask)
         self.val_timing.update(timing=forward_time)
         self.log_dict(
