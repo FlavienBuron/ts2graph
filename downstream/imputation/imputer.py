@@ -6,9 +6,9 @@ from typing import Dict, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 from torchmetrics import MetricCollection
+from torchmetrics.metric import Metric
 
 from downstream.imputation.helpers import EpochReport
-from downstream.imputation.metrics.core.masked_loss import MaskedLoss
 from downstream.imputation.metrics.core.masked_metric import MaskedMetric
 from downstream.imputation.metrics.core.runtime import (
     MeanRuntime,
@@ -65,17 +65,23 @@ class Imputer(pl.LightningModule):
     def trainable_parameters(self):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
-    @staticmethod
-    def _check_metric(metric, on_step=False) -> MaskedMetric | MaskedLoss:
-        if not isinstance(metric, MaskedMetric) and not isinstance(metric, MaskedLoss):
+    def _check_metric(self, metric, on_step=False):
+        # If metric is a Metric subclass, just deepcopy it
+        if isinstance(metric, Metric):
+            return deepcopy(metric)
+
+        # Otherwise assume it is a function like F.mse_loss
+        metric_kwargs = {}
+        try:
             if "reduction" in inspect.getfullargspec(metric).args:
-                metric_kwargs = {"reduction": "none"}
-            else:
-                metric_kwargs = dict()
-            return MaskedMetric(
-                metric, compute_on_step=on_step, metric_kwargs=metric_kwargs
-            )
-        return deepcopy(metric)
+                metric_kwargs["reduction"] = "none"
+        except TypeError:
+            # metric is not inspectable
+            pass
+
+        return MaskedMetric(
+            metric, compute_on_step=on_step, metric_kwargs=metric_kwargs
+        )
 
     def _set_metrics(self, metrics: dict[str, MaskedMetric]):
         self.train_metrics = MetricCollection(
