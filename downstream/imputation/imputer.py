@@ -275,6 +275,7 @@ class Imputer(pl.LightningModule):
         print(f"DEBUG: {y.shape=} {eval_mask.shape=}")
 
         imputation, _, forward_time = self._predict_batch(batch, preprocess=False)
+        print(imputation.shape)
 
         if self.scaled_target:
             target = self._preprocess(y, batch_preprocessing)
