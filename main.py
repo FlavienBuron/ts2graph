@@ -47,6 +47,7 @@ from downstream.imputation.metrics.metrics import (
     MaskedMSE,
     MaskedRMSE,
     MaskedSMAPE,
+    MaskedWAPE,
 )
 from downstream.imputation.models.GRIN.grin import GRINet
 from downstream.imputation.models.STGI.stgi import STGI
@@ -895,6 +896,7 @@ def run(args: Namespace) -> None:
         "mre2": MaskedMRE2(compute_on_step=False),
         "rmse": MaskedRMSE(compute_on_step=False),
         "smape": MaskedSMAPE(compute_on_step=False),
+        "wape": MaskedWAPE(compute_on_step=False),
         "pearson": MaskedPearson(),
         "ccc": MaskedCCC(),
         "cosime": MaskedCosineSimilarity(),

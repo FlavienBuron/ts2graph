@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torchmetrics.utilities.checks import _check_same_shape
 
-from downstream.imputation.metrics.core.base import mae, mape, mre, mse, smape
+from downstream.imputation.metrics.core.base import mae, mape, mre, mse, smape, wape
 from downstream.imputation.metrics.core.masked_metric import MaskedMetric
 
 
@@ -213,3 +213,66 @@ class MaskedSMAPE(MaskedMetric):
             metric_kwargs={},
             at=at,
         )
+
+
+class MaskedWAPE(MaskedMetric):
+    """
+    Masked WAPE based on the existing wape() function.
+    """
+
+    def __init__(
+        self,
+        mask_nans: bool = False,
+        mask_inf: bool = False,
+        compute_on_step: bool = True,
+        dist_sync_on_step: bool = False,
+        process_group=None,
+        dist_sync_fn=None,
+        at=None,
+    ):
+        super().__init__(
+            metric_fn=wape,  # use your existing wape function
+            mask_nans=mask_nans,
+            mask_inf=mask_inf,
+            compute_on_step=compute_on_step,
+            dist_sync_on_step=dist_sync_on_step,
+            process_group=process_group,
+            dist_sync_fn=dist_sync_fn,
+            metric_kwargs=None,
+            at=at,
+        )
+
+    def _compute_masked(
+        self,
+        prediction: torch.Tensor,
+        target: torch.Tensor,
+        mask: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # select the feature slice
+        prediction = prediction[:, self.at]
+        target = target[:, self.at]
+        mask = (
+            mask[:, self.at].bool()
+            if mask is not None
+            else torch.ones_like(target, dtype=torch.bool)
+        )
+
+        # apply NaN/Inf masking
+        mask = self._check_mask(mask, target)
+
+        # if nothing to compute, return zeros
+        if mask.sum() == 0:
+            return (
+                torch.tensor(0.0, device=prediction.device),
+                torch.tensor(0, device=prediction.device),
+                torch.tensor(0.0),
+            )
+
+        # compute masked WAPE using the base function
+        pred_masked = prediction[mask]
+        target_masked = target[mask]
+
+        value = wape(pred_masked, target_masked)
+        numel = torch.tensor(pred_masked.numel())  # for aggregation
+        tot = target_masked.sum()
+        return value, numel, tot
