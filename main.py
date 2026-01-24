@@ -32,6 +32,12 @@ from datasets.dataloaders.graphloader import GraphLoader
 from datasets.datamodule import DataModule
 from downstream.imputation.helpers import EpochReport
 from downstream.imputation.imputer import Imputer
+from downstream.imputation.metrics.correlations import (
+    MaskedCCC,
+    MaskedCosineSimilarity,
+    MaskedLagCorrelation,
+    MaskedPearson,
+)
 from downstream.imputation.metrics.losses import MaskedMAELoss
 from downstream.imputation.metrics.metrics import (
     MaskedMAE,
@@ -39,6 +45,8 @@ from downstream.imputation.metrics.metrics import (
     MaskedMRE,
     MaskedMRE2,
     MaskedMSE,
+    MaskedRMSE,
+    MaskedSMAPE,
 )
 from downstream.imputation.models.GRIN.grin import GRINet
 from downstream.imputation.models.STGI.stgi import STGI
@@ -885,6 +893,12 @@ def run(args: Namespace) -> None:
         "mse": MaskedMSE(compute_on_step=False),
         "mre": MaskedMRE(compute_on_step=False),
         "mre2": MaskedMRE2(compute_on_step=False),
+        "rmse": MaskedRMSE(compute_on_step=False),
+        "smape": MaskedSMAPE(compute_on_step=False),
+        "pearson": MaskedPearson(),
+        "ccc": MaskedCCC(),
+        "cosime": MaskedCosineSimilarity(),
+        "lag": MaskedLagCorrelation(),
     }
     report = EpochReport()
     report_callback = EpochReportCallback(report=report)

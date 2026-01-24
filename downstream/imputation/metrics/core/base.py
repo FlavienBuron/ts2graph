@@ -28,11 +28,11 @@ def wape(prediction: torch.Tensor, target: torch.Tensor):
 
 
 def smape(prediction: torch.Tensor, target: torch.Tensor):
-    valid_mask = torch.abs(target) > epsilon
-    abs_diff = torch.abs(prediction - target)
-    abs_sum = torch.abs(prediction + target) + epsilon
-    loss = 2 * abs_diff / abs_sum * valid_mask.float()
-    return loss.sum() / valid_mask.sum()
+    denom = torch.abs(prediction) + torch.abs(target)
+    valid = denom > epsilon
+    val = torch.zeros_like(denom)
+    val[valid] = 2 * torch.abs(prediction[valid] - target[valid]) / denom[valid]
+    return val
 
 
 def peak_prediction_loss(

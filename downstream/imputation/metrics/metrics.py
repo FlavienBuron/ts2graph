@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torchmetrics.utilities.checks import _check_same_shape
 
-from downstream.imputation.metrics.core.base import mae, mape, mre, mse
+from downstream.imputation.metrics.core.base import mae, mape, mre, mse, smape
 from downstream.imputation.metrics.core.masked_metric import MaskedMetric
 
 
@@ -158,5 +158,58 @@ class MaskedMRE2(MaskedMetric):
             process_group=process_group,
             dist_sync_fn=dist_sync_fn,
             metric_kwargs={"reduction": "none"},
+            at=at,
+        )
+
+
+class MaskedRMSE(MaskedMetric):
+    def __init__(
+        self,
+        mask_nans=False,
+        mask_inf=True,
+        compute_on_step=True,
+        dist_sync_on_step=False,
+        process_group=None,
+        dist_sync_fn=None,
+        at=None,
+    ):
+        super().__init__(
+            metric_fn=mse,
+            mask_nans=mask_nans,
+            mask_inf=mask_inf,
+            compute_on_step=compute_on_step,
+            dist_sync_on_step=dist_sync_on_step,
+            process_group=process_group,
+            dist_sync_fn=dist_sync_fn,
+            metric_kwargs={},
+            at=at,
+        )
+
+    def compute(self) -> torch.Tensor:
+        if self.numel > 0:
+            return torch.sqrt(self.value / self.numel)
+        return torch.sqrt(self.value)
+
+
+class MaskedSMAPE(MaskedMetric):
+    def __init__(
+        self,
+        mask_nans=False,
+        mask_inf=False,
+        compute_on_step=True,
+        dist_sync_on_step=False,
+        process_group=None,
+        dist_sync_fn=None,
+        at=None,
+    ):
+        super().__init__(
+            metric_fn=smape,
+            mask_nans=mask_nans,
+            mask_inf=mask_inf,
+            compute_on_step=compute_on_step,
+            dist_sync_on_step=dist_sync_on_step,
+            process_group=process_group,
+            dist_sync_fn=dist_sync_fn,
+            metric_kwargs={},
             at=at,
         )
