@@ -59,7 +59,7 @@ class MaskedMetric(Metric):
         # )
         value = self.metric_fn(prediction, target)
         print(
-            f"DEBUG: metrics {prediction.shape=} {target.shape=} {mask.shape=} {value.shape=}"
+            f"DEBUG: metrics {prediction.shape=} {target.shape=} {mask.shape=} {value=}"
         )
         mask = self._check_mask(mask, value)
         # print(f"1. compute masked {value.sum()=} {mask.sum()}")
