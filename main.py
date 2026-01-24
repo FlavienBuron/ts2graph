@@ -984,7 +984,7 @@ def run(args: Namespace) -> None:
     # )
     df_hats = dict(zip(aggr_methods, df_hats))
     # df_imps = dict(zip(aggr_methods, df_imps))
-    prediction_metrics = {"prediction_metrics": {}}
+    prediction_metrics = {"prediction_metrics": {}, "prediction_metrics_numpy": {}}
     # for aggr_by, df_hat in df_hats.items():
     #     # Compute error
     #     print(f"- AGGREGATE BY {aggr_by.upper()}")
@@ -997,7 +997,7 @@ def run(args: Namespace) -> None:
         true_tensor = torch.tensor(df_true.values)
 
         # If your mask is 2D/3D, make sure its shape matches pred/true
-        mask_tensor = torch.tensor(eval_mask.squeeze(), dtype=torch.bool)
+        mask_tensor = eval_mask.detach().clone().squeeze()
 
         for metric_name, metric_fn in metrics.items():
             # Reset metric state before computing
