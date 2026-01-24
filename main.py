@@ -964,7 +964,7 @@ def run(args: Namespace) -> None:
 
     eval_mask = dataset.eval_mask[dm.test_slice]
     df_true = dataset.df.iloc[dm.test_slice]
-    metrics = {
+    np_metrics = {
         "mae": numpy_metrics.masked_mae,
         "mse": numpy_metrics.masked_mse,
         "mre": numpy_metrics.masked_mre,
@@ -984,16 +984,37 @@ def run(args: Namespace) -> None:
     df_hats = dict(zip(aggr_methods, df_hats))
     # df_imps = dict(zip(aggr_methods, df_imps))
     prediction_metrics = {"prediction_metrics": {}}
+    # for aggr_by, df_hat in df_hats.items():
+    #     # Compute error
+    #     print(f"- AGGREGATE BY {aggr_by.upper()}")
+    #     for metric_name, metric_fn in metrics.items():
+    #         error = metric_fn(
+    #             df_hat.values, df_true.values, eval_mask.squeeze().numpy()
+    #         ).item()
+    #         print(f" {metric_name}: {error:.4f}")
+    #         prediction_metrics["prediction_metrics"].update({metric_name: error})
     for aggr_by, df_hat in df_hats.items():
-        # Compute error
         print(f"- AGGREGATE BY {aggr_by.upper()}")
+
+        # Convert predictions and targets to torch tensors
+        pred_tensor = torch.tensor(df_hat.values)
+        true_tensor = torch.tensor(df_true.values)
+
+        # If your mask is 2D/3D, make sure its shape matches pred/true
+        mask_tensor = torch.tensor(eval_mask.squeeze(), dtype=torch.bool)
+
         for metric_name, metric_fn in metrics.items():
-            error = metric_fn(
-                df_hat.values, df_true.values, eval_mask.squeeze().numpy()
-            ).item()
+            # Reset metric state before computing
+            if hasattr(metric_fn, "reset"):
+                metric_fn.reset()
+
+            # Update metric with prediction, target, mask
+            metric_fn.update(pred_tensor, true_tensor, mask_tensor)
+
+            # Compute the metric
+            error = metric_fn.compute().item()
             print(f" {metric_name}: {error:.4f}")
             prediction_metrics["prediction_metrics"].update({metric_name: error})
-
     metrics_data.update(prediction_metrics)
 
     with open(args.save_path, "w") as f:

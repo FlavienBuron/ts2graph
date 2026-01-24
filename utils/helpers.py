@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 import pandas as pd
 import torch
@@ -21,7 +23,9 @@ def aggregate_predictions(predictions):
     return target, imputation, mask
 
 
-def prediction_dataframe(y, index, columns=None, aggregate_by="mean"):
+def prediction_dataframe(
+    y, index, columns=None, aggregate_by: str | List[str] = "mean"
+):
     """Aggregate batched predictions in a single DataFrame.
 
     @param (list or np.ndarray) y: the list of predictions.
