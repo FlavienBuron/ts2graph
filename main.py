@@ -92,7 +92,7 @@ def parse_args() -> Namespace:
         "-n",
         type=str,
         help="How should the data be normalized",
-        default="min_max",
+        default="std",
         choices=[None, "min_max", "std"],
     )
     parser.add_argument(
@@ -230,6 +230,16 @@ def parse_args() -> Namespace:
         nargs=2,
         default=["default", 0.4],
         help="The desired missing pattern and fraction to be added to the data as the test and validation mask",
+    )
+    parser.add_argument(
+        "--in_sample",
+        type=bool,
+        default=True,
+    )
+    parser.add_argument(
+        "--samples_per_epoch",
+        type=int,
+        default=5120,
     )
     args = parser.parse_args()
     return args
@@ -406,8 +416,8 @@ def run(args: Namespace) -> None:
         train_indices=train,
         test_indices=test,
         val_indices=val,
-        samples_per_epoch=5120,
-        scaling_type="std",
+        samples_per_epoch=args.samples_per_epoch,
+        scaling_type=args.normalization_type,
     )
     # if out of sample in air, add values removed for evaluation in train set
     if "air" in args.dataset and not in_sample:
