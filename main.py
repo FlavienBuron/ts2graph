@@ -787,15 +787,29 @@ def run(args: Namespace) -> None:
 
     print(f"{use_spatial=} {use_temporal=}")
 
+    metrics_data = {}
+    metrics_data.update(vars(args))
+
     dataset = get_dataset(args.dataset)
+
+    in_sample = True
+    train, val, test = dataset.grin_split(in_sample=in_sample)
+    dm = DataModule(
+        copy.deepcopy(dataset),
+        train_indices=train,
+        test_indices=test,
+        val_indices=val,
+        samples_per_epoch=5120,
+        scaling_type="std",
+    )
+    # if out of sample in air, add values removed for evaluation in train set
+    if "air" in args.dataset and not in_sample:
+        dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
 
     spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
     temporal_graph_technique = args.temporal_graph_technique[0]
     temporal_graph_params = args.temporal_graph_technique[1:]
     spatial_graph_param = float(spatial_graph_param)
-
-    metrics_data = {}
-    metrics_data.update(vars(args))
 
     spatial_graph_time = 0.0
     if use_spatial:
@@ -826,20 +840,6 @@ def run(args: Namespace) -> None:
                 f"{args.dataset}_{spatial_graph_technique}_{spatial_graph_param}",
             )
             save_graph_characteristics(spatial_adj_matrix, save_path)
-
-    in_sample = True
-    train, val, test = dataset.grin_split(in_sample=in_sample)
-    dm = DataModule(
-        copy.deepcopy(dataset),
-        train_indices=train,
-        test_indices=test,
-        val_indices=val,
-        samples_per_epoch=5120,
-        scaling_type="std",
-    )
-    # if out of sample in air, add values removed for evaluation in train set
-    if "air" in args.dataset and not in_sample:
-        dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
 
     # if args.downstream_task:
     gnn_model = None
