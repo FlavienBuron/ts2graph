@@ -89,7 +89,6 @@ class Imputer(pl.LightningModule):
             {
                 f"train_{k}": self._check_metric(metric, on_step=True)
                 for k, metric in metrics.items()
-                if isinstance(metric, MaskedMetric)
             }
         )
         self.val_metrics = MetricCollection(
