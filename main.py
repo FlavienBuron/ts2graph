@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 import yaml
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProgressBar
-from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
@@ -906,10 +906,6 @@ def run(args: Namespace) -> None:
         save_dir=save_path_dir,
         name="tensorboard",
     )
-    csv_logger = CSVLogger(
-        save_dir=save_path_dir,
-        name="csv",
-    )
     exp_name = f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
     logdir = os.path.join(save_path_dir, args.dataset, args.model, exp_name)
     early_stop_callback = EarlyStopping(monitor="val_mae", patience=10, mode="min")
@@ -929,7 +925,7 @@ def run(args: Namespace) -> None:
     )
     trainer = pl.Trainer(
         max_epochs=args.epochs,
-        logger=[tb_logger, csv_logger],
+        logger=[tb_logger],
         default_root_dir=save_path_dir,
         gradient_clip_algorithm="norm",
         gradient_clip_val=0.5,
