@@ -141,7 +141,6 @@ class AirQualityLoader(GraphLoader):
     def get_geolocation_graph(
         self,
         threshold: float = 0.1,
-        threshold_on_input: bool = False,
         include_self: bool = False,
         force_symmetric: bool = False,
         weighted: bool = True,
@@ -150,8 +149,7 @@ class AirQualityLoader(GraphLoader):
         theta = distances.std()
         # adj = np.exp(-(self.distances**2) / (2 * theta**2))
         adj = torch.exp(-torch.square(distances / theta))
-        dist = (distances - distances.min()) / (distances.max() - distances.min())
-        mask = dist > threshold if threshold_on_input else adj < threshold
+        mask = adj < threshold
         adj[mask] = 0
         if not weighted:
             adj[adj > 0] = 1.0
