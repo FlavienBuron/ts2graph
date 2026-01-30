@@ -1,5 +1,5 @@
 from .base import SparsificationFunction
-from .top_k import TopK
 from .threshold import Threshold
+from .top_k import TopK
 
-__all__ = ["SparsificationFunction", "TopK". "Threshold"]
+__all__ = ["SparsificationFunction", "TopK", "Threshold"]
