@@ -391,6 +391,7 @@ def run(args: Namespace) -> None:
     print("#" * 100)
     print(args)
     knn = knn_graph(k=3, distance="masked euclidean", affinity="gaussian kernel")
+    knn = knn.build()
     save_path_dir = os.path.dirname(args.save_path)
     model = args.model.lower()
     stgi_mode = args.mode
