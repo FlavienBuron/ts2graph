@@ -77,8 +77,9 @@ class SimilarityGraphSpec:
 
     def build(self):
         """Build complete pipeline from config."""
-        # from .factory import build_graph_pipeline
-        # return build_graph_pipeline(self)
+        from factory import build_graph_pipeline
+
+        return build_graph_pipeline(self)
         pass
 
     def to_dict(self) -> dict:
