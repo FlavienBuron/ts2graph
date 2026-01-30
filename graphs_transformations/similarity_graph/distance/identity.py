@@ -9,5 +9,5 @@ class Identity(DistanceFunction):
     def __init__(self, **kwargs):
         pass
 
-    def __call__(self, x: torch.Tensor, _: torch.Tensor) -> torch.Tensor:
+    def __call__(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         return x.detach().clone()
