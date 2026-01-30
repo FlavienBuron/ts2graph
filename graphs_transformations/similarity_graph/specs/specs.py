@@ -26,7 +26,6 @@ class DistanceSpec:
 @dataclass
 class AffinitySpec:
     name: Literal["gaussian kernel"]
-    epsilon: float = 1e-6
 
     def build(self):
         from .registry import AFFINITY_REGISTRY
