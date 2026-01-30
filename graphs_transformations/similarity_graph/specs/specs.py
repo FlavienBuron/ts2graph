@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 @dataclass
 class DistanceSpec:
-    name: Literal["masked euclidean", "normalized masked euclidean"]
+    name: Literal["masked euclidean"]
     normalize: bool = True
 
     def build(self):
@@ -13,7 +13,6 @@ class DistanceSpec:
 
         cls = DISTANCE_REGISTRY[self.name]
         kwargs = {k: v for k, v in vars(self).items() if k != "name" and v is not None}
-        print(f"DEBUG: {kwargs=}")
         return cls(**kwargs)
 
     def to_dict(self) -> dict:

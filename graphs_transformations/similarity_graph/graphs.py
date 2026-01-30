@@ -15,6 +15,6 @@ def knn_graph(
 ) -> SimilarityGraphSpec:
     return SimilarityGraphSpec(
         distance=DistanceSpec(name=distance, normalize=normalize),
-        affinity=AffinitySpec(name=affinity, gamma=gamma),
+        affinity=AffinitySpec(name=affinity),
         sparsifier=SparsifierSpec(name="topk", k=k),
     )

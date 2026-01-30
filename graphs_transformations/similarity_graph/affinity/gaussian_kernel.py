@@ -9,7 +9,7 @@ class GaussianKernel(AffinityFunction):
     name = "gaussian kernel (RBF)"
     requires_non_negative = True
 
-    def __init__(self, theta: str = "madian") -> None:
+    def __init__(self, theta: str = "median") -> None:
         self.theta = theta
 
     def __call__(self, D: torch.Tensor):
