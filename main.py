@@ -42,6 +42,7 @@ from downstream.imputation.metrics.metrics import (
 )
 from downstream.imputation.models.GRIN.grin import GRINet
 from downstream.imputation.models.STGI.stgi import STGI
+from graphs_transformations.similarity_graph.graphs import knn_graph
 from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
@@ -389,6 +390,7 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 def run(args: Namespace) -> None:
     print("#" * 100)
     print(args)
+    knn = knn_graph(k=3, distance="masked euclidean", affinity="gaussian kernel")
     save_path_dir = os.path.dirname(args.save_path)
     model = args.model.lower()
     stgi_mode = args.mode
