@@ -436,7 +436,7 @@ def run(args: Namespace) -> None:
     D = graph(torch.from_numpy(dataset.distances.to_numpy()))
     print(f"DEBUG: {D=}")
     A = dataset.get_geolocation_graph(
-        threshold=0.7,
+        threshold=0.3,
         include_self=args.self_loop,
         weighted=not args.unweighted_graph,
     )
