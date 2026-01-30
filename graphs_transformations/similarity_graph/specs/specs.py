@@ -76,11 +76,9 @@ class SimilarityGraphSpec:
     sparsifier: SparsifierSpec
 
     def build(self):
-        """Build complete pipeline from config."""
-        from factory import build_graph_pipeline
+        from factory import build_graph_constructor
 
-        return build_graph_pipeline(self)
-        pass
+        return build_graph_constructor(self)
 
     def to_dict(self) -> dict:
         """Serialize to nested dictionary."""
