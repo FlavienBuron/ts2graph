@@ -26,7 +26,6 @@ class DistanceSpec:
 @dataclass
 class AffinitySpec:
     name: Literal["gaussian kernel"]
-    gamma: Optional[float] = None
     epsilon: float = 1e-6
 
     def build(self):
