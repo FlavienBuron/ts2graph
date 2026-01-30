@@ -13,6 +13,7 @@ class DistanceSpec:
 
         cls = DISTANCE_REGISTRY[self.name]
         kwargs = {k: v for k, v in vars(self).items() if k != "name" and v is not None}
+        print(f"DEBUG: {kwargs=}")
         return cls(**kwargs)
 
     def to_dict(self) -> dict:
