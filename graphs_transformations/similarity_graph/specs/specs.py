@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 @dataclass
 class DistanceSpec:
-    name: Literal["masked euclidean"]
+    name: Literal["masked euclidean", "identity"]
     normalize: bool = True
 
     def build(self):
