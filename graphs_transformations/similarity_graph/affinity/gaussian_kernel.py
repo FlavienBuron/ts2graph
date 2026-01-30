@@ -1,7 +1,7 @@
 import torch
 
-from graphs_transformations.similarity_graph.affinity.base import AffinityFunction
-from graphs_transformations.similarity_graph.specs.registry import register_affinity
+from ..specs.registry import register_affinity
+from .base import AffinityFunction
 
 
 @register_affinity("gaussian kernel")

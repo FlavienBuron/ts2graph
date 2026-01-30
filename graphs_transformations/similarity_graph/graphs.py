@@ -1,4 +1,4 @@
-from graphs_transformations.similarity_graph.specs.specs import (
+from .specs.specs import (
     AffinitySpec,
     DistanceSpec,
     SimilarityGraphSpec,

@@ -1,10 +1,10 @@
 import torch
 
-from graphs_transformations.similarity_graph.sparsification.base import (
-    SparsificationFunction,
-)
-from graphs_transformations.similarity_graph.specs.registry import (
+from ..specs.registry import (
     register_sparsification,
+)
+from .base import (
+    SparsificationFunction,
 )
 
 

@@ -1,8 +1,8 @@
 import torch
 
-from graphs_transformations.similarity_graph.affinity.base import AffinityFunction
-from graphs_transformations.similarity_graph.distance.base import DistanceFunction
-from graphs_transformations.similarity_graph.sparsification.base import (
+from .affinity.base import AffinityFunction
+from .distance.base import DistanceFunction
+from .sparsification.base import (
     SparsificationFunction,
 )
 

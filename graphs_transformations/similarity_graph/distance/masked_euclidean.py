@@ -1,7 +1,7 @@
 import torch
 
-from graphs_transformations.similarity_graph.distance.base import DistanceFunction
-from graphs_transformations.similarity_graph.specs.registry import register_distance
+from ..specs.registry import register_distance
+from .base import DistanceFunction
 
 
 @register_distance("masked euclidean")

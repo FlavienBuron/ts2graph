@@ -9,7 +9,7 @@ class DistanceSpec:
     normalize: bool = True
 
     def build(self):
-        from registry import DISTANCE_REGISTRY
+        from .registry import DISTANCE_REGISTRY
 
         cls = DISTANCE_REGISTRY[self.name]
         kwargs = {k: v for k, v in vars(self).items() if k != "name" and v is not None}
@@ -30,7 +30,7 @@ class AffinitySpec:
     epsilon: float = 1e-6
 
     def build(self):
-        from registry import AFFINITY_REGISTRY
+        from .registry import AFFINITY_REGISTRY
 
         cls = AFFINITY_REGISTRY[self.name]
         kwargs = {k: v for k, v in vars(self).items() if k != "name" and v is not None}
@@ -53,7 +53,7 @@ class SparsifierSpec:
     symmetric: bool = True
 
     def build(self):
-        from registry import SPARCITY_REGISTRY
+        from .registry import SPARCITY_REGISTRY
 
         cls = SPARCITY_REGISTRY[self.name]
         kwargs = {k: v for k, v in vars(self).items() if k != "name" and v is not None}
