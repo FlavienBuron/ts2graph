@@ -431,6 +431,9 @@ def run(args: Namespace) -> None:
     temporal_graph_params = args.temporal_graph_technique[1:]
     spatial_graph_param = float(spatial_graph_param)
 
+    D = knn(dataset.distance)
+    print(f"DEBUG: {D=}")
+
     spatial_graph_time = 0.0
     if use_spatial:
         spatial_adj_matrix, spatial_graph_time = get_spatial_graph(
