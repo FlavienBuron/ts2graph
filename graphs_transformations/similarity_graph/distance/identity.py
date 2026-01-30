@@ -5,6 +5,6 @@ from .base import DistanceFunction
 
 
 @register_distance("identity")
-class identity(DistanceFunction):
+class Identity(DistanceFunction):
     def __call__(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         return x.detach().clone()
