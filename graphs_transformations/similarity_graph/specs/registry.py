@@ -1,16 +1,16 @@
 from typing import Dict, Type
 
-from ..affinity.base import AffinityFunction
-from ..distance.base import DistanceFunction
-from ..sparsification.base import SparsificationFunction
+# from ..affinity.base import AffinityFunction
+# from ..distance.base import DistanceFunction
+# from ..sparsification.base import SparsificationFunction
 
-DISTANCE_REGISTRY: Dict[str, Type[DistanceFunction]] = {}
-AFFINITY_REGISTRY: Dict[str, Type[AffinityFunction]] = {}
-SPARCITY_REGISTRY: Dict[str, Type[SparsificationFunction]] = {}
+DISTANCE_REGISTRY: Dict[str, Type] = {}
+AFFINITY_REGISTRY: Dict[str, Type] = {}
+SPARCITY_REGISTRY: Dict[str, Type] = {}
 
 
 def register_distance(name: str):
-    def decorator(cls: Type[DistanceFunction]):
+    def decorator(cls):
         DISTANCE_REGISTRY[name] = cls
         return cls
 
@@ -18,7 +18,7 @@ def register_distance(name: str):
 
 
 def register_affinity(name: str):
-    def decorator(cls: Type[AffinityFunction]):
+    def decorator(cls):
         AFFINITY_REGISTRY[name] = cls
         return cls
 
@@ -26,7 +26,7 @@ def register_affinity(name: str):
 
 
 def register_sparsification(name: str):
-    def decorator(cls: Type[SparsificationFunction]):
+    def decorator(cls):
         SPARCITY_REGISTRY[name] = cls
         return cls
 
