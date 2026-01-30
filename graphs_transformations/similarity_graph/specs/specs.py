@@ -48,7 +48,7 @@ class SparsifierSpec:
     k: Optional[int] = None
     radius: Optional[float] = None
     threshold: Optional[float] = None
-    symmetric: bool = True
+    # symmetric: bool = True
 
     def build(self):
         from .registry import SPARCITY_REGISTRY
