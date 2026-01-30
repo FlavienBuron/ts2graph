@@ -1,5 +1,5 @@
-from pipeline import SimilarityGraphContructor
-from specs import SimilarityGraphSpec
+from ..pipeline import SimilarityGraphContructor
+from .specs import SimilarityGraphSpec
 
 
 def build_graph_constructor(specs: SimilarityGraphSpec) -> SimilarityGraphContructor:
