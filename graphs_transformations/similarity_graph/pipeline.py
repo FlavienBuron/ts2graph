@@ -7,7 +7,7 @@ from .sparsification.base import (
 )
 
 
-class SimilarityGraphContructor:
+class SimilarityGraph:
     def __init__(
         self,
         distance: DistanceFunction,

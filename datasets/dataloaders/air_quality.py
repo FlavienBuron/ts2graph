@@ -151,6 +151,7 @@ class AirQualityLoader(GraphLoader):
         adj = torch.exp(-torch.square(distances / theta))
         mask = adj < threshold
         adj[mask] = 0
+        print(f"DEBUG: {weighted=}")
         if not weighted:
             adj[adj > 0] = 1.0
         if not include_self:

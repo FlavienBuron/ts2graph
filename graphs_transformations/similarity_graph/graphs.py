@@ -1,3 +1,4 @@
+from .pipeline import SimilarityGraph
 from .specs.specs import (
     AffinitySpec,
     DistanceSpec,
@@ -26,9 +27,10 @@ def radius_graph(
     affinity: str = "gaussian kernel",
     gamma: float = 1.0,
     normalize: bool = True,
-) -> SimilarityGraphSpec:
-    return SimilarityGraphSpec(
+) -> SimilarityGraph:
+    graph = SimilarityGraphSpec(
         distance=DistanceSpec(name=distance, normalize=normalize),
         affinity=AffinitySpec(name=affinity),
         sparsifier=SparsifierSpec(name="threshold", threshold=threshold),
     )
+    return graph.build()

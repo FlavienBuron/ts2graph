@@ -285,11 +285,17 @@ def get_spatial_graph(
     total_time = 0.0
     if "loc" in technique:
         start = perf_counter()
-        adj_matrix = dataset.get_geolocation_graph(
-            threshold=parameter,
-            include_self=args.self_loop,
-            weighted=not args.unweighted_graph,
+        # adj_matrix = dataset.get_geolocation_graph(
+        #     threshold=parameter,
+        #     include_self=args.self_loop,
+        #     weighted=not args.unweighted_graph,
+        # )
+        print(f"DEBUG: {args.unweighted_graph=}")
+        graph = radius_graph(
+            threshold=parameter, distance="identity", affinity="gaussian kernel"
         )
+        adj_matrix = graph(torch.from_numpy(dataset.distances.to_numpy()))
+
         end = perf_counter()
     elif "zero" in technique:
         start = perf_counter()
@@ -390,10 +396,10 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 def run(args: Namespace) -> None:
     print("#" * 100)
     print(args)
-    graph_builder = radius_graph(
-        threshold=0.3, distance="identity", affinity="gaussian kernel"
-    )
-    graph = graph_builder.build()
+    # graph_builder = radius_graph(
+    #     threshold=0.3, distance="identity", affinity="gaussian kernel"
+    # )
+    # graph = graph_builder.build()
     save_path_dir = os.path.dirname(args.save_path)
     model = args.model.lower()
     stgi_mode = args.mode
@@ -433,14 +439,14 @@ def run(args: Namespace) -> None:
     temporal_graph_params = args.temporal_graph_technique[1:]
     spatial_graph_param = float(spatial_graph_param)
 
-    D = graph(torch.from_numpy(dataset.distances.to_numpy()))
-    print(f"DEBUG: {D=}")
-    A = dataset.get_geolocation_graph(
-        threshold=0.3,
-        include_self=args.self_loop,
-        weighted=not args.unweighted_graph,
-    )
-    print(f"DEBUG: {A=}")
+    # D = graph(torch.from_numpy(dataset.distances.to_numpy()))
+    # print(f"DEBUG: {D=}")
+    # A = dataset.get_geolocation_graph(
+    #     threshold=0.3,
+    #     include_self=args.self_loop,
+    #     weighted=not args.unweighted_graph,
+    # )
+    # print(f"DEBUG: {A=}")
 
     spatial_graph_time = 0.0
     if use_spatial:
