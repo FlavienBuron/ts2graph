@@ -433,7 +433,7 @@ def run(args: Namespace) -> None:
     temporal_graph_params = args.temporal_graph_technique[1:]
     spatial_graph_param = float(spatial_graph_param)
 
-    D = graph(dataset.distances)
+    D = graph(torch.from_numpy(dataset.distances.to_numpy()))
     print(f"DEBUG: {D=}")
     A = dataset.get_geolocation_graph(
         threshold=0.7,
