@@ -44,7 +44,7 @@ class AffinitySpec:
 
 @dataclass
 class SparsifierSpec:
-    name: Literal["topk"]
+    name: Literal["topk", "threshold"]
     k: Optional[int] = None
     radius: Optional[float] = None
     threshold: Optional[float] = None

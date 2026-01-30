@@ -42,7 +42,7 @@ from downstream.imputation.metrics.metrics import (
 )
 from downstream.imputation.models.GRIN.grin import GRINet
 from downstream.imputation.models.STGI.stgi import STGI
-from graphs_transformations.similarity_graph.graphs import knn_graph
+from graphs_transformations.similarity_graph.graphs import radius_graph
 from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
@@ -390,8 +390,10 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 def run(args: Namespace) -> None:
     print("#" * 100)
     print(args)
-    knn = knn_graph(k=3, distance="masked euclidean", affinity="gaussian kernel")
-    knn = knn.build()
+    graph_builder = radius_graph(
+        threshold=0.3, distance="identity", affinity="gaussian kernel"
+    )
+    graph = graph_builder.build()
     save_path_dir = os.path.dirname(args.save_path)
     model = args.model.lower()
     stgi_mode = args.mode
@@ -431,8 +433,14 @@ def run(args: Namespace) -> None:
     temporal_graph_params = args.temporal_graph_technique[1:]
     spatial_graph_param = float(spatial_graph_param)
 
-    D = knn(dataset.data[dm.train_slice], dataset.mask[dm.train_slice])
+    D = graph(dataset.distances)
     print(f"DEBUG: {D=}")
+    A = dataset.get_geolocation_graph(
+        threshold=0.7,
+        include_self=args.self_loop,
+        weighted=not args.unweighted_graph,
+    )
+    print(f"DEBUG: {A=}")
 
     spatial_graph_time = 0.0
     if use_spatial:
