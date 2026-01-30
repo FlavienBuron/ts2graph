@@ -76,7 +76,7 @@ class SimilarityGraphSpec:
     sparsifier: SparsifierSpec
 
     def build(self):
-        from factory import build_graph_constructor
+        from .factory import build_graph_constructor
 
         return build_graph_constructor(self)
 
