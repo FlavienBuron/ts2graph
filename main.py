@@ -42,10 +42,11 @@ from downstream.imputation.metrics.metrics import (
 )
 from downstream.imputation.models.GRIN.grin import GRINet
 from downstream.imputation.models.STGI.stgi import STGI
-from graphs_transformations.similarity_graph.graphs import radius_graph
+from graphs_transformations.similarity_graph.graphs import knn_graph, radius_graph
 from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
+    get_percentile_k,
     save_graph_characteristics,
 )
 from utils.callbacks import ConsoleMetricsCallback, EpochReportCallback
@@ -289,7 +290,6 @@ def get_spatial_graph(
             threshold=parameter, distance="identity", affinity="gaussian kernel"
         )
         adj_matrix = graph(torch.from_numpy(dataset.distances.to_numpy()))
-
         end = perf_counter()
     elif "zero" in technique:
         start = perf_counter()
@@ -319,12 +319,23 @@ def get_spatial_graph(
         start = perf_counter()
         param = parameter
         if param > 0.0:
-            adj_matrix = dataset.get_knn_graph(
-                k=param,
-                loop=args.self_loop,
-                cosine=args.similarity_metric == "cosine",
-                full_dataset=args.full_dataset,
+            data = dataset.data[args.train_slice]
+            mask = dataset.mask[args.train_slice]
+            real_k = get_percentile_k(data, param, args.self_loop)
+            graph = knn_graph(
+                k=real_k,
+                distance="masked euclidean",
+                affinity="gaussian kernel",
+                binary=False,
+                keep_self_loop=args.self_loop,
             )
+            adj_matrix = graph(x=data, mask=mask)
+            # adj_matrix = dataset.get_knn_graph(
+            #     k=param,
+            #     loop=args.self_loop,
+            #     cosine=args.similarity_metric == "cosine",
+            #     full_dataset=args.full_dataset,
+            # )
         else:
             adj_matrix = dataset.get_knn_graph(k=1.0, loop=False, cosine=False)
             adj_matrix = torch.zeros_like(adj_matrix)
@@ -427,6 +438,7 @@ def run(args: Namespace) -> None:
     # if out of sample in air, add values removed for evaluation in train set
     if "air" in args.dataset and not in_sample:
         dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
+    args.train_slice = dm.train_slice
 
     spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
     temporal_graph_technique = args.temporal_graph_technique[0]

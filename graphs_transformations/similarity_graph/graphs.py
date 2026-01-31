@@ -14,12 +14,13 @@ def knn_graph(
     distance: Literal["masked euclidean", "identity"] = "masked euclidean",
     affinity: Literal["gaussian kernel"] = "gaussian kernel",
     **kwargs,
-) -> SimilarityGraphSpec:
-    return SimilarityGraphSpec(
+) -> SimilarityGraph:
+    graph = SimilarityGraphSpec(
         distance=DistanceSpec(name=distance, **kwargs),
         affinity=AffinitySpec(name=affinity, **kwargs),
         sparsifier=SparsifierSpec(name="topk", k=k, **kwargs),
     )
+    return graph.build()
 
 
 def radius_graph(
