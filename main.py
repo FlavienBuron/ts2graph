@@ -285,12 +285,6 @@ def get_spatial_graph(
     total_time = 0.0
     if "loc" in technique:
         start = perf_counter()
-        # adj_matrix = dataset.get_geolocation_graph(
-        #     threshold=parameter,
-        #     include_self=args.self_loop,
-        #     weighted=not args.unweighted_graph,
-        # )
-        print(f"DEBUG: {args.unweighted_graph=}")
         graph = radius_graph(
             threshold=parameter, distance="identity", affinity="gaussian kernel"
         )

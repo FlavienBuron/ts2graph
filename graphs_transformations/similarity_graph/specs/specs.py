@@ -46,7 +46,6 @@ class AffinitySpec:
 class SparsifierSpec:
     name: Literal["topk", "threshold"]
     k: Optional[int] = None
-    radius: Optional[float] = None
     threshold: Optional[float] = None
     # symmetric: bool = True
 

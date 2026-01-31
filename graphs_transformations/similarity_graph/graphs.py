@@ -1,3 +1,5 @@
+from typing import Literal
+
 from .pipeline import SimilarityGraph
 from .specs.specs import (
     AffinitySpec,
@@ -9,28 +11,26 @@ from .specs.specs import (
 
 def knn_graph(
     k: int,
-    distance: str = "masked euclidean",
-    affinity: str = "gaussian kernel",
-    gamma: float = 1.0,
-    normalize: bool = True,
+    distance: Literal["masked euclidean", "identity"] = "masked euclidean",
+    affinity: Literal["gaussian kernel"] = "gaussian kernel",
+    **kwargs,
 ) -> SimilarityGraphSpec:
     return SimilarityGraphSpec(
-        distance=DistanceSpec(name=distance, normalize=normalize),
-        affinity=AffinitySpec(name=affinity),
-        sparsifier=SparsifierSpec(name="topk", k=k),
+        distance=DistanceSpec(name=distance, **kwargs),
+        affinity=AffinitySpec(name=affinity, **kwargs),
+        sparsifier=SparsifierSpec(name="topk", k=k, **kwargs),
     )
 
 
 def radius_graph(
     threshold: float,
-    distance: str = "masked euclidean",
-    affinity: str = "gaussian kernel",
-    gamma: float = 1.0,
-    normalize: bool = True,
+    distance: Literal["masked euclidean", "identity"] = "masked euclidean",
+    affinity: Literal["gaussian kernel"] = "gaussian kernel",
+    **kwargs,
 ) -> SimilarityGraph:
     graph = SimilarityGraphSpec(
-        distance=DistanceSpec(name=distance, normalize=normalize),
-        affinity=AffinitySpec(name=affinity),
-        sparsifier=SparsifierSpec(name="threshold", threshold=threshold),
+        distance=DistanceSpec(name=distance, **kwargs),
+        affinity=AffinitySpec(name=affinity, **kwargs),
+        sparsifier=SparsifierSpec(name="threshold", threshold=threshold, **kwargs),
     )
     return graph.build()
