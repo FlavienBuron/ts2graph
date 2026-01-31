@@ -1,15 +1,14 @@
 import os
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 import torch
 from sklearn.metrics.pairwise import haversine_distances
-from torch.utils.data import DataLoader
 from torch_geometric.utils import to_dense_adj
 
 from datasets.dataloaders.graphloader import GraphLoader
-from graphs_transformations.proximity_graphs import from_knn, from_radius
+from graphs_transformations.proximity_graphs import from_geo_nn, from_knn, from_radius
 
 EARTH_RADIUS = 6371.0088
 
@@ -19,229 +18,138 @@ class AirQualityLoader(GraphLoader):
         self,
         dataset_path: str = "./datasets/data/air_quality/",
         small: bool = False,
-        normalization_type=None,
-        replace_nan=True,
-        nan_method="mean",
+        normalization_type: str = "min_max",
+        impute_nans: bool = True,
+        nan_method: str = "mean",
+        freq: str = "60min",
+        masked_sensors: list | None = None,
     ):
         self.dataset_path = dataset_path
-        self.original_data, self.missing_mask, self.distances = self.load(
-            small=small, normalization_type="min_max"
+
+        self.test_months = [3, 6, 9, 12]
+        self.infer_eval_from = "next"
+
+        data, missing_mask, distances = self.load(
+            impute_nans=impute_nans,
+            small=small,
+            masked_sensors=masked_sensors,
         )
-        self.missing_data = torch.empty_like(self.original_data)
-        if replace_nan:
-            self._replace_nan(nan_method)
-        self.validation_mask = torch.zeros_like(self.original_data).bool()
-        self.corrupt_data = torch.empty_like(self.original_data)
-        self.corrupt_mask = torch.empty_like(self.original_data)
-        self.use_corrupted_data = False
+        self.distances = distances
+        self.masked_sensors = (
+            list(masked_sensors) if masked_sensors is not None else list()
+        )
+        # debug_mask_relationship(
+        #     torch.tensor(missing_mask), torch.tensor(self.eval_mask), "AirQuality mask"
+        # )
+        super().__init__(
+            dataframe=data,
+            missing_mask=missing_mask,
+            eval_mask=self.eval_mask,
+            freq=freq,
+            aggr="nearest",
+        )
 
-    def __len__(self) -> int:
-        return self.original_data.shape[0]
+    # @property
+    # def training_mask(self):
+    #     return self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
 
-    def __getitem__(
-        self, index: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        if self.use_corrupted_data:
-            missing_data = self.corrupt_data[index, :]
-            ori_data = self.original_data[index, :]
-            missing_mask = self.corrupt_mask[index, :]
-            test_mask = self.train_mask[index, :]
-        else:
-            missing_data = self.current_data[index, :]
-            ori_data = self.original_data[index, :]
-            missing_mask = self.missing_mask[index, :]
-            test_mask = self.train_mask[index, :]
-        return missing_data, missing_mask, ori_data.nan_to_num_(0.0), test_mask
+    # def __len__(self) -> int:
+    #     return self.original_data.shape[0]
 
-    def load_raw(self, small: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    # def __getitem__(
+    #     self, index: int
+    # ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    #     missing_data = self.current_data[index, :]
+    #     ori_data = self.original_data[index, :]
+    #     missing_mask = self.missing_mask[index, :]
+    #     test_mask = self.test_mask[index, :]
+    #     return missing_data, missing_mask, ori_data.nan_to_num_(0.0), test_mask
+
+    def load_raw(
+        self, small: bool = False
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
         if small:
             path = os.path.join(self.dataset_path, "small36.h5")
+            eval_mask = pd.DataFrame(pd.read_hdf(path, "eval_mask"))
         else:
             path = os.path.join(self.dataset_path, "full437.h5")
+            eval_mask = None
         data = pd.DataFrame(pd.read_hdf(path, key="pm25"))
         stations = pd.DataFrame(pd.read_hdf(path, key="stations"))
-        return data, stations
+        return data, stations, eval_mask
 
     def load(
-        self, small: bool = False, normalization_type=None
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        data, stations = self.load_raw(small=small)
+        self,
+        impute_nans: bool = True,
+        small: bool = False,
+        masked_sensors: list | None = None,
+    ) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame]:
+        data, stations, eval_mask = self.load_raw(small=small)
+        missing_mask = (~np.isnan(data.values)).astype("bool")  # 0=missing, 1=observed
+        if eval_mask is None:
+            print("Infering eval mask")
+            eval_mask = self._infer_mask(data)
+        eval_mask = eval_mask.values.astype("bool")
+        if masked_sensors is not None:
+            eval_mask[:masked_sensors] = np.where(
+                missing_mask[:, masked_sensors], True, False
+            )
+        self.eval_mask = eval_mask
+        if impute_nans:
+            data = data.fillna(self._compute_mean(data))
+
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
-        data = torch.from_numpy(data.to_numpy()).float()
-        data = data.unsqueeze(-1)
-        # n_steps = data.shape[0]
-        # time_indices = torch.arange(n_steps, dtype=data.dtype).view(n_steps, 1, 1)
-        # time_indices = time_indices / (n_steps - 1)
-        # data = torch.cat([data, time_indices.expand(-1, data.shape[1], -1)], dim=-1)
-        mask = torch.where(data.isnan(), False, True)
-        assert torch.isnan(data[~mask]).all(), (
-            "non-missing values found under missing values mask"
-        )
-        data = self._normalize(data, mask, normalization_type)
-        return data, mask, dist
+        return data, missing_mask, dist
 
-    def split(
+    def grin_split(
         self,
-        train_percent: float = 0.2,
-        validation_percent: float = 0.2,
-        cols: List = [],
-        time_blocks: int = 5,
+        val_len: float = 0.1,
+        in_sample: bool = False,
+        window: int = 36,
     ):
-        """
-        Split the data into training and validation sets using random blocks.
-
-        Args:
-            train_percent: Percentage of non-missing values held-out for training
-            validation_percent: Percentage of non-missing values held-out for validation/evaluation
-        """
-        if len(cols) > 0:
-            mask_cols = torch.zeros(self.original_data.shape[1], dtype=torch.bool)
-            mask_cols[cols] = True
-            working_mask = self.missing_mask & mask_cols.unsqueeze(0).expand_as(
-                self.missing_mask
-            )
+        nontest_idxs, test_idxs = self._disjoint_months(
+            months=self.test_months, sync_mode="horizon"
+        )
+        if in_sample:
+            train_idxs = np.arange(len(self))
+            val_months = [(m - 1) % 12 for m in self.test_months]
+            _, val_idxs = self._disjoint_months(months=val_months, sync_mode="horizon")
         else:
-            working_mask = self.missing_mask
-
-        rows, _, _ = self.original_data.shape
-        train_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
-        val_mask = torch.zeros_like(self.original_data, dtype=torch.bool)
-
-        total_valid_points = torch.sum(working_mask).item()
-        target_train_points = int(total_valid_points * train_percent)
-        target_val_points = int(total_valid_points * validation_percent)
-
-        time_segments = torch.linspace(0, rows, time_blocks + 1).long()
-
-        current_train_points = 0
-        current_val_points = 0
-
-        for block in range(time_blocks):
-            start_row = time_segments[block].item()
-            end_row = time_segments[block + 1].item()
-
-            segment_mask = working_mask[start_row:end_row]
-            valid_count = torch.sum(segment_mask).item()
-
-            # Calculate how many points to sample for this segment
-            # Proportional to the number of valid points in the segment
-            if total_valid_points > 0:
-                val_block_points = int(
-                    valid_count / total_valid_points * target_val_points
-                )
-                train_block_points = int(
-                    valid_count / total_valid_points * target_train_points
-                )
-            else:
-                val_block_points = 0
-                train_block_points = 0
-
-            # Get indices of valid points in the segment
-            valid_indices = torch.nonzero(segment_mask)
-            if len(valid_indices) == 0:
-                continue
-
-            # Sample points
-            sample_size = min(train_block_points, len(valid_indices))
-            if sample_size > 0:
-                perm = torch.randperm(len(valid_indices))
-                selected = valid_indices[perm[:sample_size]]
-
-                selected[:, 0] += start_row
-                train_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
-
-                current_train_points += sample_size
-
-            remaining_segment_mask = segment_mask.clone()
-            segment_train_mask = train_mask[start_row:end_row]
-            remaining_segment_mask = segment_mask & (~segment_train_mask)
-
-            remaining_indices = torch.nonzero(remaining_segment_mask)
-            val_sample_size = min(val_block_points, len(remaining_indices))
-            if val_sample_size > 0:
-                perm = torch.randperm(len(remaining_indices))
-                selected = remaining_indices[perm[:val_sample_size]]
-                selected[:, 0] += start_row
-                val_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
-                current_val_points += val_sample_size
-
-        assert not torch.isnan(self.original_data[val_mask]).any(), (
-            "Missing values found under evaluation mask (first pass)"
-        )
-
-        assert not torch.isnan(self.original_data[val_mask]).any(), (
-            "Missing values found under evaluation mask (first pass)"
-        )
-
-        # Second pass, adjust to the target
-        if current_train_points < target_train_points:
-            remaining_points = target_train_points - current_train_points
-
-            remaining_valid = working_mask & (~train_mask) & (~val_mask)
-            remaining_indices = torch.nonzero(remaining_valid)
-
-            if len(remaining_indices) > 0:
-                sample_size = min(remaining_points, len(remaining_indices))
-                perm = torch.randperm(len(remaining_indices))
-                selected = remaining_indices[perm[:sample_size]]
-                train_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
-
-                current_train_points += sample_size
-
-        if current_val_points < target_val_points:
-            remaining_points = target_val_points - current_val_points
-
-            remaining_valid = working_mask & (~train_mask) & (~val_mask)
-            remaining_indices = torch.nonzero(remaining_valid)
-
-            if len(remaining_indices) > 0:
-                sample_size = min(remaining_points, len(remaining_indices))
-                perm = torch.randperm(len(remaining_indices))
-                selected = remaining_indices[perm[:sample_size]]
-                val_mask[selected[:, 0], selected[:, 1], selected[:, 2]] = True
-
-                current_val_points += sample_size
-
-        val_final_percentage = (
-            (current_val_points / total_valid_points) if total_valid_points > 0 else 0
-        )
-        train_final_percentage = (
-            (current_train_points / total_valid_points) if total_valid_points > 0 else 0
-        )
-
-        print(
-            f"Target Val. Percentage: {validation_percent:.2f}, Achieved: {val_final_percentage:.2f}"
-        )
-        print(
-            f"Target Val. Percentage: {train_percent:.2f}, Achieved: {train_final_percentage:.2f}"
-        )
-
-        assert not torch.isnan(self.original_data[val_mask]).any(), (
-            "Missing values found under evaluation mask (second pass)"
-        )
-        assert not torch.isnan(self.original_data[train_mask]).any(), (
-            "Missing values found under evaluation mask (second pass)"
-        )
-        assert not torch.logical_and(train_mask, val_mask).any(), (
-            "Train and validation masks overlap"
-        )
-
-        self.validation_mask = val_mask.bool()
-        self.train_mask = train_mask.bool()
+            val_len = (
+                int(val_len * len(nontest_idxs)) if val_len < 1 else val_len
+            ) // len(self.test_months)
+            # get indices of first day of each testing month
+            delta_idxs = np.diff(test_idxs)
+            end_month_idxs = test_idxs[1:][
+                np.flatnonzero(delta_idxs > delta_idxs.min())
+            ]
+            if len(end_month_idxs) < len(self.test_months):
+                end_month_idxs = np.insert(end_month_idxs, 0, test_idxs[0])
+            # expand month indices
+            month_val_idxs = [
+                np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs
+            ]
+            val_idxs = np.concatenate(month_val_idxs) % len(self)
+            # remove overlapping indices from training set
+            ovl_idxs, _ = self.overlapping_indices(
+                nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
+            )
+            train_idxs = nontest_idxs[~ovl_idxs]
+        return train_idxs, val_idxs, test_idxs
 
     def get_geolocation_graph(
         self,
         threshold: float = 0.1,
-        threshold_on_input: bool = False,
         include_self: bool = False,
         force_symmetric: bool = False,
         weighted: bool = True,
     ) -> torch.Tensor:
-        theta = self.distances.std()
+        distances = torch.from_numpy(self.distances.to_numpy())
+        theta = distances.std()
         # adj = np.exp(-(self.distances**2) / (2 * theta**2))
-        adj = torch.exp(-torch.square(self.distances / theta))
-        mask = self.distances > threshold if threshold_on_input else adj < threshold
+        adj = torch.exp(-torch.square(distances / theta))
+        mask = adj < threshold
         adj[mask] = 0
         if not weighted:
             adj[adj > 0] = 1.0
@@ -253,50 +161,68 @@ class AirQualityLoader(GraphLoader):
 
     def get_knn_graph(
         self,
-        k: int | float,
-        use_corrupted_data: bool = False,
+        k: float,
         loop: bool = False,
         cosine: bool = False,
+        full_dataset: bool = False,
     ) -> torch.Tensor:
-        if use_corrupted_data:
-            data = self.corrupt_data.permute(1, 0, 2).reshape(
-                self.original_data.shape[1], -1
-            )
-            mask = self.corrupt_mask.permute(1, 0, 2).reshape(
-                self.original_data.shape[1], -1
-            )
-        else:
-            data = self.original_data.permute(1, 0, 2).reshape(
-                self.original_data.shape[1], -1
-            )
-            mask = self.missing_mask.permute(1, 0, 2).reshape(
-                self.original_data.shape[1], -1
-            )
+        total_missing_masK = self.missing_mask | self.eval_mask
+
+        available_rows = (~total_missing_masK).any(dim=(1, 2))
+
+        data_tensor = self.data if full_dataset else self.data[available_rows, :, :]
+        mask_tensor = (
+            self.missing_mask
+            if full_dataset
+            else self.missing_mask[available_rows, :, :]
+        )
+
+        data = data_tensor.permute(1, 0, 2).reshape(self.data.shape[1], -1)
+        mask = mask_tensor.permute(1, 0, 2).reshape(self.data.shape[1], -1)
+
         edge_index = from_knn(data=data, mask=mask, k=k, loop=loop, cosine=cosine)
         adj = to_dense_adj(edge_index).squeeze()
         return adj
 
+    def get_geo_nn_graph(
+        self,
+        k: int | float,
+        include_self: bool = False,
+        force_symmetric: bool = False,
+        weighted: bool = True,
+    ) -> torch.Tensor:
+        return from_geo_nn(
+            self.distances,
+            k=k,
+            include_self=include_self,
+            force_symmetric=force_symmetric,
+            weighted=weighted,
+        )
+
     def get_radius_graph(
         self,
         radius: float,
-        use_corrupted_data: bool = False,
         loop: bool = False,
         cosine: bool = False,
+        full_dataset: bool = False,
     ) -> torch.Tensor:
-        if use_corrupted_data:
-            data = self.corrupt_data.permute(1, 0, 2).reshape(
-                self.original_data.shape[1], -1
-            )
-            mask = self.corrupt_mask.permute(1, 0, 2).reshape(
-                self.original_data.shape[1], -1
-            )
-        else:
-            data = self.original_data.permute(1, 0, 2).reshape(
-                self.original_data.shape[1], -1
-            )
-            mask = self.missing_mask.permute(1, 0, 2).reshape(
-                self.original_data.shape[1], -1
-            )
+        total_missing_masK = self.missing_mask | self.test_mask | self.eval_mask
+
+        available_rows = (~total_missing_masK).any(dim=(1, 2))
+
+        data_tensor = (
+            self.original_data
+            if full_dataset
+            else self.original_data[available_rows, :, :]
+        )
+        mask_tensor = (
+            self.missing_mask
+            if full_dataset
+            else self.missing_mask[available_rows, :, :]
+        )
+
+        data = data_tensor.permute(1, 0, 2).reshape(self.original_data.shape[1], -1)
+        mask = mask_tensor.permute(1, 0, 2).reshape(self.original_data.shape[1], -1)
         edge_index = from_radius(
             data=data, mask=mask, radius=radius, loop=loop, cosine=cosine
         )
@@ -305,96 +231,212 @@ class AirQualityLoader(GraphLoader):
 
     def _geographical_distance(
         self, coords: pd.DataFrame, to_rad: bool = True
-    ) -> torch.Tensor:
+    ) -> pd.DataFrame:
         """
         Compute the geographical distance between coordinates points
         """
-        coords_array = coords.to_numpy()
+
+        _AVG_EARTH_RADIUS_KM = 6371.0088
+
+        coords_pairs = coords.values
         if to_rad:
-            coords_array = np.radians(coords_array)
-        dist = torch.from_numpy(haversine_distances(coords_array)).float()
-        return dist
+            coords_pairs = np.vectorize(np.radians)(coords_pairs)
+        dist = haversine_distances(coords_pairs) * _AVG_EARTH_RADIUS_KM
+        dist_df = pd.DataFrame(dist, coords.index, coords.index)
+        return dist_df
 
-    def get_dataloader(
-        self, use_corrupted_data: bool, shuffle: bool = False, batch_size: int = 8
-    ) -> DataLoader:
-        self.use_corrupted_data = use_corrupted_data
-        self.split(train_percent=0.2, validation_percent=0.2)
-        self.missing_data = torch.where(self.train_mask, 0.0, self.missing_data)
-        self.missing_data = torch.where(self.validation_mask, 0.0, self.missing_data)
-        self.current_data = self.missing_data.clone()
-        self.missing_mask = self.missing_mask & ~self.validation_mask & ~self.train_mask
-        return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
+    # def get_dataloader(
+    #     self,
+    #     test_percent: float = 0.2,
+    #     total_missing_percent: float = 0.4,
+    #     mask_pattern: str = "default",
+    #     shuffle: bool = False,
+    #     batch_size: int = 128,
+    # ) -> DataLoader:
+    #     self.split(
+    #         mask_pattern=mask_pattern,
+    #         test_percent=test_percent,
+    #         total_missing_percent=total_missing_percent,
+    #     )
+    #     if self.eval_mask is None:
+    #         raise ValueError("Validation mask should not be None after split")
+    #     self.missing_data = torch.where(self.test_mask, 0.0, self.missing_data)
+    #     self.missing_data = torch.where(self.eval_mask, 0.0, self.missing_data)
+    #     self.current_data = self.missing_data.clone()
+    #     self.missing_mask = self.missing_mask | self.eval_mask | self.test_mask
+    #     return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
+    #
+    # def _normalize(self, data, mask, type: str = "min_max") -> torch.Tensor:
+    #     observed = ~mask
+    #     if type == "min_max":
+    #         min_val = data[observed].min()
+    #         max_val = data[observed].max()
+    #
+    #         return (data - min_val) / ((max_val - min_val) + 1e-6)
+    #     elif type == "std":
+    #         mean_val = data[observed].min()
+    #         std_val = data[observed].std()
+    #
+    #         return (data - mean_val) / (std_val + 1e-8)
+    #     else:
+    #         return data
+    #
+    # def _replace_nan(self, method="mean"):
+    #     print("------------------ Replacing NaNs ------------------")
+    #     if method == "mean":
+    #         if torch.isnan(self.original_data).any():
+    #             # data.nan_to_num_(nan=0.0)
+    #             means = (
+    #                 self.original_data.nanmean(dim=1)
+    #                 .unsqueeze(1)
+    #                 .expand_as(self.original_data)
+    #             )
+    #             # print(f"NaNs in means?: {torch.isnan(means).any()}")
+    #             means = means.nan_to_num(0.0)
+    #             self.missing_data = torch.where(
+    #                 self.missing_mask, means, self.original_data
+    #             )
+    #     elif method == "zero":
+    #         self.missing_data = self.original_data.nan_to_num(nan=0.0)
 
-    def shape(self):
-        return self.original_data.shape
-
-    def corrupt(self, missing_type="perc", missing_size=20):
-        """
-        Add missing data to the dataset according to the specified missing pattern
-        Args:
-            missing_type (str): Denotes the type of missing pattern to apply. Currently only
-                missing percentage is available
-        """
-        print(
-            "WARNING: Air Quality dataset already contains missing data. This may change"
-            "the results compared to other studies using this dataset "
+    def _infer_mask(self, data: pd.DataFrame) -> pd.DataFrame:
+        observed_mask = data.isna().astype("bool")
+        eval_mask = pd.DataFrame(index=data.index, columns=data.columns, data=0).astype(
+            "bool"
         )
-        if missing_type == "perc":
-            self.missing_percentage(missing_size)
+        if self.infer_eval_from == "previous":
+            offset = -1
+        elif self.infer_eval_from == "next":
+            offset = 1
         else:
-            pass
+            raise ValueError("infer_eval_mask can only be one of ['previous', 'next']")
+        months = sorted(set(zip(data.index.year, data.index.month)))
+        length = len(months)
+        for i in range(length):
+            j = (i + offset) % length
+            year_i, month_i = months[i]
+            year_j, month_j = months[j]
+            mask_j = observed_mask[
+                (data.index.year == year_j) & (data.index.month == month_j)
+            ]
+            mask_i = mask_j.shift(
+                1, pd.DateOffset(months=12 * (year_i - year_j) + (month_i - month_j))
+            )
+            mask_i = mask_i[~mask_i.index.duplicated(keep="first")]
+            mask_i = mask_i[np.isin(mask_i.index, data.index)]
+            eval_mask.loc[mask_i.index] = (
+                ~mask_i.loc[mask_i.index].astype(bool)
+                & data.loc[mask_i.index].astype(bool)
+            ).astype(eval_mask.dtypes.iloc[0])
+        return eval_mask
 
-    def missing_percentage(self, missing_percent: int = 20):
-        data_length, _ = self.original_data.shape
-        missing_start = data_length * 5 // 100
-        missing_length = data_length * missing_percent // 100
-        missing_data = self.original_data
-        missing_data[missing_start : missing_start + missing_length, 0] = torch.nan
-        mask = torch.ones_like(missing_data)
-        mask.masked_fill_(torch.isnan(self.original_data), 0.0)
-        self.corrupt_mask = mask
-        missing_data.nan_to_num_(nan=0.0)
-        self.corrupt_data = missing_data
+    def _compute_mean(self, data: pd.DataFrame) -> pd.DataFrame:
+        data_mean = data.copy()
 
-    def _normalize_corrupt(self):
-        data = self.corrupt_data
-        mask = self.corrupt_data
-        # mean = data[mask].mean()
-        # std = data[mask].std()
-        min = data[mask].min()
-        max = data[mask].max()
+        condition0 = [
+            data_mean.index.year,
+            data_mean.index.isocalendar().week,
+            data_mean.index.hour,
+        ]
+        condition1 = [
+            data_mean.index.year,
+            data_mean.index.month,
+            data_mean.index.hour,
+        ]
+        conditions = [condition0, condition1, condition1[1:], condition1[2:]]
+        while data_mean.isna().values.sum() and len(conditions):
+            nan_mean = data_mean.groupby(conditions[0]).transform("mean")
+            data_mean = data_mean.fillna(nan_mean)
+            conditions = conditions[1:]
+        if data_mean.isna().values.sum():
+            data_mean = data_mean.fillna(method="ffill")
+            data_mean = data_mean.fillna(method="bfill")
+        return data_mean
 
-        self.corrupt_data = (data - min) / (max - min)
-
-    def _normalize(self, data, mask, type=None) -> torch.Tensor:
-        if type == "min_max":
-            min = data[mask].min()
-            max = data[mask].max()
-
-            return (data - min) / (max - min)
-        elif type == "std":
-            mean = data[mask].min()
-            std = data[mask].std()
-
-            return (data - mean) / (std + 1e-8)
+    def _disjoint_months(
+        self,
+        months: List = [],
+        sync_mode: str = "window",
+    ):
+        idxs = np.arange(len(self))
+        if sync_mode == "window":
+            start, end = 0, self.window - 1
+        elif sync_mode == "horizon":
+            horizon_offset = self.horizon_offset
+            start, end = horizon_offset, horizon_offset + self.horizon - 1
         else:
-            return data
+            raise ValueError(
+                f"Invalid sync mode type: {sync_mode}. Expected 'window' or 'horizon'"
+            )
+        if self.index is not None:
+            # after idxs
+            start_in_months = np.isin(self.index[self._indices + start].month, months)
+            end_in_months = np.isin(self.index[self._indices + end].month, months)
+            idxs_in_months = start_in_months & end_in_months
+            after_idxs = idxs[idxs_in_months]
 
-    def _replace_nan(self, method="mean"):
-        print("------------------ Replacing NaNs ------------------")
-        if method == "mean":
-            if torch.isnan(self.original_data).any():
-                # data.nan_to_num_(nan=0.0)
-                means = (
-                    self.original_data.nanmean(dim=1)
-                    .unsqueeze(1)
-                    .expand_as(self.original_data)
+            # before idxs
+            months_before = np.setdiff1d(np.arange(1, 13), months)
+            start_in_months = np.isin(
+                self.index[self._indices + start].month, months_before
+            )
+            end_in_months = np.isin(
+                self.index[self._indices + end].month, months_before
+            )
+            idxs_in_months = start_in_months & end_in_months
+            prev_idxs = idxs[idxs_in_months]
+
+            return prev_idxs, after_idxs
+        else:
+            raise ValueError
+
+    def overlapping_indices(
+        self, idxs1, idxs2, sync_mode="window", as_mask=False
+    ) -> tuple[np.ndarray, np.ndarray]:
+        assert sync_mode in ["window", "horizon"], (
+            "sync_mode can only be 'window' or 'horizon'"
+        )
+        timestamp1 = self.data_timestamps(idxs1, flatten=False)[sync_mode]
+        timestamp2 = self.data_timestamps(idxs2, flatten=False)[sync_mode]
+        common_timestamps = np.intersect1d(np.unique(timestamp1), np.unique(timestamp2))
+        is_overlapping = lambda sample: np.any(np.isin(sample, common_timestamps))
+        m1 = np.apply_along_axis(is_overlapping, 1, timestamp1)
+        m2 = np.apply_along_axis(is_overlapping, 1, timestamp2)
+        if as_mask:
+            return m1, m2
+        return np.sort(idxs1[m1]), np.sort(idxs2[m2])
+
+    def expand_indices(self, indices=None, unique=False) -> Dict:
+        ds_indices = dict.fromkeys(
+            [time for time in ["window", "horizon"] if getattr(self, time) > 0]
+        )
+        indices = np.arange(len(self._indices)) if indices is None else indices
+        if "window" in ds_indices:
+            window_idxs = [
+                np.arange(idx, idx + self.window) for idx in self._indices[indices]
+            ]
+            ds_indices["window"] = np.concatenate(window_idxs)
+        if "horizon" in ds_indices:
+            horizon_idxs = [
+                np.arange(
+                    idx + self.horizon_offset,
+                    idx + self.horizon_offset + self.horizon,
                 )
-                # print(f"NaNs in means?: {torch.isnan(means).any()}")
-                means = means.nan_to_num(0.0)
-                self.missing_data = torch.where(
-                    self.missing_mask, self.original_data, means
-                )
-        elif method == "zero":
-            self.missing_data = self.original_data.nan_to_num(nan=0.0)
+                for idx in self._indices[indices]
+            ]
+            ds_indices["horizon"] = np.concatenate(horizon_idxs)
+        if unique:
+            ds_indices = {
+                k: np.unique(v) for k, v in ds_indices.items() if v is not None
+            }
+        return ds_indices
+
+    def data_timestamps(self, indices=None, flatten=True) -> Dict:
+        ds_indices = self.expand_indices(indices, unique=False)
+        ds_timestamp = {k: self.index[v] for k, v in ds_indices.items()}
+        if not flatten:
+            ds_timestamp = {
+                k: np.array(v).reshape(-1, getattr(self, k))
+                for k, v in ds_timestamp.items()
+            }
+        return ds_timestamp

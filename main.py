@@ -1,3 +1,5 @@
+import copy
+import datetime
 import json
 import math
 import os
@@ -7,29 +9,48 @@ from functools import partial
 from time import perf_counter
 from typing import Callable, Optional
 
+import h5py
 import numpy as np
+import pytorch_lightning as pl
 import torch
-import torch.nn as nn
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    root_mean_squared_error,
-)
-from torch.nn.functional import mse_loss
-from torch.optim import Adam
-from torch.optim.optimizer import Optimizer
-from torch.utils.data import DataLoader
+import yaml
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProgressBar
+from pytorch_lightning.loggers import TensorBoardLogger
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch_geometric.utils import dense_to_sparse
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
-from downstream.imputation.STGI import STGI
-from graphs_transformations.temporal_graphs import k_hop_graph_rs
+from datasets.datamodule import DataModule
+from downstream.imputation.helpers import EpochReport
+from downstream.imputation.imputer import Imputer
+from downstream.imputation.metrics.correlations import (
+    MaskedCCC,
+    MaskedCosineSimilarity,
+    MaskedLagCorrelation,
+    MaskedPearson,
+)
+from downstream.imputation.metrics.losses import MaskedMAELoss
+from downstream.imputation.metrics.metrics import (
+    MaskedMAE,
+    MaskedMAPE,
+    MaskedMRE,
+    MaskedMRE2,
+    MaskedMSE,
+    MaskedRMSE,
+    MaskedSMAPE,
+)
+from downstream.imputation.models.GRIN.grin import GRINet
+from downstream.imputation.models.STGI.stgi import STGI
+from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
-    compute_edge_difference_smoothness,
-    compute_laplacian_smoothness,
     save_graph_characteristics,
+)
+from utils.callbacks import ConsoleMetricsCallback, EpochReportCallback
+from utils.helpers import (
+    aggregate_predictions,
+    prediction_dataframe,
 )
 
 random.seed(42)
@@ -37,15 +58,20 @@ np.random.seed(42)
 torch.manual_seed(42)
 
 os.environ["PYTHONHASHSEED"] = str(42)
+torch.set_num_threads(8)
+torch.set_num_interop_threads(1)
+#
 
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
+
     parser.add_argument(
-        "--device",
+        "--model",
         type=str,
-        help="The device to use",
-        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Which model should be used for the task",
+        choices=["stgi", "grin"],
+        default="stgi",
     )
     parser.add_argument(
         "--save_path",
@@ -66,7 +92,7 @@ def parse_args() -> Namespace:
         "-n",
         type=str,
         help="How should the data be normalized",
-        default="min_max",
+        default="std",
         choices=[None, "min_max", "std"],
     )
     parser.add_argument(
@@ -141,6 +167,12 @@ def parse_args() -> Namespace:
         default=128,
     )
     parser.add_argument(
+        "--shuffle_batch",
+        "-sb",
+        action="store_true",
+        help="whether the batches should be shuffled",
+    )
+    parser.add_argument(
         "--epochs",
         "-e",
         type=int,
@@ -176,384 +208,41 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--unweighted_graph",
         "-ug",
-        action="store_false",
+        action="store_true",
         help="should the selected graph be weighted, if available",
+    )
+    parser.add_argument(
+        "--full_dataset",
+        "-fd",
+        action="store_true",
+        help="should the graph be made using train+test data, if applicable",
+    )
+    parser.add_argument(
+        "--test_percent",
+        "-tp",
+        type=float,
+        default=0.2,
+        help="The fraction of the hold-out used during the training backpropagation",
+    )
+    parser.add_argument(
+        "--missing_pattern",
+        "-mp",
+        nargs=2,
+        default=["default", 0.4],
+        help="The desired missing pattern and fraction to be added to the data as the test and validation mask",
+    )
+    parser.add_argument(
+        "--in_sample",
+        type=bool,
+        default=True,
+    )
+    parser.add_argument(
+        "--samples_per_epoch",
+        type=int,
+        default=5120,
     )
     args = parser.parse_args()
     return args
-
-
-def log_results(metrics: dict, filename: str, mode: str = "a"):
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    if os.path.exists(filename):
-        with open(filename, "r") as f:
-            existing = json.load(f)
-    else:
-        existing = []
-    existing.append(metrics)
-    with open(filename, "w") as f:
-        json.dump(existing, f, indent=2)
-
-
-def train_imputer(
-    model: nn.Module,
-    dataset: GraphLoader,
-    dataloader: DataLoader,
-    spatial_edge_index: torch.Tensor,
-    spatial_edge_weight: torch.Tensor,
-    optimizer: Optimizer,
-    metrics: dict,
-    epochs: int = 5,
-    num_iteration: int = 100,
-    device: str = "cpu",
-    verbose: bool = True,
-):
-    nb_batches = len(dataloader)
-    batch_size = dataloader.batch_size if dataloader.batch_size else 1
-    model.train()
-    train_metrics = []
-
-    for epoch in range(epochs):
-        epoch_loss = 0.0
-        sum_ls_before = 0.0
-        sum_ls_after = 0.0
-        sum_eds_before = 0.0
-        sum_eds_after = 0.0
-        sum_ls_before_masked = 0.0
-        sum_ls_after_masked = 0.0
-        sum_eds_before_masked = 0.0
-        sum_eds_after_masked = 0.0
-        batch_temp_graph_times = []
-        for iter in range(num_iteration):
-            iteration_imputed_data = []
-            batch_losses = []
-
-            # create a collection to hold batch data references temporatily
-            batch_references = []
-
-            for i, (batch_data, batch_mask, batch_ori, batch_train_mask) in enumerate(
-                dataloader
-            ):
-                batch_references.append((batch_data.clone(), batch_mask.clone()))
-
-                optimizer.zero_grad()
-                with torch.set_grad_enabled(True):
-                    # Get the Smoothess values before imputation
-                    sum_ls_before += compute_laplacian_smoothness(
-                        batch_data.detach(), spatial_edge_index, spatial_edge_weight
-                    )
-                    sum_eds_before += compute_edge_difference_smoothness(
-                        batch_data.detach(), spatial_edge_index, spatial_edge_weight
-                    )
-                    # Mask, to compare
-                    sum_ls_before_masked += compute_laplacian_smoothness(
-                        batch_data.detach(),
-                        spatial_edge_index,
-                        spatial_edge_weight,
-                        mask=batch_mask,
-                    )
-                    sum_eds_before_masked += compute_edge_difference_smoothness(
-                        batch_data.detach(),
-                        spatial_edge_index,
-                        spatial_edge_weight,
-                        mask=batch_mask,
-                    )
-
-                    # Imputation step
-                    imputed_data, temp_graph_time = model(
-                        # x=batch_data.unsqueeze(2).to(device),
-                        x=batch_data.to(device),
-                        mask=batch_mask.to(device),
-                        spatial_edge_index=spatial_edge_index.to(device),
-                        spatial_edge_weight=spatial_edge_weight.to(device),
-                    )
-                    batch_temp_graph_times.append(temp_graph_time)
-                    # imputed_data = imputed_data.squeeze(-1)
-                    train_mask_cpu = batch_train_mask.cpu().bool()
-                    # print(
-                    #     f"{torch.isnan(imputed_data).any()=} {torch.isnan(batch_ori).any()}"
-                    # )
-                    batch_loss = mse_loss(
-                        imputed_data[train_mask_cpu],
-                        batch_ori[train_mask_cpu],
-                        reduction="mean",
-                    )
-                    batch_loss.backward()
-                    optimizer.step()
-
-                with torch.no_grad():
-                    # replace the missing data in the batch with the imputed data
-                    # imputed_batch = batch_data.clone()
-                    imputed_data = imputed_data.cpu()
-                    missing_mask_cpu = batch_mask.cpu().bool()
-
-                    # print(f"{imputed_batch[~missing_mask_cpu]}")
-                    # print(f"{imputed_data[~missing_mask_cpu]}")
-                    imputed_data[missing_mask_cpu] = (
-                        batch_data[missing_mask_cpu].detach().clone()
-                    )
-
-                    iteration_imputed_data.append(imputed_data)
-
-                    # Get the Smoothess AFTER imputation
-                    sum_ls_after += compute_laplacian_smoothness(
-                        imputed_data.detach(), spatial_edge_index, spatial_edge_weight
-                    )
-                    sum_eds_after += compute_edge_difference_smoothness(
-                        imputed_data.detach(), spatial_edge_index, spatial_edge_weight
-                    )
-                    sum_ls_after_masked += compute_laplacian_smoothness(
-                        imputed_data.detach(),
-                        spatial_edge_index,
-                        spatial_edge_weight,
-                        mask=batch_mask,
-                    )
-                    sum_eds_after_masked += compute_edge_difference_smoothness(
-                        imputed_data.detach(),
-                        spatial_edge_index,
-                        spatial_edge_weight,
-                        mask=batch_mask,
-                    )
-
-                    batch_losses.append(batch_loss.item())
-                if verbose:
-                    print(
-                        f"Batch {i}/{nb_batches} loss: {batch_loss.item():.4e}",
-                        end="\r",
-                    )
-                del batch_data, batch_mask, imputed_data, missing_mask_cpu
-
-            with torch.no_grad():
-                iteration_imputed_data = torch.cat(iteration_imputed_data, dim=0)
-            iter_loss = sum(batch_losses)
-            epoch_loss += iter_loss
-            import gc
-
-            gc.collect()
-            if verbose:
-                print(
-                    f"Iteration {iter + 1}/{num_iteration} loss {iter_loss:.4e} | Epoch {epoch + 1}/{epochs} loss: {epoch_loss:.4e}",
-                )
-            dataset.update_data(iteration_imputed_data)
-            del iteration_imputed_data, batch_losses, batch_references
-        mean_loss = epoch_loss / (nb_batches * num_iteration)
-        dataset.reset_current_data()
-        train_metrics.append(
-            {
-                "phase": "train",
-                "epoch": epoch + 1,
-                "lap_smooth_before": sum_ls_before,
-                "lap_smooth_after": sum_ls_after,
-                "eds_before": sum_eds_before,
-                "eds_after": sum_eds_after,
-                "masked_lap_smooth_before": sum_ls_before_masked,
-                "masked_lap_smooth_after": sum_ls_after_masked,
-                "masked_eds_before": sum_eds_before_masked,
-                "masked_eds_after": sum_eds_after_masked,
-                "temp_graph_total_time": sum(batch_temp_graph_times),
-                "temp_graph_avg_time": sum(batch_temp_graph_times) / nb_batches,
-            }
-        )
-        if verbose:
-            print(f"Epoch {epoch + 1}/{epochs} mean loss: {mean_loss:.4e}")
-        imput_metrics = {"epoch": epoch + 1}
-        imputed_data = impute_missing_data(
-            model,
-            dataset,
-            dataloader,
-            spatial_edge_index,
-            spatial_edge_weight,
-            imput_metrics,
-            num_iteration,
-            device,
-        )
-        train_metrics.append(imput_metrics)
-        eval_metrics = evaluate(
-            imputed_data.numpy(),
-            dataset.original_data.numpy(),
-            dataset.validation_mask.numpy(),
-        )
-        eval_metrics.update({"phase": "eval", "epoch": epoch + 1})
-        train_metrics.append(eval_metrics)
-        metrics["train_metrics"] = train_metrics
-    return model
-
-
-def impute_missing_data(
-    model: nn.Module,
-    dataset: GraphLoader,
-    dataloader: DataLoader,
-    spatial_edge_index: torch.Tensor,
-    spatial_edge_weight: torch.Tensor,
-    metrics: dict,
-    num_iteration: int,
-    device: str,
-):
-    dataset.reset_current_data()
-    model.eval()
-    with torch.no_grad():
-        sum_ls_before = 0.0
-        sum_ls_after = 0.0
-        sum_ls_after_masked = 0.0
-        sum_eds_before = 0.0
-        sum_eds_after = 0.0
-        sum_ls_before_masked = 0.0
-        sum_eds_before_masked = 0.0
-        sum_eds_after_masked = 0.0
-        sum_imputed_ls_before = 0.0
-        sum_imputed_ls_after = 0.0
-        sum_imputed_eds_before = 0.0
-        sum_imputed_eds_after = 0.0
-        temp_graph_times = []
-        batch_size = dataloader.batch_size if dataloader.batch_size else 1
-        nb_batches = len(dataloader)
-        for _ in range(num_iteration):
-            imputed_batches = []
-            for batch_data, batch_mask, _, _ in dataloader:
-                sum_ls_before += compute_laplacian_smoothness(
-                    batch_data, spatial_edge_index, spatial_edge_weight
-                )
-                sum_eds_before += compute_edge_difference_smoothness(
-                    batch_data, spatial_edge_index, spatial_edge_weight
-                )
-                # Mask, to compare
-                sum_ls_before_masked += compute_laplacian_smoothness(
-                    batch_data.detach(),
-                    spatial_edge_index,
-                    spatial_edge_weight,
-                    mask=batch_mask,
-                )
-                sum_eds_before_masked += compute_edge_difference_smoothness(
-                    batch_data.detach(),
-                    spatial_edge_index,
-                    spatial_edge_weight,
-                    mask=batch_mask,
-                )
-                sum_imputed_ls_before += compute_laplacian_smoothness(
-                    batch_data.detach(),
-                    spatial_edge_index,
-                    spatial_edge_weight,
-                    mask=~batch_mask,
-                )
-                sum_imputed_eds_before += compute_edge_difference_smoothness(
-                    batch_data.detach(),
-                    spatial_edge_index,
-                    spatial_edge_weight,
-                    mask=~batch_mask,
-                )
-
-                imputed_data, temp_graph_time = model(
-                    # batch_data.unsqueeze(2).to(device),
-                    x=batch_data.to(device),
-                    mask=batch_mask.to(device),
-                    spatial_edge_index=spatial_edge_index.to(device),
-                    spatial_edge_weight=spatial_edge_weight.to(device),
-                )
-                temp_graph_times.append(temp_graph_time)
-                # imputed_data = imputed_data.squeeze(-1)
-                # imputed_batch = batch_data.clone().detach().cpu()
-                mask_cpu = batch_mask.cpu().bool()
-                # print(f"{imputed_batch[~mask_cpu]}")
-                # print(f"{imputed_data[~mask_cpu]}")
-
-                imputed_data[mask_cpu] = batch_data[mask_cpu].detach().clone()
-
-                imputed_batches.append(imputed_data)
-
-                sum_ls_after_masked += compute_laplacian_smoothness(
-                    imputed_data,
-                    spatial_edge_index,
-                    spatial_edge_weight,
-                    mask=batch_mask,
-                )
-                sum_ls_after += compute_laplacian_smoothness(
-                    imputed_data, spatial_edge_index, spatial_edge_weight
-                )
-                sum_eds_after += compute_edge_difference_smoothness(
-                    imputed_data, spatial_edge_index, spatial_edge_weight
-                )
-                sum_eds_after_masked += compute_edge_difference_smoothness(
-                    imputed_data,
-                    spatial_edge_index,
-                    spatial_edge_weight,
-                    mask=batch_mask,
-                )
-                sum_imputed_ls_after += compute_laplacian_smoothness(
-                    imputed_data,
-                    spatial_edge_index,
-                    spatial_edge_weight,
-                    mask=~batch_mask,
-                )
-                sum_imputed_eds_after += compute_laplacian_smoothness(
-                    imputed_data,
-                    spatial_edge_index,
-                    spatial_edge_weight,
-                    mask=~batch_mask,
-                )
-
-            imputed_data = torch.cat(imputed_batches, dim=0)
-            dataset.update_data(imputed_data)
-            del imputed_data
-        for param in model.parameters():
-            if param.grad is None:
-                print(f"Gradient is None for param: {param}")
-        metrics.update(
-            {
-                "phase": "impute",
-                "imputed_lap_smooth_before": sum_imputed_ls_before,
-                "imputed_lap_smooth_after": sum_imputed_ls_after,
-                "imputed_eds_before": sum_imputed_eds_before,
-                "imputed_eds_after": sum_imputed_eds_after,
-                "lap_smooth_before": sum_ls_before,
-                "lap_smooth_after": sum_ls_after,
-                "eds_before": sum_eds_before,
-                "eds_after": sum_eds_after,
-                "masked_lap_smooth_before": sum_ls_before_masked,
-                "masked_lap_smooth_after": sum_ls_after_masked,
-                "masked_eds_before": sum_eds_before_masked,
-                "masked_eds_after": sum_eds_after_masked,
-                "temp_graph_total_time": sum(temp_graph_times),
-                "temp_graph_avg_time": sum(temp_graph_times) / nb_batches,
-            }
-        )
-    return dataset.current_data
-
-
-def evaluate(
-    imputed_data: np.ndarray,
-    target_data: np.ndarray,
-    evaluation_mask: np.ndarray,
-) -> dict:
-    evaluation_points = evaluation_mask.astype(bool)
-    print("Target NaNs:", np.isnan(target_data[evaluation_points]).sum())
-    print("Imputed NaNs:", np.isnan(imputed_data[evaluation_points]).sum())
-    mae = mean_absolute_error(
-        target_data[evaluation_points],
-        imputed_data[evaluation_points],
-    )
-
-    mse = mean_squared_error(
-        target_data[evaluation_points],
-        imputed_data[evaluation_points],
-    )
-
-    rmse = root_mean_squared_error(
-        target_data[evaluation_points],
-        imputed_data[evaluation_points],
-    )
-
-    metrics = {"mae": mae, "mse": mse, "rmse": rmse}
-
-    print(f"Imputation MAE: {mae:.4e}, MSE: {mse:.4e}, RMSE: {rmse:.4e}")
-
-    return metrics
-
-
-def flatten_metrics(metrics: dict) -> list[dict]:
-    run_config = {k: v for k, v in metrics.items() if k != "train_metrics"}
-    return [
-        {**run_config, **phase_metrics} for phase_metrics in metrics["train_metrics"]
-    ]
 
 
 def get_decay_function(name: Optional[str]) -> Optional[Callable[[int, int], float]]:
@@ -598,7 +287,7 @@ def get_spatial_graph(
         adj_matrix = dataset.get_geolocation_graph(
             threshold=parameter,
             include_self=args.self_loop,
-            weighted=args.unweighted_graph,
+            weighted=not args.unweighted_graph,
         )
         end = perf_counter()
     elif "zero" in technique:
@@ -619,7 +308,10 @@ def get_spatial_graph(
         start = perf_counter()
         param = float(parameter)
         adj_matrix = dataset.get_radius_graph(
-            radius=param, loop=args.self_loop, cosine=args.similarity_metric == "cosine"
+            radius=param,
+            loop=args.self_loop,
+            cosine=args.similarity_metric == "cosine",
+            full_dataset=args.full_dataset,
         )
         end = perf_counter()
     else:
@@ -630,6 +322,7 @@ def get_spatial_graph(
                 k=param,
                 loop=args.self_loop,
                 cosine=args.similarity_metric == "cosine",
+                full_dataset=args.full_dataset,
             )
         else:
             adj_matrix = dataset.get_knn_graph(k=1.0, loop=False, cosine=False)
@@ -645,7 +338,7 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
         param = int(parameter[0])
         decay = str(parameter[1]) if len(parameter) > 1 else "none"
         decay_fn = get_decay_function(decay)
-        return partial(k_hop_graph_rs, k=param, decay_name=decay)
+        return partial(k_hop_graph, k=param, decay=decay_fn)
     if "chunked" in technique:
         ts2net = Ts2Net()
         print("Using Chuncked Visual Temporal Graph")
@@ -670,14 +363,14 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
         ts2net = Ts2Net()
         alpha = float(parameter[0])
         time_lag = int(parameter[1]) if len(parameter) > 1 else 1
-        embedding_dim = int(parameter[2]) if len(parameter) > 2 else None
+        # embedding_dim = int(parameter[2]) if len(parameter) > 2 else None
         print("Using Reccurrent Temporal Graph")
         return partial(
-            ts2net.tsnet_rn,
-            # recurrence_graph_rs,
+            # ts2net.tsnet_rn,
+            recurrence_graph_rs,
             radius=alpha,
             time_lag=time_lag,
-            embedding_dim=embedding_dim,
+            # embedding_dim=embedding_dim,
         )
     if "qn" in technique or "quant" in technique:
         ts2net = Ts2Net()
@@ -694,10 +387,10 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 
 
 def run(args: Namespace) -> None:
-    # test = np.random.rand(10, 100)
     print("#" * 100)
     print(args)
-    device = args.device
+    save_path_dir = os.path.dirname(args.save_path)
+    model = args.model.lower()
     stgi_mode = args.mode
     if stgi_mode.lower() in ["st"]:
         use_spatial = True
@@ -711,25 +404,29 @@ def run(args: Namespace) -> None:
 
     print(f"{use_spatial=} {use_temporal=}")
 
+    metrics_data = {}
+    metrics_data.update(vars(args))
+
     dataset = get_dataset(args.dataset)
 
-    if args.batch_size == 0:
-        args.batch_size = dataset.original_data.shape[0]
+    in_sample = True
+    train, val, test = dataset.grin_split(in_sample=in_sample)
+    dm = DataModule(
+        copy.deepcopy(dataset),
+        train_indices=train,
+        test_indices=test,
+        val_indices=val,
+        samples_per_epoch=args.samples_per_epoch,
+        scaling_type=args.normalization_type,
+    )
+    # if out of sample in air, add values removed for evaluation in train set
+    if "air" in args.dataset and not in_sample:
+        dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
 
-    # dataset.corrupt(missing_type="perc", missing_size=50)
-    dataloader = dataset.get_dataloader(
-        use_corrupted_data=False, shuffle=False, batch_size=args.batch_size
-    )
-    assert not torch.isnan(dataset.original_data[dataset.validation_mask]).any(), (
-        "Missing values present under evaluation mask (run)"
-    )
     spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
     temporal_graph_technique = args.temporal_graph_technique[0]
     temporal_graph_params = args.temporal_graph_technique[1:]
     spatial_graph_param = float(spatial_graph_param)
-
-    metrics = {}
-    metrics.update(vars(args))
 
     spatial_graph_time = 0.0
     if use_spatial:
@@ -750,7 +447,7 @@ def run(args: Namespace) -> None:
             temporal_graph_params,
         )
 
-    metrics.update({"spatial_graph_time": spatial_graph_time})
+    metrics_data.update({"spatial_graph_time": spatial_graph_time})
 
     if args.graph_stats:
         save_stats_path = args.save_path
@@ -761,38 +458,199 @@ def run(args: Namespace) -> None:
             )
             save_graph_characteristics(spatial_adj_matrix, save_path)
 
-    if args.downstream_task:
-        spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
+    # if args.downstream_task:
+    gnn_model = None
+    spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
+    print(f"Running using model {args.model}")
+    if model == "stgi":
+        model_kwargs = {
+            "in_dim": 1,
+            "hidden_dim": args.d_hidden,
+            "num_layers": args.layer_num,
+            "layer_type": args.layer_type,
+            "kernel_size": args.kernel_size,
+            "use_spatial": use_spatial,
+            "use_temporal": use_temporal,
+            "temporal_graph_fn": temporal_graph_fn,
+            "add_self_loops": False,
+        }
+        gnn_model = STGI
+    elif model == "grin":
+        with open("./downstream/imputation/models/GRIN/config.yaml", "r") as f:
+            config_args = yaml.safe_load(f)
+        for key, value in config_args.items():
+            setattr(args, key, value)
+        model_kwargs = {
+            "adj": spatial_adj_matrix,
+            "d_in": dm.d_in,
+            "d_hidden": args.d_hidden,
+            "d_ff": args.d_ff,
+            "ff_dropout": args.ff_dropout,
+            "n_layers": args.layer_num,
+            "kernel_size": args.kernel_size,
+            "decoder_order": args.decoder_order,
+            "global_att": args.global_att,
+            "d_u": args.d_u,
+            "d_emb": args.d_emb,
+            "layer_norm": args.layer_norm,
+            "merge": args.merge,
+            "impute_only_holes": args.impute_only_holes,
+        }
+        gnn_model = GRINet
+    else:
+        raise ValueError(f"Unsupported model {model}")
 
-        stgi = STGI(
-            in_dim=1,
-            hidden_dim=args.hidden_dim,
-            num_layers=args.layer_num,
-            layer_type=args.layer_type,
-            use_spatial=use_spatial,
-            use_temporal=use_temporal,
-            temporal_graph_fn=temporal_graph_fn,
-            add_self_loops=False,
+    assert gnn_model is not None, "Model instantiation failed"
+
+    loss_fn = MaskedMAELoss()
+
+    metrics = {
+        "mae": MaskedMAE(compute_on_step=False),
+        "mape": MaskedMAPE(compute_on_step=False),
+        "mse": MaskedMSE(compute_on_step=False),
+        "mre": MaskedMRE(compute_on_step=False),
+        "mre2": MaskedMRE2(compute_on_step=False),
+        "rmse": MaskedRMSE(compute_on_step=False),
+        "smape": MaskedSMAPE(compute_on_step=False),
+        "pearson": MaskedPearson(),
+        "ccc": MaskedCCC(),
+        "cosime": MaskedCosineSimilarity(),
+        "lag": MaskedLagCorrelation(),
+    }
+    report = EpochReport()
+    report_callback = EpochReportCallback(report=report)
+    tb_logger = TensorBoardLogger(
+        save_dir=save_path_dir,
+        name="tensorboard",
+    )
+    exp_name = f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    logdir = os.path.join(save_path_dir, args.dataset, args.model, exp_name)
+    early_stop_callback = EarlyStopping(monitor="val_mae", patience=10, mode="min")
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=logdir, save_top_k=1, monitor="val_mae", mode="min"
+    )
+    task = Imputer(
+        model_class=gnn_model,
+        model_kwargs=model_kwargs,
+        optim_class=torch.optim.Adam,
+        optim_kwargs={"lr": args.learning_rate, "weight_decay": 0.0},
+        loss_fn=loss_fn,
+        scaled_target=True,
+        metrics=metrics,
+        scheduler_class=CosineAnnealingLR,
+        scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
+    )
+    trainer = pl.Trainer(
+        max_epochs=args.epochs,
+        logger=[tb_logger],
+        default_root_dir=save_path_dir,
+        gradient_clip_algorithm="norm",
+        gradient_clip_val=0.5,
+        enable_model_summary=False,
+        enable_progress_bar=True,
+        callbacks=[
+            RichProgressBar(),
+            ConsoleMetricsCallback(),
+            early_stop_callback,
+            checkpoint_callback,
+            report_callback,
+        ],
+        num_sanity_val_steps=2,
+    )
+
+    trainer.fit(task, datamodule=dm)
+    fit_report = report.as_dict()
+    metrics_data.update(fit_report)
+    task.load_state_dict(
+        torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
+            "state_dict"
+        ]
+    )
+    outputs = trainer.predict(task, datamodule=dm)
+    if outputs is None:
+        print("Trainer prediction return None results")
+        return
+
+    target, imputation, mask = aggregate_predictions(outputs)
+    imputation = imputation.squeeze(-1).cpu().numpy()
+    # pred_imp = pred_imp.squeeze(-1).cpu().numpy()
+
+    eval_mask = dataset.eval_mask[dm.test_slice]
+    df_true = dataset.df.iloc[dm.test_slice]
+
+    index = dataset.data_timestamps(dm.test_set.indices, flatten=False)["horizon"]
+
+    aggr_methods = ["mean"]
+
+    df_hats = prediction_dataframe(
+        imputation, index, dataset.df.columns, aggregate_by=aggr_methods
+    )
+    # df_imps = prediction_dataframe(
+    #     pred_imp, index, dataset.df.columns, aggregate_by=aggr_methods
+    # )
+    df_hats = dict(zip(aggr_methods, df_hats))
+    # df_imps = dict(zip(aggr_methods, df_imps))
+    prediction_metrics = {"prediction_metrics": {}}
+    # for aggr_by, df_hat in df_hats.items():
+    #     # Compute error
+    #     print(f"- AGGREGATE BY {aggr_by.upper()}")
+
+    for aggr_by, df_hat in df_hats.items():
+        print(f"- AGGREGATE BY {aggr_by.upper()}")
+
+        # Convert predictions and targets to torch tensors
+        pred_tensor = torch.tensor(df_hat.values)
+        true_tensor = torch.tensor(df_true.values)
+
+        # If your mask is 2D/3D, make sure its shape matches pred/true
+        mask_tensor = eval_mask.detach().clone().squeeze()
+
+        for metric_name, metric_fn in metrics.items():
+            # Reset metric state before computing
+            if hasattr(metric_fn, "reset"):
+                metric_fn.reset()
+
+            # Update metric with prediction, target, mask
+            metric_fn.update(pred_tensor, true_tensor, mask_tensor)
+
+            # Compute the metric
+            error = metric_fn.compute().item()
+            print(f" {metric_name}: {error:.4f}")
+            prediction_metrics["prediction_metrics"].update({metric_name: error})
+
+    metrics_data.update(prediction_metrics)
+
+    df_pred = df_hats["mean"]
+    df_true = dataset.df.iloc[dm.test_slice]
+    eval_mask = dataset.eval_mask[dm.test_slice]
+
+    with open(args.save_path, "w") as f:
+        json.dump(metrics_data, f, indent=2)
+
+    imputation_path = os.path.join(save_path_dir, "imputation_results.h5")
+    with h5py.File(imputation_path, "w") as f:
+        f.create_dataset(
+            "prediction",
+            data=df_pred.values,
+            compression="gzip",
+            compression_opts=4,
         )
-
-        stgi.to(device)
-        geo_optim = Adam(stgi.parameters(), lr=args.learning_rate)
-        stgi = train_imputer(
-            stgi,
-            dataset,
-            dataloader,
-            spatial_edge_index,
-            spatial_edge_weight,
-            geo_optim,
-            metrics,
-            args.epochs,
-            args.iter_num,
-            device=device,
-            verbose=args.verbose,
+        f.create_dataset(
+            "target",
+            data=df_true.values,
+            compression="gzip",
+            compression_opts=4,
         )
-
-        with open(args.save_path, "w") as f:
-            json.dump(metrics, f, indent=2)
+        f.create_dataset(
+            "mask",
+            data=eval_mask.numpy().astype(np.uint8),  # bool → uint8 is safer in HDF5
+            compression="gzip",
+            compression_opts=4,
+        )
+        f.create_dataset(
+            "time",
+            data=df_pred.index.values.astype("datetime64[ns]").astype("int64"),
+        )
 
 
 if __name__ == "__main__":

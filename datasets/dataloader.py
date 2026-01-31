@@ -3,7 +3,7 @@ from datasets.dataloaders.graphloader import GraphLoader
 from datasets.dataloaders.synthetic import SyntheticLoader
 
 
-def get_dataset(dataset_name: str, normalization_type=None) -> GraphLoader:
+def get_dataset(dataset_name: str, normalization_type: str = "min_max") -> GraphLoader:
     if dataset_name == "synthetic":
         return SyntheticLoader()
     if "air" in dataset_name:

@@ -2,6 +2,14 @@
 requires = ["maturin>=1.4"]
 build-backend = "maturin"
 
+[tool.maturin]
+bindings = "pyo3"
+# Don't bundle system libraries
+bindings-type = "extension-module"
+
+# Exclude PyTorch libraries from being bundled
+skip-auditwheel = true
+
 [project]
 name= "ts2graph"
 version = "0.1.0"

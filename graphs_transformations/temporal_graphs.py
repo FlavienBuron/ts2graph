@@ -1,5 +1,6 @@
 from typing import Callable, Optional
 
+import numpy as np
 import torch
 from ts2graph_rs import k_hop_graph as khgrs
 from ts2graph_rs import recurrence_graph
@@ -21,7 +22,6 @@ def k_hop_graph_rs(
         bidirectional=bidirectional,
         decay_name=decay_name,
     )
-
     edge_index = torch.from_numpy(edge_index).long()
     edge_weight = torch.from_numpy(edge_weight).float()
 
@@ -33,9 +33,21 @@ def recurrence_graph_rs(
     radius: float,
     embedding_dim: Optional[int] = None,
     time_lag: int = 1,
+    self_loop: bool = False,
 ):
     x = x.contiguous()
-    edge_index, edge_weight = recurrence_graph(x, radius, embedding_dim, time_lag)
+    # Ensure CPU and 1D float64 NumPy array
+    if isinstance(x, torch.Tensor):
+        x_np = x.detach().cpu().numpy().astype(np.float64)
+    elif isinstance(x, np.ndarray):
+        x_np = x.astype(np.float64)
+    else:
+        raise TypeError("x must be a torch.Tensor or np.ndarray")
+
+    x_np = np.ravel(x_np).astype(np.float64)
+    edge_index, edge_weight = recurrence_graph(
+        x_np, radius, embedding_dim, time_lag, self_loop
+    )
 
     edge_index = torch.from_numpy(edge_index).long()
     edge_weight = torch.from_numpy(edge_weight).float()
@@ -47,7 +59,7 @@ def k_hop_graph(
     x: torch.Tensor,
     num_nodes: int = 1,
     k: int = 1,
-    bidirectional: bool = True,
+    bidirectional: bool = False,
     decay: Optional[Callable[[int, int], float]] = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Construct a k-hop temporal graph: t -> {t+1, ..., t+k} over a dataset of shape [T, N, F],
@@ -68,8 +80,8 @@ def k_hop_graph(
 
         max_valid_k = time_steps - 1
         for offset in range(1, min(k, max_valid_k) + 1):
-            src = torch.arange(time_steps - offset)
-            dst = src + offset
+            dst = torch.arange(offset, time_steps)
+            src = dst - offset
 
             src += node_offset
             dst += node_offset

@@ -71,16 +71,18 @@ fi
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
         LR=0.007
+    elif [[ "$LAYER_NUMBER" -eq 2 ]]; then
+        LR=0.0004
     else
-        LR=0.0005
+        LR=0.0002
     fi
 fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/naive/ln${LAYER_NUMBER}/${LAYER_TYPE}/"
-mkdir -p "$EXP_DIR"
-LOGFILE="${EXP_DIR}${DATE}-naive-experiments.txt"
+EXP_DIR="./experiments/results/k_hops/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}/"
+mkdir -p "${EXP_DIR}/"
+LOGFILE="${EXP_DIR}${DATE}-k-hops-experiments.txt"
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 

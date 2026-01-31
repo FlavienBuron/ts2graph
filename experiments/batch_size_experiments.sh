@@ -2,7 +2,7 @@
 
 . .venv/bin/activate
 
-EPOCHS=30
+EPOCHS=200
 BATCH_SIZES=()
 HIDDEN_DIM=32
 LAYER_NUMBER=1
@@ -63,14 +63,17 @@ fi
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
         LR=0.007
+    elif [[ "$LAYER_NUMBER" -eq 2 ]]; then
+        LR=0.0004
     else
-        LR=0.0005
+        LR=0.0002
     fi
 fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/batch_size/"
+EXP_DIR="./experiments/results/bs/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}/"
+mkdir -p "${EXP_DIR}/"
 LOGFILE="${EXP_DIR}${DATE}-bs.txt"
 
 mkdir -p "$EXP_DIR"
@@ -89,12 +92,12 @@ if [ ${#CUSTOM_SPATIAL[@]} -gt 0 ]; then
     done
 else SPATIAL_TECH=(
     ["zero_0"]=0
-    ["zero_1"]=1
-    ["one_1"]=1
+    # ["zero_1"]=1
+    # ["one_1"]=1
     ["one_0"]=0
     ["loc"]=0.5
-    ["radius"]=0.75
-    ["knn"]=$KNN_VAL
+    ["radius"]=0.5
+    ["knn"]=0.5
     )
 fi
 

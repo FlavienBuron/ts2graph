@@ -81,6 +81,7 @@ fn build_temporal_edges(
                 Some(df) => df.decay_value(offset, max_k),
                 None => 1.0,
             };
+            println!("weight {:?}", weight);
 
             for i in 0..edge_len {
                 let src = base + i;

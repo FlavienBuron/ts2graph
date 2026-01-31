@@ -1,6 +1,4 @@
-use numpy::PyUntypedArrayMethods;
-use numpy::{PyArray1, PyArray2, PyReadonlyArrayDyn, PyReadwriteArrayDyn};
-use pyo3::types::{PyAny, PyAnyMethods};
+use numpy::{PyArray1, PyArray2, PyReadonlyArrayDyn, PyReadwriteArrayDyn, PyUntypedArrayMethods};
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 use std::fmt;
 use tch::{Kind, Tensor};
@@ -107,7 +105,7 @@ impl TensorConverter {
         }
     }
     /// Converts a PyTorch tensor (from Python) into a tch::Tensor
-    pub fn from_torch_tensor(py: Python, obj: &Bound<'_, PyAny>) -> PyResult<Tensor> {
+    pub fn from_torch_tensor(_py: Python, obj: &Bound<'_, PyAny>) -> PyResult<Tensor> {
         // Must be a torch tensor
         if !obj.hasattr("numpy")? {
             return Err(PyRuntimeError::new_err(

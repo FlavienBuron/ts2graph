@@ -78,18 +78,17 @@ class STGI(nn.Module):
     def forward(
         self,
         x,
-        mask,
+        observed_mask,
         spatial_edge_index,
         spatial_edge_weight,
         **kwargs,
     ):
         """
-        x: (batch_size, time_steps, num_nodes, feature_dim)
+        x: (time_steps, num_nodes, feature_dim)
         edge_index: Graph edges (from adjacency matrix)
         edge_weight: Graph edges weights (from adjacency matrix)
         """
-        time_steps, num_nodes, features = x.shape
-        device = x.device
+        time_steps, num_nodes, _ = x.shape
         ori_x = x.detach().clone()
         temporal_graph_time = 0.0
 
@@ -112,7 +111,7 @@ class STGI(nn.Module):
             x = torch.stack(spatial_outputs, dim=0)
 
         if self.use_spatial and self.use_temporal:
-            x[mask] = ori_x[mask]
+            x[observed_mask] = ori_x[observed_mask]
 
         # === Temporal GNN ===
         if self.use_temporal:
@@ -144,7 +143,7 @@ class STGI(nn.Module):
             x = torch.stack(temporal_outputs, dim=1)
 
         # x = self.layer_norm(x)
-        x = torch.tanh(x)
+        # x = torch.tanh(x)
 
         if torch.isnan(x).any():
             print("NaNs detected in imputed_x")

@@ -66,25 +66,38 @@ fi
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
         LR=0.007
+    elif [[ "$LAYER_NUMBER" -eq 2 ]]; then
+        LR=0.0004
     else
-        LR=0.0005
+        LR=0.0002
     fi
 fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/rec/"
+EXP_DIR="./experiments/results/rec/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}/"
+mkdir -p "${EXP_DIR}/"
 LOGFILE="${EXP_DIR}${DATE}-rec-experiments.txt"
 
 mkdir -p "$EXP_DIR"
 
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
-for RADIUS in $(seq 0.0 $FRACTION 1.0); do
-    printf -v RAD "%.2f" "$RADIUS"
-    echo "Running: -g rn $RAD -e $EPOCHS" | tee -a "$LOGFILE"
-    TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_rec_${RAD}_sl${SELF_LOOP}_${EPOCHS}.json"
-    python -u main.py -d $DATASET -sp $FILENAME -tg rec $RAD -e $EPOCHS \
-        -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -bs $BATCH_SIZE -v 0 | tee -a "$LOGFILE"
+# Generate the list of K values
+TIME_LAGS=$(awk -v max=$BATCH_SIZE '
+    BEGIN {
+        for (n = 1; n <= max; n *= 2) {
+            print n
+        }
+    }' | sort -n | uniq)
+
+for LAG in $TIME_LAGS; do
+    for RADIUS in $(seq 0.0 $FRACTION 1.0); do
+        printf -v RAD "%.2f" "$RADIUS"
+        echo "Running: -g rn $RAD $LAG -e $EPOCHS" | tee -a "$LOGFILE"
+        TIMESTAMP=$(date +%y%m%d_%H%M%S)
+        FILENAME="${EXP_DIR}${TIMESTAMP}_${DATASET}_ln${LAYER_NUMBER}_rec_${RAD}_sl${SELF_LOOP}_${EPOCHS}.json"
+        python -u main.py -d $DATASET -sp $FILENAME -tg rec $RAD $LAG -e $EPOCHS \
+            -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP -bs $BATCH_SIZE -v 0 | tee -a "$LOGFILE"
+    done
 done

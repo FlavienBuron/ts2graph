@@ -3,21 +3,33 @@ name = "ts2graph_rs"
 version = "0.1.0"
 edition = "2024"
 authors = ["Flavien Buron"]
+build = "build.rs"
 
 [lib]
 name = "ts2graph_rs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pyo3 = { version = "0.25.1", features = ["extension-module"] }
-ndarray = "0.15"
-numpy = "0.25"
-tch = { version = "0.18.1", features = ["cpython"] }
+pyo3 = { version = "0.27", features = ["extension-module"] }
+ndarray = "0.17"
+numpy = "0.27"
+tch = { version = "0.22", default-features = false, features = ["cpython"] }
 itertools = "0.14.0"
+extendr-api = "0.8.1"
+rand = "0.9.2"
+extendr-engine = "0.8.1"
+kdtree = "0.8"
+petgraph = "0.8.3"
+rayon = "1.11.0"
+rand_chacha = "0.9.0"
+pprof = "0.15.0"
+rand_distr = "0.5.1"
 
+[features]
+integration = []
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.8"
 
 [package.metadata.maturin]
 # Configuration for maturin (Python package building)

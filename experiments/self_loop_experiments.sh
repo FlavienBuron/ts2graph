@@ -45,15 +45,18 @@ done
 
 if [[ -z "$LR" || "$LR" == "0" ]]; then
     if [[ "$LAYER_NUMBER" -eq 1 ]]; then
-        LR=0.005
+        LR=0.007
+    elif [[ "$LAYER_NUMBER" -eq 2 ]]; then
+        LR=0.0004
     else
-        LR=0.0005
+        LR=0.0002
     fi
 fi
 
 
 DATE=$(date +%y%m%d)
-EXP_DIR="./experiments/results/self-loop/"
+EXP_DIR="./experiments/results/self_loop/ln${LAYER_NUMBER}/${LAYER_TYPE}/${DATE}/"
+mkdir -p "${EXP_DIR}/"
 LOGFILE="${EXP_DIR}${DATE}-sl-experiments.txt"
 
 mkdir -p "$EXP_DIR"
@@ -64,10 +67,11 @@ KNN_VAL=50
 [ "$DATASET" == "airq_small" ] && KNN_VAL=3
 
 declare -A TECHNIQUES=(
-    ["zero"]=0
-    ["one"]=1
+    ["zero_1"]=1
+    ["one_1"]=1
     ["loc"]=0.5
-    ["knn"]=$KNN_VAL
+    ["radius"]=0.5
+    ["knn"]=0.5
 )
 
 # Loop through epochs and groups
