@@ -3,54 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <title>Experiment Dashboard</title>
-    <style>
-      body {
-        font-family: sans-serif;
-        background-color: #111;
-        color: #f0f0f0;
-        margin: 2rem;
-      }
-      a {
-        font-size: 1.2rem;
-        color: #3ba1c5;
-      }
-      .graph-title {
-        margin-left: 30px;
-        font-size: 1.2rem;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css" />
   </head>
+
   <body>
-    <h1>Welcome to the Experiment Dashboard</h1>
-    <h2>Spatial graphs</h2>
-    <p style="margin-left: 20px">
-      <a href="spatial-graphs/combined-results/index.html"> View combined Spatial Results</a>
-    </p>
-    <p style="margin-left: 40px">  <p class="graph-title">KNN Graph results</p>
-      <ul style="margin-left: 60px">
-        <li><a href="spatial-graphs/knn-results/ln1/index.html">1 Layer →</a></li>
-        <li><a href="spatial-graphs/knn-results/ln2/index.html">2 Layers →</a></li>
-        <li><a href="spatial-graphs/knn-results/ln3/index.html">3 Layers →</a></li>
-        <li><a href="spatial-graphs/knn-results/combined/index.html">Layer Number Comparison →</a></li>
-      </ul>
-    </p>
-    <p style="margin-left: 40px">  <p class="graph-title">Radius Graph results</p>
-      
-      <ul style="margin-left: 60px">
-        <li><a href="spatial-graphs/rad-results/ln1/index.html">1 Layer →</a></li>
-        <li>2 layers</li>
-        <li>3 layers</li>
-      </ul>
-    </p>
-    <p style="margin-left: 40px">  <p class="graph-title">Location-based Graph results</p>
-      
-      <ul style="margin-left: 60px">
-        <li><a href="spatial-graphs/loc-results/ln1/index.html">1 Layer →</a></li>
-        <li>2 layers</li>
-        <li>3 layers</li>
-      </ul>
-    </p>
-    <h2>Temporal graphs</h2>
-    <p><a href="temporal-graphs/khop-results/index.html">View k-hops graphs Experiment Results →</a></p>
+    <h1>Experiment Dashboard</h1>
+
+    <h2>Similarity Graph Experiments</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Graph Type</th>
+          <th>Distance</th>
+          <th>Affinity</th>
+          <th>Results</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <!-- GRIN -->
+        <tr>
+          <td rowspan="2" class="model">GRIN</td>
+          <td>Threshold</td>
+          <td>Geo-distance</td>
+          <td>Gaussian</td>
+          <td>
+            <a class="action" href="similarity/grin/threshold/gaussian/geo/index.html"> View </a>
+          </td>
+        </tr>
+        <tr>
+          <td>KNN</td>
+          <td>Euclidean distance</td>
+          <td>Gaussian</td>
+          <td>
+            TBD
+            <!-- <a class="action" href="similarity/grin/knn/geo/binary/index.html"> View </a> -->
+          </td>
+        </tr>
+
+        <!-- STGI -->
+        <tr class="group-separator">
+          <td class="model">STGI</td>
+          <td>KNN</td>
+          <td>Correlation</td>
+          <td>Softmax</td>
+          <td>
+            TBD
+            <!-- <a class="action" href="similarity/stgi/knn/corr/softmax/index.html"> View </a> -->
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </body>
 </html>
