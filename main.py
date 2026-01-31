@@ -540,7 +540,7 @@ def run(args: Namespace) -> None:
         "smape": MaskedSMAPE(compute_on_step=False),
         "pearson": MaskedPearson(),
         "ccc": MaskedCCC(),
-        "cosime": MaskedCosineSimilarity(),
+        "cosine": MaskedCosineSimilarity(),
         "lag": MaskedLagCorrelation(),
     }
     report = EpochReport()
