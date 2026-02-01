@@ -649,6 +649,7 @@ def run(args: Namespace) -> None:
     df_pred = df_hats["mean"]
     df_true = dataset.df.iloc[dm.test_slice]
     eval_mask = dataset.eval_mask[dm.test_slice]
+    missing_mask = dataset.missing_mask[dm.test_slice]
 
     with open(args.save_path, "w") as f:
         json.dump(metrics_data, f, indent=2)
@@ -668,8 +669,14 @@ def run(args: Namespace) -> None:
             compression_opts=4,
         )
         f.create_dataset(
-            "mask",
+            "eval_mask",
             data=eval_mask.numpy().astype(np.uint8),  # bool → uint8 is safer in HDF5
+            compression="gzip",
+            compression_opts=4,
+        )
+        f.create_dataset(
+            "missing_mask",
+            data=missing_mask.numpy().astype(np.uint8),  # bool → uint8 is safer in HDF5
             compression="gzip",
             compression_opts=4,
         )
