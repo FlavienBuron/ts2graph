@@ -1,19 +1,18 @@
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Literal, Optional
 
 
 @dataclass
 class DistanceSpec:
     name: Literal["masked euclidean", "identity"]
-    normalize: bool = True
+    params: dict = field(default_factory=dict)
 
     def build(self):
         from .registry import DISTANCE_REGISTRY
 
         cls = DISTANCE_REGISTRY[self.name]
-        kwargs = {k: v for k, v in vars(self).items() if k != "name" and v is not None}
-        return cls(**kwargs)
+        return cls(**self.params)
 
     def to_dict(self) -> dict:
         return asdict(self)
