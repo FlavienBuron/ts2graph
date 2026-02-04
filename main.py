@@ -337,8 +337,7 @@ def get_spatial_graph(
             #     full_dataset=args.full_dataset,
             # )
         else:
-            adj_matrix = dataset.get_knn_graph(k=1.0, loop=False, cosine=False)
-            adj_matrix = torch.zeros_like(adj_matrix)
+            adj_matrix = torch.zeros((dataset.n_nodes, dataset.n_nodes))
         end = perf_counter()
     total_time = end - start
     return adj_matrix, total_time
