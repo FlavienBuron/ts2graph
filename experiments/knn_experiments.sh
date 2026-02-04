@@ -98,9 +98,9 @@ LOGFILE="${EXP_DIR}${DATE}-knn-experiments.txt"
 echo "Running experiments on $DATE" >> "$LOGFILE"
 
 declare -A TECHNIQUES=(
-    ["zero_0"]=0
-    ["one_0"]=0
-    ["loc"]=0.5
+    # ["zero_0"]=0
+    # ["one_0"]=0
+    # ["loc"]=0.5
 )
 
 ORIGINAL=$SELF_LOOP
