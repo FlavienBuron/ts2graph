@@ -24,7 +24,7 @@ def get_percentile_radius(
     dists = (
         torch.cdist(data, data, p=2) if not cosine else 1 - torch.matmul(data, data.T)
     )
-    mask_self = ~torch.eye(data.shape[0], dtype=torch.bool)
+    mask_self = ~torch.eye(data.shape[1], dtype=torch.bool)
     dists = dists[mask_self]  # remove self-distances
 
     min_dist = dists.min()
@@ -38,7 +38,7 @@ def get_percentile_radius(
 
 def get_percentile_k(data: torch.Tensor, percentile: float, loop: bool = False) -> int:
     shape = data.shape
-    max_k = shape[0] if loop else shape[0] - 1
+    max_k = shape[1] if loop else shape[1] - 1
 
     k = round(percentile * max_k)
     print(f"{data.shape=} {max_k=} {k=}")
