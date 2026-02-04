@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict, dataclass, field
-from typing import Literal, Optional
+from typing import Literal
 
 
 @dataclass
@@ -25,13 +25,13 @@ class DistanceSpec:
 @dataclass
 class AffinitySpec:
     name: Literal["gaussian kernel"]
+    params: dict = field(default_factory=dict)
 
     def build(self):
         from .registry import AFFINITY_REGISTRY
 
         cls = AFFINITY_REGISTRY[self.name]
-        kwargs = {k: v for k, v in vars(self).items() if k != "name" and v is not None}
-        return cls(**kwargs)
+        return cls(**self.params)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -44,16 +44,14 @@ class AffinitySpec:
 @dataclass
 class SparsifierSpec:
     name: Literal["topk", "threshold"]
-    k: Optional[int] = None
-    threshold: Optional[float] = None
+    params: dict = field(default_factory=dict)
     # symmetric: bool = True
 
     def build(self):
         from .registry import SPARCITY_REGISTRY
 
         cls = SPARCITY_REGISTRY[self.name]
-        kwargs = {k: v for k, v in vars(self).items() if k != "name" and v is not None}
-        return cls(**kwargs)
+        return cls(**self.params)
 
     def to_dict(self) -> dict:
         return asdict(self)

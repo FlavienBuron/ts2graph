@@ -16,9 +16,9 @@ def knn_graph(
     **kwargs,
 ) -> SimilarityGraph:
     graph = SimilarityGraphSpec(
-        distance=DistanceSpec(name=distance, **kwargs),
-        affinity=AffinitySpec(name=affinity, **kwargs),
-        sparsifier=SparsifierSpec(name="topk", k=k, **kwargs),
+        distance=DistanceSpec(name=distance, params=kwargs),
+        affinity=AffinitySpec(name=affinity, params=kwargs),
+        sparsifier=SparsifierSpec(name="topk", params={"k": k, **kwargs}),
     )
     return graph.build()
 
@@ -30,8 +30,10 @@ def radius_graph(
     **kwargs,
 ) -> SimilarityGraph:
     graph = SimilarityGraphSpec(
-        distance=DistanceSpec(name=distance, **kwargs),
-        affinity=AffinitySpec(name=affinity, **kwargs),
-        sparsifier=SparsifierSpec(name="threshold", threshold=threshold, **kwargs),
+        distance=DistanceSpec(name=distance, params=kwargs),
+        affinity=AffinitySpec(name=affinity, params=kwargs),
+        sparsifier=SparsifierSpec(
+            name="topk", params={"threshold": threshold, **kwargs}
+        ),
     )
     return graph.build()
