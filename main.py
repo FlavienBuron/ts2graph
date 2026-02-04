@@ -337,6 +337,17 @@ def get_spatial_graph(
             #     full_dataset=args.full_dataset,
             # )
         else:
+            data = dataset.data[args.train_slice]
+            mask = dataset.mask[args.train_slice]
+            real_k = get_percentile_k(data, param, args.self_loop)
+            graph = knn_graph(
+                k=real_k,
+                distance="masked euclidean",
+                affinity="gaussian kernel",
+                binary=False,
+                keep_self_loop=args.self_loop,
+            )
+            adj_matrix = graph(x=data, mask=mask)
             adj_matrix = torch.zeros((dataset.n_nodes, dataset.n_nodes))
         end = perf_counter()
     total_time = end - start
