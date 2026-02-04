@@ -10,7 +10,8 @@ class GaussianKernel(AffinityFunction):
     requires_non_negative = True
     epsilon = 1e-6
 
-    def __init__(self, theta: str = "std") -> None:
+    def __init__(self, theta: str = "std", **kwargs) -> None:
+        super().__init__(**kwargs)
         self.theta = theta
 
     def __call__(self, D: torch.Tensor):

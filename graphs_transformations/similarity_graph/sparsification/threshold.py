@@ -18,7 +18,9 @@ class Threshold(SparsificationFunction):
         binary: bool = False,
         keep_self_loop: bool = False,
         make_symmetric: bool = True,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.threshold = threshold
         self.binary = binary
         self.keep_self_loop = keep_self_loop

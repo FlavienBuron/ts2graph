@@ -9,6 +9,9 @@ class AffinityFunction(ABC):
     preserves_order: bool = True
     output_range: str = "[0, 1]"
 
+    def __init__(self, **kwargs):
+        pass
+
     @abstractmethod
     def __call__(self, D: torch.Tensor) -> torch.Tensor:
         """Convert a distance or similarity matrix D

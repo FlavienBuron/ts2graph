@@ -12,8 +12,8 @@ class MaskedEuclidean(DistanceFunction):
     supports_mask = True
     bounded = False
 
-    def __init__(self, normalize: bool = True) -> None:
-        super().__init__()
+    def __init__(self, normalize: bool = True, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.normalize = normalize
 
     def __call__(self, X: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:

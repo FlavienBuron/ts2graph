@@ -18,7 +18,9 @@ class TopK(SparsificationFunction):
         binary: bool = False,
         keep_self_loop: bool = False,
         make_symmetric: bool = True,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.k = k
         self.binary = binary
         self.keep_self_loop = keep_self_loop
