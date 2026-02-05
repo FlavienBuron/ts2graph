@@ -39,5 +39,4 @@ class MaskedEuclidean(DistanceFunction):
                     Dij = torch.linalg.norm(diff)
                 D[i, j] = D[j, i] = Dij
         D.fill_diagonal_(0.0)
-        print(f"DEBUG: masked euclidean: {D}")
         return D
