@@ -330,7 +330,7 @@ def get_spatial_graph(
             gamma=0.1,
         )
         adj_matrix = graph(x=data, mask=mask)
-        if param == 0.0 and adj_matrix.is_nonzero():
+        if param == 0.0 and torch.all(adj_matrix != 0.0).bool():
             # In case we want empty graph but somehow adj is not 0
             adj_matrix = torch.zeros_like(adj_matrix)
         end = perf_counter()
