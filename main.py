@@ -318,36 +318,21 @@ def get_spatial_graph(
     else:
         start = perf_counter()
         param = parameter
-        if param > 0.0:
-            data = dataset.data[args.train_slice]
-            mask = dataset.mask[args.train_slice]
-            real_k = get_percentile_k(data, param, args.self_loop)
-            graph = knn_graph(
-                k=real_k,
-                distance="masked euclidean",
-                affinity="gaussian kernel",
-                binary=False,
-                keep_self_loop=args.self_loop,
-                gamma=0.1,
-            )
-            adj_matrix = graph(x=data, mask=mask)
-            if param == 0.0 and adj_matrix.is_nonzero():
-                # In case we want empty graph but somehow adj is not 0
-                adj_matrix = torch.zeros_like(adj_matrix)
-        else:
-            data = dataset.data[args.train_slice]
-            mask = dataset.mask[args.train_slice]
-            real_k = get_percentile_k(data, 0.5, args.self_loop)
-            graph = knn_graph(
-                k=real_k,
-                distance="masked euclidean",
-                affinity="gaussian kernel",
-                binary=False,
-                keep_self_loop=args.self_loop,
-                gamma=0.1,
-            )
-            adj_matrix = graph(x=data, mask=mask)
-            adj_matrix = torch.zeros((dataset.n_nodes, dataset.n_nodes))
+        data = dataset.data[args.train_slice]
+        mask = dataset.mask[args.train_slice]
+        real_k = get_percentile_k(data, param, args.self_loop)
+        graph = knn_graph(
+            k=real_k,
+            distance="masked euclidean",
+            affinity="gaussian kernel",
+            binary=False,
+            keep_self_loop=args.self_loop,
+            gamma=0.1,
+        )
+        adj_matrix = graph(x=data, mask=mask)
+        if param == 0.0 and adj_matrix.is_nonzero():
+            # In case we want empty graph but somehow adj is not 0
+            adj_matrix = torch.zeros_like(adj_matrix)
         end = perf_counter()
     total_time = end - start
     return adj_matrix, total_time
