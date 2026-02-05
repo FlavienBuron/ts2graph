@@ -41,7 +41,7 @@ def get_percentile_k(data: torch.Tensor, percentile: float, loop: bool = False) 
     max_k = shape[1] if loop else shape[1] - 1
 
     k = round(percentile * max_k)
-    print(f"{data.shape=} {max_k=} {k=}")
+    print(f"{percentile=} {data.shape[1]=} {max_k=} {k=}")
 
     return max(1, min(k, max_k))
 
