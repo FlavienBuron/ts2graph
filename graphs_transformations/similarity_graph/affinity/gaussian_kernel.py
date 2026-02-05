@@ -21,6 +21,6 @@ class GaussianKernel(AffinityFunction):
         else:
             theta = D[valid].std()
         theta = theta.clamp_min(self.epsilon)
-        A = torch.exp(-((D / theta) ** 2))
+        A = torch.exp(-0.1 * ((D / theta) ** 2))
         A[~valid] = 0.0
         return A
