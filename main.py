@@ -346,7 +346,7 @@ def get_spatial_graph(
                 affinity="gaussian kernel",
                 binary=False,
                 keep_self_loop=args.self_loop,
-                gamme=0.1,
+                gamma=0.2,
             )
             adj_matrix = graph(x=data, mask=mask)
             print(f"DEBUG: {adj_matrix=}")
