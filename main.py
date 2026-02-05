@@ -348,6 +348,7 @@ def get_spatial_graph(
                 keep_self_loop=args.self_loop,
             )
             adj_matrix = graph(x=data, mask=mask)
+            __import__("pprint").pprint("DEBUG: adj= ", adj_matrix)
             adj_matrix = torch.zeros((dataset.n_nodes, dataset.n_nodes))
         end = perf_counter()
     total_time = end - start
