@@ -43,6 +43,8 @@ class TopK(SparsificationFunction):
 
         if self.keep_self_loop:
             A_sparse.diagonal().copy_(A_ori.diagonal())
+        else:
+            A_sparse.fill_diagonal_(0.0)
 
         if self.make_symmetric:
             A_sparse = torch.maximum(A_sparse, A_sparse.T)

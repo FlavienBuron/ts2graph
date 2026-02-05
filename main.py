@@ -339,7 +339,7 @@ def get_spatial_graph(
         else:
             data = dataset.data[args.train_slice]
             mask = dataset.mask[args.train_slice]
-            real_k = get_percentile_k(data, 0.5, args.self_loop)
+            real_k = get_percentile_k(data, param, args.self_loop)
             graph = knn_graph(
                 k=real_k,
                 distance="masked euclidean",
