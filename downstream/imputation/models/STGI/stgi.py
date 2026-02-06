@@ -21,6 +21,7 @@ class STGI(nn.Module):
         use_spatial: bool = True,
         use_temporal: bool = False,
         temporal_graph_fn: Optional[Callable] = None,
+        impute_only_holes=True,
         **kwargs,
     ):
         super(STGI, self).__init__()
@@ -33,6 +34,8 @@ class STGI(nn.Module):
         self.use_spatial = use_spatial
         self.use_temporal = use_temporal
         self.temporal_graph_fn = temporal_graph_fn
+
+        self.impute_only_holes = impute_only_holes
 
         if not use_spatial and not use_temporal:
             print(
@@ -158,7 +161,8 @@ class STGI(nn.Module):
 
             channel_outputs.append(x_c)
         x_out = torch.stack(channel_outputs, dim=1)
-        x_out = torch.where(ori_mask, ori_x, x_out)
+        if self.impute_only_holes and not self.training:
+            x_out = torch.where(ori_mask, ori_x, x_out)
         x_out = rearrange(
             x_out, "batches channels nodes steps -> batches steps nodes channels"
         )
