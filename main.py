@@ -284,6 +284,7 @@ def get_spatial_graph(
     technique: str, parameter: float, dataset: GraphLoader, args: Namespace
 ) -> tuple[torch.Tensor, float]:
     total_time = 0.0
+    N = dataset.n_nodes
     if "loc" in technique:
         start = perf_counter()
         graph = radius_graph(
@@ -293,15 +294,13 @@ def get_spatial_graph(
         end = perf_counter()
     elif "zero" in technique:
         start = perf_counter()
-        adj_matrix = dataset.get_geolocation_graph(threshold=parameter)
-        adj_matrix = torch.zeros_like(adj_matrix)
+        adj_matrix = torch.zeros((N, N))
         if args.self_loop:
             adj_matrix.fill_diagonal_(1.0)
         end = perf_counter()
     elif "one" in technique:
         start = perf_counter()
-        adj_matrix = dataset.get_geolocation_graph(threshold=parameter)
-        adj_matrix = torch.ones_like(adj_matrix)
+        adj_matrix = torch.ones((N, N))
         if not bool(args.self_loop):
             adj_matrix.fill_diagonal_(0.0)
         end = perf_counter()
@@ -321,6 +320,9 @@ def get_spatial_graph(
         data = dataset.data[args.train_slice]
         mask = dataset.mask[args.train_slice]
         real_k = get_percentile_k(data, param, args.self_loop)
+        if real_k == 0:
+            adj_matrix = torch.zeros((N, N))
+
         graph = knn_graph(
             k=real_k,
             distance="masked euclidean",
@@ -330,9 +332,6 @@ def get_spatial_graph(
             gamma=0.1,
         )
         adj_matrix = graph(x=data, mask=mask)
-        if param == 0.0 and adj_matrix.count_nonzero() != 0:
-            # In case we want empty graph but somehow adj is not 0
-            adj_matrix = torch.zeros_like(adj_matrix)
         end = perf_counter()
     total_time = end - start
     return adj_matrix, total_time
