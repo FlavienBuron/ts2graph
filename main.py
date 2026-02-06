@@ -574,6 +574,7 @@ def run(args: Namespace) -> None:
             report_callback,
         ],
         num_sanity_val_steps=2,
+        log_every_n_steps=16,
     )
 
     trainer.fit(task, datamodule=dm)
