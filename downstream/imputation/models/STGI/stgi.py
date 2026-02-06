@@ -77,10 +77,10 @@ class STGI(nn.Module):
 
     def forward(
         self,
-        x,
-        observed_mask,
-        spatial_edge_index,
-        spatial_edge_weight,
+        x: torch.Tensor,
+        mask: torch.Tensor,
+        spatial_edge_index: torch.Tensor,
+        spatial_edge_weight: torch.Tensor,
         **kwargs,
     ):
         """
