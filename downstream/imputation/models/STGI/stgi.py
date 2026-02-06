@@ -110,7 +110,7 @@ class STGI(nn.Module):
 
                 for batch in range(B):
                     for step in range(S):
-                        x_t = x_c[batch, :, step]
+                        x_t = x_c[batch, :, step].unsqueeze(-1)
                         for i, gnn_layer in enumerate(self.gnn_layers):
                             if isinstance(gnn_layer, pyg_nn.GCNConv):
                                 x_t = gnn_layer(
@@ -122,7 +122,7 @@ class STGI(nn.Module):
                                 x_t = gnn_layer(x_t, self.spatial_edge_index)
                             if i < len(self.gnn_layers) - 1:
                                 x_t = F.relu(x_t)
-                        spatial_outputs[batch, :, step] = x_t
+                        spatial_outputs[batch, :, step] = x_t.squeeze(-1)
 
                 x_c = torch.where(m_c, x_c, spatial_outputs)
 
