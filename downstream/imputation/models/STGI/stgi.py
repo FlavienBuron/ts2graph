@@ -127,7 +127,8 @@ class STGI(nn.Module):
                                 x_t = F.relu(x_t)
                         spatial_outputs[batch, :, step] = x_t.squeeze(-1)
 
-                x_c = torch.where(m_c, x_c, spatial_outputs)
+                # x_c = torch.where(m_c, x_c, spatial_outputs)
+                x_c = spatial_outputs
 
             # === Temporal GNN ===
             if self.use_temporal:
@@ -157,7 +158,8 @@ class STGI(nn.Module):
                                 x_node = F.relu(x_node)
                         temporal_outputs[batch, node, :]
 
-                x_c = torch.where(m_c, x_c, temporal_outputs)
+                # x_c = torch.where(m_c, x_c, temporal_outputs)
+                x_c = temporal_outputs
 
             channel_outputs.append(x_c)
         x_out = torch.stack(channel_outputs, dim=1)
