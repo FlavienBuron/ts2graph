@@ -17,7 +17,6 @@ import yaml
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProgressBar
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch_geometric.utils import dense_to_sparse
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
@@ -480,12 +479,12 @@ def run(args: Namespace) -> None:
 
     # if args.downstream_task:
     gnn_model = None
-    spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
     print(f"Running using model {args.model}")
     if model == "stgi":
         model_kwargs = {
-            "in_dim": 1,
-            "hidden_dim": args.d_hidden,
+            "adj": spatial_adj_matrix,
+            "in_dim": dm.d_in,
+            "hidden_dim": args.hidden_dim,
             "num_layers": args.layer_num,
             "layer_type": args.layer_type,
             "kernel_size": args.kernel_size,

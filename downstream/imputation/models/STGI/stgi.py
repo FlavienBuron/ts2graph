@@ -7,11 +7,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.nn as pyg_nn
 from einops import rearrange
+from torch_geometric.utils import dense_to_sparse
 
 
 class STGI(nn.Module):
     def __init__(
         self,
+        adj,
         in_dim,
         hidden_dim,
         num_layers,
@@ -27,6 +29,7 @@ class STGI(nn.Module):
             raise ValueError(f"Model type '{layer_type}' not found in torch_geometric")
 
         ModelClass = getattr(pyg_nn, layer_type)
+        self.spatial_edge_index, self.spatial_edge_weight = dense_to_sparse(adj)
         self.use_spatial = use_spatial
         self.use_temporal = use_temporal
         self.temporal_graph_fn = temporal_graph_fn
@@ -80,8 +83,6 @@ class STGI(nn.Module):
         self,
         x: torch.Tensor,
         mask: torch.Tensor,
-        spatial_edge_index: torch.Tensor,
-        spatial_edge_weight: torch.Tensor,
         **kwargs,
     ):
         """
@@ -113,10 +114,12 @@ class STGI(nn.Module):
                         for i, gnn_layer in enumerate(self.gnn_layers):
                             if isinstance(gnn_layer, pyg_nn.GCNConv):
                                 x_t = gnn_layer(
-                                    x_t, spatial_edge_index, spatial_edge_weight
+                                    x_t,
+                                    self.spatial_edge_index,
+                                    self.spatial_edge_weight,
                                 )
                             else:
-                                x_t = gnn_layer(x_t, spatial_edge_index)
+                                x_t = gnn_layer(x_t, self.spatial_edge_index)
                             if i < len(self.gnn_layers) - 1:
                                 x_t = F.relu(x_t)
                         spatial_outputs[batch, :, step] = x_t
