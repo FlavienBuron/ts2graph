@@ -43,7 +43,7 @@ def get_percentile_k(data: torch.Tensor, percentile: float, loop: bool = False) 
     k = round(percentile * max_k)
     print(f"{percentile=} {data.shape[1]=} {max_k=} {k=}")
 
-    return max(1, min(k, max_k))
+    return max(0, min(k, max_k))
 
 
 def embed_time_series(x: torch.Tensor, dim: int, time_delay: int) -> torch.Tensor:
