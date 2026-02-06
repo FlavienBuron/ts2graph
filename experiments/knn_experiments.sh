@@ -105,19 +105,6 @@ declare -A TECHNIQUES=(
 
 ORIGINAL=$SELF_LOOP
 
-for K in $(seq 0.0 $FRACTION 1.0); do
-    echo "Running: $MODEL -g knn $K -e $EPOCHS -l $LAYER_TYPE" | tee -a "$LOGFILE"
-    TIMESTAMP=$(date +%y%m%d_%H%M%S)
-    FILENAME="${EXP_DIR}${TIMESTAMP}_${MODEL}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_knn_${K}_sl${SELF_LOOP}_${EPOCHS}_${BATCH_SIZE}_${SHUFFLE}.json"
-    python -u main.py --model $MODEL -d $DATASET -bs $BATCH_SIZE -sp $FILENAME -sg knn $K -e $EPOCHS -l $LAYER_TYPE \
-           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
-        $( [[ "$FULL_DATASET" -eq 1 ]] && echo -fd ) \
-        $( [[ "$SHUFFLE" -eq 1 ]] && echo -sb ) \
-         -v 0 | tee -a "$LOGFILE"
-done
-
-SELF_LOOP=$ORIGINAL
-
 # Loop through fixed graphs techniques
 for G in "${!TECHNIQUES[@]}"; do
     V=${TECHNIQUES[$G]}
@@ -142,4 +129,17 @@ for G in "${!TECHNIQUES[@]}"; do
         $( [[ "$FULL_DATASET" -eq 1 ]] && echo -fd ) \
         $( [[ "$SHUFFLE" -eq 1 ]] && echo -sb ) \
         -v 0 | tee -a "$LOGFILE"
+done
+
+SELF_LOOP=$ORIGINAL
+
+for K in $(seq 0.0 $FRACTION 1.0); do
+    echo "Running: $MODEL -g knn $K -e $EPOCHS -l $LAYER_TYPE" | tee -a "$LOGFILE"
+    TIMESTAMP=$(date +%y%m%d_%H%M%S)
+    FILENAME="${EXP_DIR}${TIMESTAMP}_${MODEL}_${DATASET}_${STGI_MODE}_ln${LAYER_NUMBER}_knn_${K}_sl${SELF_LOOP}_${EPOCHS}_${BATCH_SIZE}_${SHUFFLE}.json"
+    python -u main.py --model $MODEL -d $DATASET -bs $BATCH_SIZE -sp $FILENAME -sg knn $K -e $EPOCHS -l $LAYER_TYPE \
+           -hd $HIDDEN_DIM -ln $LAYER_NUMBER -lr $LR -m $STGI_MODE -sl $SELF_LOOP \
+        $( [[ "$FULL_DATASET" -eq 1 ]] && echo -fd ) \
+        $( [[ "$SHUFFLE" -eq 1 ]] && echo -sb ) \
+         -v 0 | tee -a "$LOGFILE"
 done
