@@ -240,7 +240,7 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--samples_per_epoch",
         type=int,
-        default=5120,
+        default=512,
     )
     args = parser.parse_args()
     return args
