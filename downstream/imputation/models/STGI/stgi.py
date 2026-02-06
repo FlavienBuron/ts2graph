@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.nn as pyg_nn
+from einops import rearrange
 
 
 class STGI(nn.Module):
@@ -88,66 +89,84 @@ class STGI(nn.Module):
         edge_index: Graph edges (from adjacency matrix)
         edge_weight: Graph edges weights (from adjacency matrix)
         """
-        time_steps, num_nodes, _ = x.shape
+        x = rearrange(x, "batches steps nodes channels -> batches channels nodes steps")
+        mask = rearrange(
+            mask, "batches steps nodes channels -> batches channels nodes steps"
+        )
         ori_x = x.detach().clone()
-        temporal_graph_time = 0.0
+        ori_mask = mask.detach().clone()
 
-        # === Spatial GNN ===
-        if self.use_spatial:
-            spatial_outputs = []
+        B, C, N, S = x.shape
+        temporal_graph_times = []
 
-            for t in range(time_steps):
-                x_t = x[t]
-                for i, gnn_layer in enumerate(self.gnn_layers):
-                    if isinstance(gnn_layer, pyg_nn.GCNConv):
-                        x_t = gnn_layer(x_t, spatial_edge_index, spatial_edge_weight)
-                    else:
-                        x_t = gnn_layer(x_t, spatial_edge_index)
-                    if i < len(self.gnn_layers) - 1:
-                        x_t = F.relu(x_t)
-                spatial_outputs.append(x_t)
+        channel_outputs = []
+        for channel in range(C):
+            x_c = x[:, channel, :, :]  # [B, N, S]
+            m_c = mask[:, channel, :, :]  # [B, N, S]
+            # === Spatial GNN ===
+            if self.use_spatial:
+                spatial_outputs = torch.zeros_like(x_c)
 
-            # Stack to shape (time, nodes, out_dim)
-            x = torch.stack(spatial_outputs, dim=0)
+                for batch in range(B):
+                    for step in range(S):
+                        x_t = x_c[batch, :, step]
+                        for i, gnn_layer in enumerate(self.gnn_layers):
+                            if isinstance(gnn_layer, pyg_nn.GCNConv):
+                                x_t = gnn_layer(
+                                    x_t, spatial_edge_index, spatial_edge_weight
+                                )
+                            else:
+                                x_t = gnn_layer(x_t, spatial_edge_index)
+                            if i < len(self.gnn_layers) - 1:
+                                x_t = F.relu(x_t)
+                        spatial_outputs[batch, :, step] = x_t
 
-        if self.use_spatial and self.use_temporal:
-            x[observed_mask] = ori_x[observed_mask]
+                x_c = torch.where(m_c, x_c, spatial_outputs)
 
-        # === Temporal GNN ===
-        if self.use_temporal:
-            temporal_outputs = []
+            # === Temporal GNN ===
+            if self.use_temporal:
+                temporal_outputs = torch.zeros_like(x_c)
 
-            for node_idx in range(num_nodes):
-                # Get the time series for this node: shape (T, F)
-                x_node = x[:, node_idx, :]
-                temporal_graph_start = perf_counter()
-                if self.temporal_graph_fn is not None:
-                    temporal_edge_index, temporal_edge_weight = self.temporal_graph_fn(
-                        x=x_node
-                    )
-                else:
-                    temporal_edge_index = torch.empty((2, 0), dtype=torch.long)
-                    temporal_edge_weight = torch.empty((0,), dtype=torch.float)
-                temporal_graph_end = perf_counter()
-                temporal_graph_time = temporal_graph_end - temporal_graph_start
-                # Apply temporal GNN layers
-                for i, temp_gnn_layers in enumerate(self.temp_gnn_layers):
-                    x_node = temp_gnn_layers(
-                        x_node, temporal_edge_index, temporal_edge_weight
-                    )
-                    if i < len(self.temp_gnn_layers) - 1:
-                        x_node = F.relu(x_node)
-                temporal_outputs.append(x_node)
+                for batch in range(B):
+                    for node in range(N):
+                        x_node = x_c[batch, node, :]
+                        temporal_graph_start = perf_counter()
+                        if self.temporal_graph_fn is not None:
+                            temporal_edge_index, temporal_edge_weight = (
+                                self.temporal_graph_fn(x=x_node)
+                            )
+                        else:
+                            temporal_edge_index = torch.empty((2, 0), dtype=torch.long)
+                            temporal_edge_weight = torch.empty((0,), dtype=torch.float)
+                        temporal_graph_end = perf_counter()
+                        temporal_graph_times.append(
+                            temporal_graph_end - temporal_graph_start
+                        )
+                        # Apply temporal GNN layers
+                        for i, temp_gnn_layers in enumerate(self.temp_gnn_layers):
+                            x_node = temp_gnn_layers(
+                                x_node, temporal_edge_index, temporal_edge_weight
+                            )
+                            if i < len(self.temp_gnn_layers) - 1:
+                                x_node = F.relu(x_node)
+                        temporal_outputs[batch, node, :]
 
-            # Stack to shape (time, nodes, out_dim)
-            x = torch.stack(temporal_outputs, dim=1)
+                x_c = torch.where(m_c, x_c, temporal_outputs)
+
+            channel_outputs.append(x_c)
+        x_out = torch.stack(channel_outputs, dim=1)
+        x_out = torch.where(ori_mask, ori_x, x_out)
+        x_out = rearrange(
+            x_out, "batches channels nodes steps -> batches steps nodes channels"
+        )
 
         # x = self.layer_norm(x)
         # x = torch.tanh(x)
 
-        if torch.isnan(x).any():
+        if torch.isnan(x_out).any():
             print("NaNs detected in imputed_x")
             print("Stats:", x.min(), x.max(), x.mean())
             raise ValueError("NaNs in model output")
 
-        return x, temporal_graph_time
+        temporal_graph_times = torch.tensor(temporal_graph_times)
+        return x_out, temporal_graph_times
