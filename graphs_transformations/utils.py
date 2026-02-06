@@ -714,3 +714,44 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
     with open(f"{save_path}.json", "w") as f:
         json.dump(results, f, indent=4, default=str)
     print(f"Metrics saved to {save_path}.json")
+
+
+def debug_graph_characteristics(adjacency_matrix: torch.Tensor) -> None:
+    adj = adjacency_matrix.detach().cpu().numpy()
+
+    is_weighted = not np.array_equal(adj, adj.astype(bool).astype(float))
+
+    G = nx.from_numpy_array(adj)
+    n_nodes = G.number_of_nodes()
+    n_edges = G.number_of_edges()
+
+    # Basic stats, unweighted
+    binary_degrees = [d for _, d in G.degree(weight=None)]
+    binary_avg_degree = np.mean(binary_degrees) if binary_degrees != [] else 0
+    binary_median_degree = np.median(binary_degrees) if binary_degrees != [] else 0
+    binary_max_degree = max(binary_degrees) if binary_degrees != [] else 0
+    binary_min_degree = min(binary_degrees) if binary_degrees != [] else 0
+    binary_degree_std = np.std(binary_degrees) if binary_degrees != [] else 0
+
+    if is_weighted:
+        # If weighted graph, weighted basic stats
+        # Basic stats, unweighted
+        degrees = [d for _, d in G.degree(weight="weight")]
+        avg_degree = np.mean(degrees) if degrees != [] else 0
+        median_degree = np.median(degrees) if degrees != [] else 0
+        max_degree = max(degrees) if degrees != [] else 0
+        min_degree = min(degrees) if degrees != [] else 0
+        degree_std = np.std(degrees) if degrees != [] else 0
+    else:
+        # Basic stats, unweighted
+        degrees = binary_degrees
+        avg_degree = binary_avg_degree
+        median_degree = binary_median_degree
+        max_degree = binary_max_degree
+        min_degree = binary_min_degree
+        degree_std = binary_degree_std
+
+    print("DEBUG Graph characteristics:")
+    print(
+        f"Number of nodes: {n_nodes}; number of edges: {n_edges}\nAverage degree: {avg_degree}, min deg {min_degree}, max deg {max_degree}"
+    )

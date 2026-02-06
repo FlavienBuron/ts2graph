@@ -33,7 +33,7 @@ def radius_graph(
         distance=DistanceSpec(name=distance, params=kwargs),
         affinity=AffinitySpec(name=affinity, params=kwargs),
         sparsifier=SparsifierSpec(
-            name="topk", params={"threshold": threshold, **kwargs}
+            name="threshold", params={"threshold": threshold, **kwargs}
         ),
     )
     return graph.build()
