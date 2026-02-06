@@ -487,7 +487,6 @@ def run(args: Namespace) -> None:
             "hidden_dim": args.hidden_dim,
             "num_layers": args.layer_num,
             "layer_type": args.layer_type,
-            "kernel_size": args.kernel_size,
             "use_spatial": use_spatial,
             "use_temporal": use_temporal,
             "temporal_graph_fn": temporal_graph_fn,
