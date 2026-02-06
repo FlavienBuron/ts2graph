@@ -467,6 +467,9 @@ def run(args: Namespace) -> None:
             temporal_graph_params,
         )
 
+    print(f"DEBUG: {spatial_adj_matrix=} {spatial_adj_matrix[0].count_nonzero()=}")
+    return
+
     metrics_data.update({"spatial_graph_time": spatial_graph_time})
 
     if args.graph_stats:
