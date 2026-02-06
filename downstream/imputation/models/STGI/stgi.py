@@ -172,4 +172,5 @@ class STGI(nn.Module):
             raise ValueError("NaNs in model output")
 
         temporal_graph_times = torch.tensor(temporal_graph_times)
-        return x_out, temporal_graph_times
+        _pred = torch.tensor([])
+        return x_out, _pred, temporal_graph_times
