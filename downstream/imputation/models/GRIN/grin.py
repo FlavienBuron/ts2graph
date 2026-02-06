@@ -32,6 +32,7 @@ class GRINet(nn.Module):
         self.d_hidden = d_hidden
         self.d_u = int(d_u) if d_u is not None else 0
         self.d_emb = int(d_emb) if d_emb is not None else 0
+        print(f"DEBUG: {adj[0].count_nonzero()=}")
         self.register_buffer("adj", adj.detach().clone().float())
         self.impute_only_holes = impute_only_holes
         # print(f"DEBUG: {self.impute_only_holes=}")
