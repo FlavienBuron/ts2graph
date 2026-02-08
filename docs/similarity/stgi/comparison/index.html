@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Imputation metrics combined per Graph Construction technique - STGI</title>
+    <link rel="stylesheet" href="../../../style.css" />
+  </head>
+
+  <body>
+    <!-- Navigation -->
+    <nav class="breadcrumb">
+      <a href="../../../index.html">&#8678; Dashboard</a>
+    </nav>
+
+    <!-- Header -->
+    <header>
+      <h1>combined per graph construction for STGI</h1>
+      <p class="subtitle">
+        Comparin all graph construction techniques, <strong>Empty graph</strong> and
+        <strong>Fully Connected graph</strong> as baselines.
+      </p>
+    </header>
+
+    <!-- Description -->
+    <section class="description">
+      <p>
+        This page reports metrics for the imputation of missing values as a function of the graph sparsity parameter
+        (<code>k</code>) over the <strong>geographical affinity</strong> (affinity <= k). Vertical lines indicate the
+        minimum error; if the minimum coincides with a baseline, the line adopts its color and is placed at the axis
+        boundary.
+      </p>
+      <p>
+        The distance matrix is obtained using the <strong>identity function</strong> over the geographical distance
+        between the sensors.
+      </p>
+      <p>The affinity matrix is obtained using the <strong>gaussian kernel (RBF)</strong> over the distance matrix.</p>
+    </section>
+
+    <!-- Controls -->
+    <section class="controls">
+      <label for="chartSelect">Metric:</label>
+      <select id="chartSelect">
+        <option value="figures/combined_mae.html">Mean Absolute Error (MAE)</option>
+        <option value="figures/combined_mse.html">Mean Squared Error (MSE)</option>
+        <option value="figures/combined_rmse.html">Relative Mean Squared Error (RMSE)</option>
+        <option value="figures/combined_mre.html">Mean Relative Error (MRE)</option>
+        <option value="figures/combined_mape.html">Mean Absolute Percentage Error (MAPE)</option>
+        <option value="figures/combined_smape.html">Symmetric MAPE (SMAPE)</option>
+        <option value="figures/combined_pearson.html">Pearson Correlation</option>
+        <option value="figures/combined_ccc.html">Concordance Correlation Coeff. (CCC)</option>
+        <option value="figures/combined_cosine.html">Cosine Similarity</option>
+        <option value="figures/combined_lag.html">Lagged Correlation</option>
+      </select>
+    </section>
+
+    <!-- Plot -->
+    <section class="plot">
+      <iframe id="chartFrame" src="figures/combined_mae.html"></iframe>
+    </section>
+
+    <script>
+      const chartSelect = document.getElementById("chartSelect");
+      const chartFrame = document.getElementById("chartFrame");
+
+      chartSelect.addEventListener("change", () => {
+        chartFrame.src = chartSelect.value;
+      });
+    </script>
+  </body>
+</html>
