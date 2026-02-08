@@ -3,35 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <title>Experiment Dashboard</title>
-    <style>
-      body {
-        font-family: sans-serif;
-        background-color: #111;
-        color: #f0f0f0;
-        margin: 2rem;
-      }
-      a {
-        font-size: 1.2rem;
-        color: #3ba1c5;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css" />
   </head>
+
   <body>
-    <h1>Welcome to the Experiment Dashboard</h1>
-    <h2>Spatial graphs</h2>
-    <p style="margin-left: 20px">
-      <a href="spatial-graphs/combined-results/index.html"> View combined Spatial Results</a>
-    </p>
-    <p style="margin-left: 40px">
-      <a href="spatial-graphs/knn-results/index.html">View KNN graphs Experiment Results →</a>
-    </p>
-    <p style="margin-left: 40px">
-      <a href="spatial-graphs/rad-results/index.html">View radius graphs Experiment Results →</a>
-    </p>
-    <p style="margin-left: 40px">
-      <a href="spatial-graphs/loc-results/index.html">View geo-loc graphs Experiment Results →</a>
-    </p>
-    <h2>Temporal graphs</h2>
-    <p><a href="temporal-graphs/khop-results/index.html">View k-hops graphs Experiment Results →</a></p>
+    <h1>Experiment Dashboard</h1>
+
+    <h2>Similarity Graph Experiments</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Graph Type</th>
+          <th>Distance</th>
+          <th>Affinity</th>
+          <th>Results</th>
+          <th>Comparison</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <!-- GRIN -->
+        <tr>
+          <td rowspan="2" class="model">GRIN</td>
+          <td>Threshold</td>
+          <td>Geo-distance</td>
+          <td>Gaussian</td>
+          <td>
+            <a class="action" href="similarity/grin/threshold/gaussian/geo/index.html"> View </a>
+          </td>
+          <td rowspan="2">TBD</td>
+        </tr>
+        <tr>
+          <td>KNN</td>
+          <td>Euclidean distance</td>
+          <td>Gaussian</td>
+          <td>
+            <a class="action" href="similarity/grin/knn/gaussian/ed/index.html"> View </a>
+          </td>
+        </tr>
+
+        <!-- STGI -->
+        <tr class="group-separator">
+          <td rowspan="2" class="model">STGI</td>
+          <td>KNN</td>
+          <td>Euclidean Distance</td>
+          <td>Gaussian</td>
+          <td>
+            <a class="action" href="similarity/stgi/knn/gaussian/ed/index.html"> View </a>
+          </td>
+          <td rowspan="2">
+            <a class="action" href="similarity/stgi/comparison/index.html"> Compare</a>
+          </td>
+        </tr>
+        <tr>
+          <td>Threshold</td>
+          <td>Geo-distance</td>
+          <td>Gaussian</td>
+          <td>
+            <a class="action" href="similarity/stgi/threshold/gaussian/geo/index.html"> View </a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </body>
 </html>

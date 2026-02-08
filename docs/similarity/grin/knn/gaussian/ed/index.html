@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>KNN Graph – GRIN - Experiment Results</title>
+    <link rel="stylesheet" href="../../../../../style.css" />
+  </head>
+
+  <body>
+    <!-- Navigation -->
+    <nav class="breadcrumb">
+      <a href="../../../../../index.html">&#8678; Dashboard</a>
+    </nav>
+
+    <!-- Header -->
+    <header>
+      <h1>KNN Graph Experiments - GRIN</h1>
+      <p class="subtitle">
+        KNN graphs compared against <strong>Empty Graph</strong> and <strong>Fully Connected graph</strong> baselines.
+      </p>
+    </header>
+
+    <!-- Description -->
+    <section class="description">
+      <p>
+        This page reports metrics for the imputation of missing values as a function of the KNN parameter
+        (<em>k</em>) over the <strong>gaussian affinity</strong>. Here <em>k</em> is the percentile over the possible number of neighbors, such that for <em>N</em> nodes
+        <em>real_k=k*(N-1)</em> (or <em>real_k=k*N</em> if self-loops are allowed). Vertical lines indicate the minimum error or maximum correlation; if the minimum/maximum coincides with a baseline,
+        the line adopts its color and is placed at the axis boundary.
+      </p>
+      <p>
+        The distance matrix is obtained using the <strong>Masked Normalized Euclidean Distance</strong>, pair-wise
+        comparison between the time series (sensors). <strong>Masked</strong> refers to the masking of entries that are
+        completely or partially missing. Only full time points can be compared. <strong>Normalized</strong> refers to the act of normalizing
+        the distance by the <em>number of non-masked entries</em>, such that the distance is less biased toward short sequences
+        </thead>
+      </p>
+      <p>The affinity matrix is obtained using the <strong>gaussian kernel (RBF)</strong> over the distance matrix. The RBF parameter <strong>gamma</strong> is set to 0.1</p>
+      <p>/!\/!\/!\ Ran on sequences of length 512 instead of 5120 /!\/!\/!\</p>
+    </section>
+
+    <!-- Controls -->
+    <section class="controls">
+      <label for="chartSelect">Metric:</label>
+      <select id="chartSelect">
+        <option value="figures/knn_mae.html">Mean Absolute Error (MAE)</option>
+        <option value="figures/knn_mse.html">Mean Squared Error (MSE)</option>
+        <option value="figures/knn_rmse.html">Relative Mean Squared Error (RMSE)</option>
+        <option value="figures/knn_mre.html">Mean Relative Error (MRE)</option>
+        <option value="figures/knn_mape.html">Mean Absolute Percentage Error (MAPE)</option>
+        <option value="figures/knn_smape.html">Symmetric MAPE (SMAPE)</option>
+        <option value="figures/knn_pearson.html">Pearson Correlation</option>
+        <option value="figures/knn_ccc.html">Concordance Correlation Coeff. (CCC)</option>
+        <option value="figures/knn_cosine.html">Cosine Similarity</option>
+        <option value="figures/knn_lag.html">Lagged Correlation</option>
+      </select>
+    </section>
+
+    <!-- Plot -->
+    <section class="plot">
+      <iframe id="chartFrame" src="figures/knn_mae.html"></iframe>
+    </section>
+
+    <script>
+      const chartSelect = document.getElementById("chartSelect");
+      const chartFrame = document.getElementById("chartFrame");
+
+      chartSelect.addEventListener("change", () => {
+        chartFrame.src = chartSelect.value;
+      });
+    </script>
+  </body>
+</html>
