@@ -1,0 +1,17 @@
+defaults:
+  - /distance: masked euclidean
+  - /affinity: gaussian_kernel
+  - /sparsifier: topk
+  - _self_
+
+name: ed_rbf_topk
+
+# Affinity function config
+affinity:
+  gamma: 0.1
+
+# Sparsifier setting
+sparsifier:
+  k: ???
+
+label: ${sparsifier.k, null}

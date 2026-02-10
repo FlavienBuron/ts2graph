@@ -1,0 +1,5 @@
+name: stgi
+
+layer_type: GCNConv
+layer_num: 1
+hidden_dim: 32

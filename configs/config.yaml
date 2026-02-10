@@ -1,0 +1,18 @@
+defaults:
+  - experiment: default
+  - dataset: airq_small
+  - model: stgi
+  - training: default
+  - graph: geo_gaussian_thresh
+  - _self_
+
+graph_stats: false
+mode: s
+use_spatial: true
+use_temporal: false
+task: true
+
+paths:
+  root: ./experiments/results
+  save_path: ${path.root}/${model.name}/${graph.name}/ln${model.layer_num}/${model.layer_type}/${now:%Y%m%d}/
+  file_name: ${now:%Y%m%d_%H%M%S}_${model.name}_${dataset.name}_${mode}_${graph.label}.json

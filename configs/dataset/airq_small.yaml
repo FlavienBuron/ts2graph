@@ -1,0 +1,4 @@
+name: airq_small
+
+normalization_type: std
+in_sample: true

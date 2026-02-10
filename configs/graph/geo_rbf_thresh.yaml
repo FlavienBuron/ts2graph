@@ -1,0 +1,15 @@
+defaults:
+  - /distance: identity
+  - /affinity: gaussian_kernel
+  - /sparsifier: threshold
+  - _self_
+
+name: geo+gaussian+topk
+
+distance:
+  input: "coordinates"
+
+sparsifier:
+  threshold: ???
+
+label: ${sparsifier.threshold}

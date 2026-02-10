@@ -1,0 +1,5 @@
+learning_rate: 1e-3
+max_epochs: 200
+batch_size: 32
+shuffle_batch: true
+samples_per_epoch: 5120
