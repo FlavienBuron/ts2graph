@@ -77,7 +77,7 @@ class GraphLoader(Dataset, ABC):
             :: self.stride
         ]
 
-        self.scaler = None
+        self.training_slice = None
 
     def __len__(self) -> int:
         return len(self._indices)
@@ -92,6 +92,12 @@ class GraphLoader(Dataset, ABC):
     def training_mask(self):
         train = self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
         return train
+
+    @property
+    def training_data(self):
+        if self.training_slice is None:
+            raise ValueError("Provide the training_slice indices to the dataset")
+        return self.data[self.training_slice], self.mask[self.training_slice]
 
     @property
     def has_mask(self):

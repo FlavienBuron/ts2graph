@@ -3,7 +3,7 @@ defaults:
   - dataset: airq_small
   - model: stgi
   - training: default
-  - graph: geo_gaussian_thresh
+  - graph: base
   - _self_
 
 graph_stats: false

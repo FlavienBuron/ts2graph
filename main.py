@@ -10,10 +10,12 @@ from time import perf_counter
 from typing import Callable, Optional
 
 import h5py
+import hydra
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import yaml
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProgressBar
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -43,6 +45,12 @@ from downstream.imputation.metrics.metrics import (
 from downstream.imputation.models.GRIN.grin import GRINet
 from downstream.imputation.models.STGI.stgi import STGI
 from graphs_transformations.similarity_graph.graphs import knn_graph, radius_graph
+from graphs_transformations.similarity_graph.specs.specs import (
+    AffinitySpec,
+    DistanceSpec,
+    SimilarityGraphSpec,
+    SparsifierSpec,
+)
 from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
@@ -281,10 +289,24 @@ def get_decay_function(name: Optional[str]) -> Optional[Callable[[int, int], flo
 
 
 def get_spatial_graph(
-    technique: str, parameter: float, dataset: GraphLoader, args: Namespace
+    dataset: GraphLoader, cfg: DictConfig
 ) -> tuple[torch.Tensor, float]:
     total_time = 0.0
     N = dataset.n_nodes
+    graph = SimilarityGraphSpec(
+        distance=DistanceSpec(
+            name=cfg.graph.distance.name, params=cfg.graph.distance.params
+        ),
+        affinity=AffinitySpec(
+            name=cfg.graph.affinity.name,
+            params=cfg.graph.affinity.params,
+        ),
+        sparsifier=SparsifierSpec(
+            name=cfg.graph.sparsifier.name,
+            params=cfg.graph.sparsifier.params,
+        ),
+    ).build()
+
     if "loc" in technique:
         start = perf_counter()
         graph = radius_graph(
@@ -391,35 +413,38 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
     return empty_temporal_graph
 
 
-def run(args: Namespace) -> None:
+@hydra.main(version_base=None, config_path="configs", config_name="config")
+def run(cfg: DictConfig) -> None:
     print("#" * 100)
     print(args)
     # graph_builder = radius_graph(
     #     threshold=0.3, distance="identity", affinity="gaussian kernel"
     # )
     # graph = graph_builder.build()
-    save_path_dir = os.path.dirname(args.save_path)
-    model = args.model.lower()
-    stgi_mode = args.mode
-    if stgi_mode.lower() in ["st"]:
-        use_spatial = True
-        use_temporal = True
-    elif stgi_mode.lower() in ["t"]:
-        use_spatial = False
-        use_temporal = True
-    else:
-        use_spatial = True
-        use_temporal = False
+    save_path_dir = cfg.paths.save_path
+    os.makedirs(save_path_dir, exist_ok=True)
+    OmegaConf.save(cfg, os.path.join(cfg.paths.save_path, "resolved_config.yaml"))
+    model = cfg.model.lower()
+    # stgi_mode = cfg.mode
+    # if stgi_mode.lower() in ["st"]:
+    #     use_spatial = True
+    #     use_temporal = True
+    # elif stgi_mode.lower() in ["t"]:
+    #     use_spatial = False
+    #     use_temporal = True
+    # else:
+    #     use_spatial = True
+    #     use_temporal = False
 
-    print(f"{use_spatial=} {use_temporal=}")
+    print(f"{cfg.use_spatial=} {cfg.use_temporal=}")
 
     metrics_data = {}
-    metrics_data.update(vars(args))
+    metrics_data["config"] = OmegaConf.to_container(cfg, resolve=True)
 
-    dataset = get_dataset(args.dataset)
+    dataset = get_dataset(cfg.dataset)
 
     in_sample = True
-    train, val, test = dataset.grin_split(in_sample=in_sample)
+    train, val, test = dataset.grin_split(in_sample=cfg.dataset.in_sample)
     dm = DataModule(
         copy.deepcopy(dataset),
         train_indices=train,
@@ -431,7 +456,7 @@ def run(args: Namespace) -> None:
     # if out of sample in air, add values removed for evaluation in train set
     if "air" in args.dataset and not in_sample:
         dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
-    args.train_slice = dm.train_slice
+    dataset.training_slice = dm.train_slice
 
     spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
     temporal_graph_technique = args.temporal_graph_technique[0]
@@ -448,14 +473,12 @@ def run(args: Namespace) -> None:
     # print(f"DEBUG: {A=}")
 
     spatial_graph_time = 0.0
-    if use_spatial:
-        spatial_adj_matrix, spatial_graph_time = get_spatial_graph(
-            spatial_graph_technique, spatial_graph_param, dataset, args
-        )
+    if cfg.use_spatial:
+        spatial_adj_matrix, spatial_graph_time = get_spatial_graph(dataset, cfg)
     else:
         spatial_adj_matrix = torch.tensor([[]])
 
-    if use_temporal:
+    if cfg.use_temporal:
         temporal_graph_fn = get_temporal_graph_function(
             temporal_graph_technique,
             temporal_graph_params,
@@ -470,7 +493,7 @@ def run(args: Namespace) -> None:
 
     if args.graph_stats:
         save_stats_path = args.save_path
-        if use_spatial:
+        if cfg.use_spatial:
             save_path = os.path.join(
                 save_stats_path,
                 f"{args.dataset}_{spatial_graph_technique}_{spatial_graph_param}",

@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 
 from ..specs.registry import register_distance
@@ -7,6 +9,7 @@ from .base import DistanceFunction
 @register_distance("masked euclidean")
 class MaskedEuclidean(DistanceFunction):
     name = "masked euclidean"
+    input_kind = "series"
     symmetric = True
     non_negative = True
     supports_mask = True
@@ -16,7 +19,9 @@ class MaskedEuclidean(DistanceFunction):
         super().__init__(**kwargs)
         self.normalize = normalize
 
-    def __call__(self, X: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    def __call__(self, X: torch.Tensor, mask: Optional[torch.Tensor]) -> torch.Tensor:
+        if mask is None:
+            raise ValueError("Masked Euclidean Distance requires a masked to be passed")
         _, N, _ = X.shape
         D = torch.full((N, N), float("inf"))
 
