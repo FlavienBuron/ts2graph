@@ -186,7 +186,7 @@ def run(cfg: DictConfig) -> None:
     metrics_data = {}
     metrics_data["config"] = OmegaConf.to_container(cfg, resolve=True)
 
-    dataset = get_dataset(cfg.dataset)
+    dataset = get_dataset(cfg.dataset.name)
 
     train, val, test = dataset.grin_split(in_sample=cfg.dataset.in_sample)
     dm = DataModule(
