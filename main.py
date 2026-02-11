@@ -166,7 +166,7 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def run(cfg: DictConfig) -> None:
     print("#" * 100)
-    print(args)
+    print(cfg)
     save_path_dir = cfg.paths.save_path
     os.makedirs(save_path_dir, exist_ok=True)
     OmegaConf.save(cfg, os.path.join(cfg.paths.save_path, "resolved_config.yaml"))
@@ -193,10 +193,10 @@ def run(cfg: DictConfig) -> None:
         dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
     dataset.training_slice = dm.train_slice
 
-    spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
-    temporal_graph_technique = args.temporal_graph_technique[0]
-    temporal_graph_params = args.temporal_graph_technique[1:]
-    spatial_graph_param = float(spatial_graph_param)
+    # spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
+    # temporal_graph_technique = args.temporal_graph_technique[0]
+    # temporal_graph_params = args.temporal_graph_technique[1:]
+    # spatial_graph_param = float(spatial_graph_param)
 
     # D = graph(torch.from_numpy(dataset.distances.to_numpy()))
     # print(f"DEBUG: {D=}")
@@ -214,14 +214,15 @@ def run(cfg: DictConfig) -> None:
         spatial_adj_matrix = torch.tensor([[]])
 
     if cfg.use_temporal:
-        temporal_graph_fn = get_temporal_graph_function(
-            temporal_graph_technique,
-            temporal_graph_params,
-        )
+        pass
+        # temporal_graph_fn = get_temporal_graph_function(
+        #     temporal_graph_technique,
+        #     temporal_graph_params,
+        # )
     else:
         temporal_graph_fn = get_temporal_graph_function(
             "",
-            temporal_graph_params,
+            [0.1],
         )
 
     metrics_data.update({"spatial_graph_time": spatial_graph_time})
@@ -231,7 +232,7 @@ def run(cfg: DictConfig) -> None:
         if cfg.use_spatial:
             save_path = os.path.join(
                 save_stats_path,
-                f"{args.dataset}_{spatial_graph_technique}_{spatial_graph_param}",
+                f"{cfg.dataset.name}_{cfg.graph.name}_{cfg.graph.label}",
             )
             save_graph_characteristics(spatial_adj_matrix, save_path)
 
@@ -252,10 +253,11 @@ def run(cfg: DictConfig) -> None:
         }
         gnn_model = STGI
     elif model == "grin":
+        args = {}
         with open("./downstream/imputation/models/GRIN/config.yaml", "r") as f:
-            config_args = yaml.safe_load(f)
-        for key, value in config_args.items():
-            setattr(args, key, value)
+            args = yaml.safe_load(f)
+        # for key, value in config_args.items():
+        #     setattr(args, key, value)
         model_kwargs = {
             "adj": spatial_adj_matrix,
             "d_in": dm.d_in,
@@ -405,7 +407,7 @@ def run(cfg: DictConfig) -> None:
     eval_mask = dataset.eval_mask[dm.test_slice]
     missing_mask = dataset.missing_mask[dm.test_slice]
 
-    with open(args.save_path, "w") as f:
+    with open(cfg.save_path, "w") as f:
         json.dump(metrics_data, f, indent=2)
 
     imputation_path = os.path.join(save_path_dir, "imputation_results.h5")
@@ -441,8 +443,7 @@ def run(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    run(args)
+    run()
 
     # TODO: Transform dataset into standardized format
     # TODO: Check for the presence of adjacency data, positional data etc, or have the user use arg
