@@ -12,6 +12,8 @@ affinity:
 
 # Sparsifier setting
 sparsifier:
-  k: ???
+  k:
+    mode: fraction
+    value: ???
 
 label: ${sparsifier.k, null}

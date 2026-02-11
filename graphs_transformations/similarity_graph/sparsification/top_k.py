@@ -14,24 +14,41 @@ class TopK(SparsificationFunction):
 
     def __init__(
         self,
-        k: int,
+        k: dict,
         binary: bool = False,
         keep_self_loop: bool = False,
         make_symmetric: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.k = k
+        self.k_cfg = k
         self.binary = binary
         self.keep_self_loop = keep_self_loop
         self.make_symmetric = make_symmetric
 
+    def _resolve_k(self, num_nodes: int) -> int:
+        mode = self.k_cfg["mode"]
+        value = self.k_cfg["value"]
+
+        if mode == "absolute":
+            return int(value)
+
+        elif mode == "fraction":
+            if not (0.0 < value <= 1.0):
+                raise ValueError("Fractional k must be in ")
+            max_k = num_nodes - 1
+            k = round(value * max_k)
+            print(f"{value=} {num_nodes=} {max_k=} {k=}")
+            return max(0, min(k, max_k))
+        else:
+            raise ValueError(f"Unknown mode for k value resolutoin: {mode}")
+
     def __call__(self, A: torch.Tensor) -> torch.Tensor:
         N = A.size(0)
 
-        k = min(self.k, N - 1)
+        k = self._resolve_k(N)
 
-        A_ori = A.clone()
+        diag = A.diagonal().clone()
 
         A.fill_diagonal_(-torch.inf)
 
@@ -42,7 +59,7 @@ class TopK(SparsificationFunction):
         A_sparse = A * mask
 
         if self.keep_self_loop:
-            A_sparse.diagonal().copy_(A_ori.diagonal())
+            A_sparse.diagonal().copy_(diag)
         else:
             A_sparse.fill_diagonal_(0.0)
 

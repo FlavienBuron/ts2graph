@@ -1,5 +1,11 @@
+scaled_target: true
 learning_rate: 1e-3
 max_epochs: 200
 batch_size: 32
 shuffle_batch: true
 samples_per_epoch: 5120
+
+early_stopping:
+  monitor: val_mae
+  patience: 10
+  mode: "min"

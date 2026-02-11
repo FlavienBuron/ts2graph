@@ -44,17 +44,10 @@ from downstream.imputation.metrics.metrics import (
 )
 from downstream.imputation.models.GRIN.grin import GRINet
 from downstream.imputation.models.STGI.stgi import STGI
-from graphs_transformations.similarity_graph.graphs import knn_graph, radius_graph
-from graphs_transformations.similarity_graph.specs.specs import (
-    AffinitySpec,
-    DistanceSpec,
-    SimilarityGraphSpec,
-    SparsifierSpec,
-)
+from graphs_transformations.similarity_graph import similarity_graph
 from graphs_transformations.temporal_graphs import k_hop_graph, recurrence_graph_rs
 from graphs_transformations.ts2net import Ts2Net
 from graphs_transformations.utils import (
-    get_percentile_k,
     save_graph_characteristics,
 )
 from utils.callbacks import ConsoleMetricsCallback, EpochReportCallback
@@ -291,70 +284,10 @@ def get_decay_function(name: Optional[str]) -> Optional[Callable[[int, int], flo
 def get_spatial_graph(
     dataset: GraphLoader, cfg: DictConfig
 ) -> tuple[torch.Tensor, float]:
-    total_time = 0.0
-    N = dataset.n_nodes
-    graph = SimilarityGraphSpec(
-        distance=DistanceSpec(
-            name=cfg.graph.distance.name, params=cfg.graph.distance.params
-        ),
-        affinity=AffinitySpec(
-            name=cfg.graph.affinity.name,
-            params=cfg.graph.affinity.params,
-        ),
-        sparsifier=SparsifierSpec(
-            name=cfg.graph.sparsifier.name,
-            params=cfg.graph.sparsifier.params,
-        ),
-    ).build()
-
-    if "loc" in technique:
-        start = perf_counter()
-        graph = radius_graph(
-            threshold=parameter, distance="identity", affinity="gaussian kernel"
-        )
-        adj_matrix = graph(torch.from_numpy(dataset.distances.to_numpy()))
-        end = perf_counter()
-    elif "zero" in technique:
-        start = perf_counter()
-        adj_matrix = torch.zeros((N, N))
-        if args.self_loop:
-            adj_matrix.fill_diagonal_(1.0)
-        end = perf_counter()
-    elif "one" in technique:
-        start = perf_counter()
-        adj_matrix = torch.ones((N, N))
-        if not bool(args.self_loop):
-            adj_matrix.fill_diagonal_(0.0)
-        end = perf_counter()
-    elif "rad" in technique:
-        start = perf_counter()
-        param = float(parameter)
-        adj_matrix = dataset.get_radius_graph(
-            radius=param,
-            loop=args.self_loop,
-            cosine=args.similarity_metric == "cosine",
-            full_dataset=args.full_dataset,
-        )
-        end = perf_counter()
-    else:
-        start = perf_counter()
-        param = parameter
-        data = dataset.data[args.train_slice]
-        mask = dataset.mask[args.train_slice]
-        real_k = get_percentile_k(data, param, args.self_loop)
-        if real_k == 0:
-            adj_matrix = torch.zeros((N, N))
-
-        graph = knn_graph(
-            k=real_k,
-            distance="masked euclidean",
-            affinity="gaussian kernel",
-            binary=False,
-            keep_self_loop=args.self_loop,
-            gamma=0.1,
-        )
-        adj_matrix = graph(x=data, mask=mask)
-        end = perf_counter()
+    start = perf_counter()
+    graph = similarity_graph.build(cfg)
+    end = perf_counter()
+    adj_matrix = graph(dataset)
     total_time = end - start
     return adj_matrix, total_time
 
@@ -417,24 +350,10 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 def run(cfg: DictConfig) -> None:
     print("#" * 100)
     print(args)
-    # graph_builder = radius_graph(
-    #     threshold=0.3, distance="identity", affinity="gaussian kernel"
-    # )
-    # graph = graph_builder.build()
     save_path_dir = cfg.paths.save_path
     os.makedirs(save_path_dir, exist_ok=True)
     OmegaConf.save(cfg, os.path.join(cfg.paths.save_path, "resolved_config.yaml"))
-    model = cfg.model.lower()
-    # stgi_mode = cfg.mode
-    # if stgi_mode.lower() in ["st"]:
-    #     use_spatial = True
-    #     use_temporal = True
-    # elif stgi_mode.lower() in ["t"]:
-    #     use_spatial = False
-    #     use_temporal = True
-    # else:
-    #     use_spatial = True
-    #     use_temporal = False
+    model = cfg.model.name.lower()
 
     print(f"{cfg.use_spatial=} {cfg.use_temporal=}")
 
@@ -443,18 +362,17 @@ def run(cfg: DictConfig) -> None:
 
     dataset = get_dataset(cfg.dataset)
 
-    in_sample = True
     train, val, test = dataset.grin_split(in_sample=cfg.dataset.in_sample)
     dm = DataModule(
         copy.deepcopy(dataset),
         train_indices=train,
         test_indices=test,
         val_indices=val,
-        samples_per_epoch=args.samples_per_epoch,
+        samples_per_epoch=cfg.training.samples_per_epoch,
         scaling_type=args.normalization_type,
     )
     # if out of sample in air, add values removed for evaluation in train set
-    if "air" in args.dataset and not in_sample:
+    if "air" in cfg.dataset.name and not cfg.dataset.in_sample:
         dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
     dataset.training_slice = dm.train_slice
 
@@ -491,8 +409,8 @@ def run(cfg: DictConfig) -> None:
 
     metrics_data.update({"spatial_graph_time": spatial_graph_time})
 
-    if args.graph_stats:
-        save_stats_path = args.save_path
+    if cfg.graph_stats:
+        save_stats_path = cfg.save_path
         if cfg.use_spatial:
             save_path = os.path.join(
                 save_stats_path,
@@ -503,16 +421,15 @@ def run(cfg: DictConfig) -> None:
     # if args.downstream_task:
     gnn_model = None
     spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
-    print(f"Running using model {args.model}")
+    print(f"Running using model {cfg.model.name}")
     if model == "stgi":
         model_kwargs = {
-            "in_dim": 1,
-            "hidden_dim": args.d_hidden,
-            "num_layers": args.layer_num,
-            "layer_type": args.layer_type,
-            "kernel_size": args.kernel_size,
-            "use_spatial": use_spatial,
-            "use_temporal": use_temporal,
+            "in_dim": dm.d_in,
+            "hidden_dim": cfg.model.hidden_dim,
+            "num_layers": cfg.model.layer_num,
+            "layer_type": cfg.model.layer_type,
+            "use_spatial": cfg.use_spatial,
+            "use_temporal": cfg.use_temporal,
             "temporal_graph_fn": temporal_graph_fn,
             "add_self_loops": False,
         }
@@ -566,8 +483,12 @@ def run(cfg: DictConfig) -> None:
         name="tensorboard",
     )
     exp_name = f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-    logdir = os.path.join(save_path_dir, args.dataset, args.model, exp_name)
-    early_stop_callback = EarlyStopping(monitor="val_mae", patience=10, mode="min")
+    logdir = os.path.join(save_path_dir, cfg.dataset.name, cfg.model.name, exp_name)
+    early_stop_callback = EarlyStopping(
+        monitor=cfg.training.early_stopping.monitor,
+        patience=cfg.training.early_stopping.patience,
+        mode=cfg.training.early_stopping.mode,
+    )
     checkpoint_callback = ModelCheckpoint(
         dirpath=logdir, save_top_k=1, monitor="val_mae", mode="min"
     )
@@ -575,15 +496,15 @@ def run(cfg: DictConfig) -> None:
         model_class=gnn_model,
         model_kwargs=model_kwargs,
         optim_class=torch.optim.Adam,
-        optim_kwargs={"lr": args.learning_rate, "weight_decay": 0.0},
+        optim_kwargs={"lr": cfg.training.learning_rate, "weight_decay": 0.0},
         loss_fn=loss_fn,
-        scaled_target=True,
+        scaled_target=cfg.training.scaled_target,
         metrics=metrics,
         scheduler_class=CosineAnnealingLR,
-        scheduler_kwargs={"eta_min": 0.0001, "T_max": args.epochs},
+        scheduler_kwargs={"eta_min": 0.0001, "T_max": cfg.max_epochs},
     )
     trainer = pl.Trainer(
-        max_epochs=args.epochs,
+        max_epochs=cfg.max_epochs,
         logger=[tb_logger],
         default_root_dir=save_path_dir,
         gradient_clip_algorithm="norm",
