@@ -3,7 +3,7 @@ defaults:
   - dataset: airq_small
   - model: stgi
   - training: default
-  - graph: base
+  - graph: ed_rbf_topk
   - _self_
 
 graph_stats: false
