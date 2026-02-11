@@ -14,4 +14,4 @@ affinity:
 sparsifier:
   k:
     mode: fraction
-    value: null
+    value: ???
