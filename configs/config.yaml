@@ -14,7 +14,7 @@ task: true
 
 paths:
   root: ./experiments/results
-  save_path: ${path.root}/${model.name}/${graph.name}/ln${model.layer_num}/${model.layer_type}/${now:%Y%m%d}/
+  save_path: ${paths.root}/${model.name}/${graph.name}/ln${model.layer_num}/${model.layer_type}/${now:%Y%m%d}/
   file_name: ${now:%Y%m%d_%H%M%S}_${model.name}_${dataset.name}_${mode}_${graph.label}.json
 
 hydra:
