@@ -1,5 +1,5 @@
 defaults:
-  - experiment: default
+  # - experiment: default
   - dataset: airq_small
   - model: stgi
   - training: default
