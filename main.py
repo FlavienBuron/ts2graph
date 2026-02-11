@@ -166,6 +166,15 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def run(cfg: DictConfig) -> None:
     print("#" * 100)
+    sparsifier = cfg.graph.sparsifier
+
+    param_name = next(iter(sparsifier), None)  # first key in sparsifier dict
+    param_val = sparsifier[param_name]
+    if isinstance(param_val, dict):
+        cfg.graph.label = str(param_val.get("value", "null"))
+    else:
+        cfg.graph.label = str(param_val)
+
     print(cfg)
     save_path_dir = cfg.paths.save_path
     os.makedirs(save_path_dir, exist_ok=True)

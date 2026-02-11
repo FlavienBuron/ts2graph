@@ -15,5 +15,3 @@ sparsifier:
   k:
     mode: fraction
     value: null
-
-label: ${sparsifier.k.value, null}
