@@ -195,7 +195,8 @@ def run(cfg: DictConfig) -> None:
         test_indices=test,
         val_indices=val,
         samples_per_epoch=cfg.training.samples_per_epoch,
-        scaling_type=args.normalization_type,
+        scaling_type=cfg.dataset.scaling_type,
+        batch_size=cfg.training.batch_size,
     )
     # if out of sample in air, add values removed for evaluation in train set
     if "air" in cfg.dataset.name and not cfg.dataset.in_sample:
