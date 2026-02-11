@@ -1,3 +1,3 @@
 name: gaussian kernel
-gamma: ${graph.affinity.gamma, 1.0}
+gamma: 1.0
 theta: "std"
