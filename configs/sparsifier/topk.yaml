@@ -1,5 +1,7 @@
 name: topk
-k: ${graph.sparsifier.k.value}
+k:
+  mode: fraction
+  value: ???
 binary: ${graph.sparsifier.binary, false}
 keep_self_loop: ${graph.sparsifier.keep_self_loop, false}
 make_symmetric: ${graph.sparsifier.make_symmetric, true}
