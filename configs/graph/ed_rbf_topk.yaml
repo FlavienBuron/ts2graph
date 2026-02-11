@@ -1,5 +1,5 @@
 defaults:
-  - /distance: masked euclidean
+  - /distance: masked_euclidean
   - /affinity: gaussian_kernel
   - /sparsifier: topk
   - _self_
