@@ -1,9 +1,5 @@
 from typing import Dict, Type
 
-# from ..affinity.base import AffinityFunction
-# from ..distance.base import DistanceFunction
-# from ..sparsification.base import SparsificationFunction
-
 DISTANCE_REGISTRY: Dict[str, Type] = {}
 AFFINITY_REGISTRY: Dict[str, Type] = {}
 SPARCITY_REGISTRY: Dict[str, Type] = {}

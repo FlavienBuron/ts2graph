@@ -1,4 +1,5 @@
-from ..pipeline import SimilarityGraph
+from graphs_transformations.similarity_graph.similarity_graph import SimilarityGraph
+
 from .specs import SimilarityGraphSpec
 
 
