@@ -333,7 +333,7 @@ def run(cfg: DictConfig) -> None:
         scheduler_kwargs={"eta_min": 0.0001, "T_max": cfg.training.max_epochs},
     )
     trainer = pl.Trainer(
-        max_epochs=cfg.max_epochs,
+        max_epochs=cfg.training.max_epochs,
         logger=[tb_logger],
         default_root_dir=save_path_dir,
         gradient_clip_algorithm="norm",
