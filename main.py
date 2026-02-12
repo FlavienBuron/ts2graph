@@ -18,7 +18,6 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProgressBar
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch_geometric.utils import dense_to_sparse
 
 from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
@@ -224,7 +223,10 @@ def run(cfg: DictConfig) -> None:
         spatial_adj_matrix = torch.tensor([[]])
 
     if cfg.use_temporal:
-        pass
+        temporal_graph_fn = get_temporal_graph_function(
+            "",
+            [0.1],
+        )
         # temporal_graph_fn = get_temporal_graph_function(
         #     temporal_graph_technique,
         #     temporal_graph_params,
@@ -248,10 +250,10 @@ def run(cfg: DictConfig) -> None:
 
     # if args.downstream_task:
     gnn_model = None
-    spatial_edge_index, spatial_edge_weight = dense_to_sparse(spatial_adj_matrix)
     print(f"Running using model {cfg.model.name}")
     if model == "stgi":
         model_kwargs = {
+            "adj": spatial_adj_matrix,
             "in_dim": dm.d_in,
             "hidden_dim": cfg.model.hidden_dim,
             "num_layers": cfg.model.layer_num,
