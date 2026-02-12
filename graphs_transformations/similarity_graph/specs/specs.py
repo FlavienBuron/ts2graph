@@ -1,18 +1,19 @@
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Literal
 
 
 @dataclass
 class DistanceSpec:
-    name: Literal["masked euclidean", "identity"]
-    params: dict = field(default_factory=dict)
+    def __init__(self, name: Literal["masked euclidean", "identity"], **kwargs) -> None:
+        self.name = name
+        self.kwargs = kwargs
 
     def build(self):
         from .registry import DISTANCE_REGISTRY
 
         cls = DISTANCE_REGISTRY[self.name]
-        return cls(**self.params)
+        return cls(**self.kwargs)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -24,14 +25,15 @@ class DistanceSpec:
 
 @dataclass
 class AffinitySpec:
-    name: Literal["gaussian kernel"]
-    params: dict = field(default_factory=dict)
+    def __init__(self, name: Literal["gaussian kernel"], **kwargs) -> None:
+        self.name = name
+        self.kwargs = kwargs
 
     def build(self):
-        from .registry import AFFINITY_REGISTRY
+        from .registry import DISTANCE_REGISTRY
 
-        cls = AFFINITY_REGISTRY[self.name]
-        return cls(**self.params)
+        cls = DISTANCE_REGISTRY[self.name]
+        return cls(**self.kwargs)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -43,15 +45,15 @@ class AffinitySpec:
 
 @dataclass
 class SparsifierSpec:
-    name: Literal["topk", "threshold"]
-    params: dict = field(default_factory=dict)
-    # symmetric: bool = True
+    def __init__(self, name: Literal["topk", "threshold"], **kwargs) -> None:
+        self.name = name
+        self.kwargs = kwargs
 
     def build(self):
-        from .registry import SPARCITY_REGISTRY
+        from .registry import DISTANCE_REGISTRY
 
-        cls = SPARCITY_REGISTRY[self.name]
-        return cls(**self.params)
+        cls = DISTANCE_REGISTRY[self.name]
+        return cls(**self.kwargs)
 
     def to_dict(self) -> dict:
         return asdict(self)
