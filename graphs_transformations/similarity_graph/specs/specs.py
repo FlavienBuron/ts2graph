@@ -30,9 +30,9 @@ class AffinitySpec:
         self.kwargs = kwargs
 
     def build(self):
-        from .registry import DISTANCE_REGISTRY
+        from .registry import AFFINITY_REGISTRY
 
-        cls = DISTANCE_REGISTRY[self.name]
+        cls = AFFINITY_REGISTRY[self.name]
         return cls(**self.kwargs)
 
     def to_dict(self) -> dict:
@@ -50,9 +50,9 @@ class SparsifierSpec:
         self.kwargs = kwargs
 
     def build(self):
-        from .registry import DISTANCE_REGISTRY
+        from .registry import SPARCITY_REGISTRY
 
-        cls = DISTANCE_REGISTRY[self.name]
+        cls = SPARCITY_REGISTRY[self.name]
         return cls(**self.kwargs)
 
     def to_dict(self) -> dict:
