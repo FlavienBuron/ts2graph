@@ -176,6 +176,8 @@ def run(cfg: DictConfig) -> None:
 
     print(cfg)
     save_path_dir = cfg.paths.save_path
+    save_file_name = cfg.paths.file_name
+    save_file_path = os.path.join(save_path_dir, save_file_name)
     os.makedirs(save_path_dir, exist_ok=True)
     OmegaConf.save(cfg, os.path.join(cfg.paths.save_path, "resolved_config.yaml"))
     model = cfg.model.name.lower()
@@ -420,7 +422,7 @@ def run(cfg: DictConfig) -> None:
     eval_mask = dataset.eval_mask[dm.test_slice]
     missing_mask = dataset.missing_mask[dm.test_slice]
 
-    with open(cfg.paths.file_name, "w") as f:
+    with open(save_file_name, "w") as f:
         json.dump(metrics_data, f, indent=2)
 
     imputation_path = os.path.join(save_path_dir, "imputation_results.h5")
