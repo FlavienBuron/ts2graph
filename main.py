@@ -420,7 +420,7 @@ def run(cfg: DictConfig) -> None:
     eval_mask = dataset.eval_mask[dm.test_slice]
     missing_mask = dataset.missing_mask[dm.test_slice]
 
-    with open(cfg.paths.save_path, "w") as f:
+    with open(cfg.paths.file_name, "w") as f:
         json.dump(metrics_data, f, indent=2)
 
     imputation_path = os.path.join(save_path_dir, "imputation_results.h5")
