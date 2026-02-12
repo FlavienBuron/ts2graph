@@ -330,7 +330,7 @@ def run(cfg: DictConfig) -> None:
         scaled_target=cfg.training.scaled_target,
         metrics=metrics,
         scheduler_class=CosineAnnealingLR,
-        scheduler_kwargs={"eta_min": 0.0001, "T_max": cfg.max_epochs},
+        scheduler_kwargs={"eta_min": 0.0001, "T_max": cfg.training.max_epochs},
     )
     trainer = pl.Trainer(
         max_epochs=cfg.max_epochs,
