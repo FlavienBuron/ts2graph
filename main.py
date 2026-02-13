@@ -54,12 +54,7 @@ from utils.helpers import (
     prediction_dataframe,
 )
 
-random.seed(42)
-np.random.seed(42)
-torch.manual_seed(42)
-
-os.environ["PYTHONHASHSEED"] = str(42)
-torch.set_num_threads(8)
+torch.set_num_threads(16)
 torch.set_num_interop_threads(1)
 #
 
@@ -162,9 +157,18 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
     return empty_temporal_graph
 
 
+def make_deterministic(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+    os.environ["PYTHONHASHSEED"] = str(seed)
+
+
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def run(cfg: DictConfig) -> None:
     print("#" * 100)
+    make_deterministic(cfg.seed)
     sparsifier = cfg.graph.sparsifier
 
     param_name = next(iter(sparsifier), None)  # first key in sparsifier dict
@@ -368,9 +372,8 @@ def run(cfg: DictConfig) -> None:
         print("Trainer prediction return None results")
         return
 
-    target, imputation, mask = aggregate_predictions(outputs)
+    _, imputation, mask = aggregate_predictions(outputs)
     imputation = imputation.squeeze(-1).cpu().numpy()
-    # pred_imp = pred_imp.squeeze(-1).cpu().numpy()
 
     eval_mask = dataset.eval_mask[dm.test_slice]
     df_true = dataset.df.iloc[dm.test_slice]
@@ -382,35 +385,23 @@ def run(cfg: DictConfig) -> None:
     df_hats = prediction_dataframe(
         imputation, index, dataset.df.columns, aggregate_by=aggr_methods
     )
-    # df_imps = prediction_dataframe(
-    #     pred_imp, index, dataset.df.columns, aggregate_by=aggr_methods
-    # )
     df_hats = dict(zip(aggr_methods, df_hats))
-    # df_imps = dict(zip(aggr_methods, df_imps))
     prediction_metrics = {"prediction_metrics": {}}
-    # for aggr_by, df_hat in df_hats.items():
-    #     # Compute error
-    #     print(f"- AGGREGATE BY {aggr_by.upper()}")
 
     for aggr_by, df_hat in df_hats.items():
         print(f"- AGGREGATE BY {aggr_by.upper()}")
 
-        # Convert predictions and targets to torch tensors
         pred_tensor = torch.tensor(df_hat.values)
         true_tensor = torch.tensor(df_true.values)
 
-        # If your mask is 2D/3D, make sure its shape matches pred/true
         mask_tensor = eval_mask.detach().clone().squeeze()
 
         for metric_name, metric_fn in metrics.items():
-            # Reset metric state before computing
             if hasattr(metric_fn, "reset"):
                 metric_fn.reset()
 
-            # Update metric with prediction, target, mask
             metric_fn.update(pred_tensor, true_tensor, mask_tensor)
 
-            # Compute the metric
             error = metric_fn.compute().item()
             print(f" {metric_name}: {error:.4f}")
             prediction_metrics["prediction_metrics"].update({metric_name: error})
