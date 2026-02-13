@@ -356,7 +356,7 @@ def run(cfg: DictConfig) -> None:
             report_callback,
         ],
         num_sanity_val_steps=2,
-        log_every_n_steps=cfg.training.log_every_n_steps,
+        log_every_n_steps=cfg.training.logging.log_every_n_steps,
     )
 
     trainer.fit(task, datamodule=dm)
