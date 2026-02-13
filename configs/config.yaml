@@ -6,6 +6,7 @@ defaults:
   - graph: ed_rbf_topk
   - _self_
 
+seed: 42
 graph_stats: false
 mode: s
 use_spatial: true
