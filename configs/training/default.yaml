@@ -1,5 +1,4 @@
 scaled_target: true
-learning_rate: 1e-3
 max_epochs: 200
 batch_size: 32
 shuffle_batch: true
@@ -9,3 +8,15 @@ early_stopping:
   monitor: val_mae
   patience: 10
   mode: "min"
+
+logging:
+  log_every_n_steps: 16
+
+optim:
+  learning_rate: 1e-3
+  gradient_clip_algorithm: "norm"
+  gradient_clip_val: 0.5
+
+scheduler:
+  eta_min: 1e-4
+  T_max: ${max_epochs}

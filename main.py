@@ -333,19 +333,19 @@ def run(cfg: DictConfig) -> None:
         model_class=gnn_model,
         model_kwargs=model_kwargs,
         optim_class=torch.optim.Adam,
-        optim_kwargs={"lr": cfg.training.learning_rate, "weight_decay": 0.0},
+        optim_kwargs={"lr": cfg.training.optim.learning_rate, "weight_decay": 0.0},
         loss_fn=loss_fn,
         scaled_target=cfg.training.scaled_target,
         metrics=metrics,
         scheduler_class=CosineAnnealingLR,
-        scheduler_kwargs={"eta_min": 0.0001, "T_max": cfg.training.max_epochs},
+        scheduler_kwargs=cfg.training.scheduler,
     )
     trainer = pl.Trainer(
         max_epochs=cfg.training.max_epochs,
         logger=[tb_logger],
         default_root_dir=save_path_dir,
-        gradient_clip_algorithm="norm",
-        gradient_clip_val=0.5,
+        gradient_clip_algorithm=cfg.training.optim.gradient_clip_algorithm,
+        gradient_clip_val=cfg.training.optim.gradient_clip_val,
         enable_model_summary=False,
         enable_progress_bar=True,
         callbacks=[
@@ -356,7 +356,7 @@ def run(cfg: DictConfig) -> None:
             report_callback,
         ],
         num_sanity_val_steps=2,
-        log_every_n_steps=16,
+        log_every_n_steps=cfg.training.log_every_n_steps,
     )
 
     trainer.fit(task, datamodule=dm)
