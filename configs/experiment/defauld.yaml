@@ -1,0 +1,8 @@
+defaults:
+  - _self_
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      graph: empty, fc

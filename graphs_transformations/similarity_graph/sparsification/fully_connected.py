@@ -8,7 +8,7 @@ from .base import (
 )
 
 
-@register_sparsification("fully connected")
+@register_sparsification("fc")
 class FullyConnected(SparsificationFunction):
     name = "fully connected"
 
