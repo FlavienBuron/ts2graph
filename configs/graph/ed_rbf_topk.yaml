@@ -1,7 +1,7 @@
 defaults:
-  - /distance: masked_euclidean
-  - /affinity: gaussian_kernel
-  - /sparsifier: topk
+  - distance: masked_euclidean
+  - affinity: gaussian_kernel
+  - sparsifier: topk
   - _self_
 
 name: ed_rbf_topk
