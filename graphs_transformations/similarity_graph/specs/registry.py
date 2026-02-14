@@ -2,7 +2,7 @@ from typing import Dict, Type
 
 DISTANCE_REGISTRY: Dict[str, Type] = {}
 AFFINITY_REGISTRY: Dict[str, Type] = {}
-SPARCITY_REGISTRY: Dict[str, Type] = {}
+SPARSITY_REGISTRY: Dict[str, Type] = {}
 
 
 def register_distance(name: str):
@@ -23,7 +23,7 @@ def register_affinity(name: str):
 
 def register_sparsification(name: str):
     def decorator(cls):
-        SPARCITY_REGISTRY[name] = cls
+        SPARSITY_REGISTRY[name] = cls
         return cls
 
     return decorator

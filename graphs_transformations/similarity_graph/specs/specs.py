@@ -49,9 +49,10 @@ class SparsifierSpec:
         self.kwargs = kwargs
 
     def build(self):
-        from .registry import SPARCITY_REGISTRY
+        from .registry import SPARSITY_REGISTRY
 
-        cls = SPARCITY_REGISTRY[self.name]
+        print(f"DEBUG: {type(self.name)=}")
+        cls = SPARSITY_REGISTRY[self.name]
         return cls(**self.kwargs)
 
     def to_dict(self) -> dict:
