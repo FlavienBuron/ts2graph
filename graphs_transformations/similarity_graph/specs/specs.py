@@ -51,7 +51,7 @@ class SparsifierSpec:
     def build(self):
         from .registry import SPARSITY_REGISTRY
 
-        print(f"DEBUG: {type(self.name)=}")
+        print(f"DEBUG: {SPARSITY_REGISTRY=}")
         cls = SPARSITY_REGISTRY[self.name]
         return cls(**self.kwargs)
 
