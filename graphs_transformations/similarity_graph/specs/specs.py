@@ -25,7 +25,7 @@ class DistanceSpec:
 
 @dataclass
 class AffinitySpec:
-    def __init__(self, name: Literal["gaussian kernel"], **kwargs) -> None:
+    def __init__(self, name: Literal["gaussian kernel", "identity"], **kwargs) -> None:
         self.name = name
         self.kwargs = kwargs
 
@@ -45,7 +45,9 @@ class AffinitySpec:
 
 @dataclass
 class SparsifierSpec:
-    def __init__(self, name: Literal["topk", "threshold"], **kwargs) -> None:
+    def __init__(
+        self, name: Literal["topk", "threshold", "fully connected", "empty"], **kwargs
+    ) -> None:
         self.name = name
         self.kwargs = kwargs
 

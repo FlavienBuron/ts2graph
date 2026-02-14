@@ -10,6 +10,8 @@ distance:
   input: "coordinates"
 
 sparsifier:
-  threshold: ???
+  param:
+    mode: "absolute"
+    value: ???
 
-label: ${sparsifier.threshold}
+label:

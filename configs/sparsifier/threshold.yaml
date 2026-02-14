@@ -1,5 +1,7 @@
 name: threshold
-threshold: ${graph.sparsifier.threshold}
-binary: ${graph.sparsifier.binary, false}
-keep_self_loop: ${graph.sparsifier.keep_self_loop, false}
-make_symmetric: ${graph.sparsifier.make_symmetric. true}
+param:
+  mode: absolute
+  value: ???
+binary: false
+keep_self_loop: false
+make_symmetric: false

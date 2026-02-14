@@ -12,7 +12,7 @@ affinity:
 
 # Sparsifier setting
 sparsifier:
-  k:
+  param:
     mode: fraction
     value: ???
 

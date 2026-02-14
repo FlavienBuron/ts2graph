@@ -1,5 +1,5 @@
 name: topk
-k:
+param:
   mode: fraction
   value: ???
 binary: false

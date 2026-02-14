@@ -1,0 +1,3 @@
+name: fully connected
+binary: True
+keep_self_loop: True
