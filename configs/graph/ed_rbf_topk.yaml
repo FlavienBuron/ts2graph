@@ -1,40 +1,19 @@
-# defaults:
-#   - distance: masked_euclidean
-#   - affinity: gaussian_kernel
-#   - sparsifier: topk
-#   - _self_
-#
-# name: ed_rbf_topk
-#
-# # Affinity function config
-# affinity:
-#   gamma: 0.1
-#
-# # Sparsifier setting
-# sparsifier:
-#   param:
-#     mode: fraction
-#     value: ???
-#
-# label:
+defaults:
+  - distance: masked_euclidean
+  - affinity: gaussian_kernel
+  - sparsifier: topk
+  - _self_
 
 name: ed_rbf_topk
 
-graph:
-  distance:
-    name: masked_euclidean
-    input_kind: series
-    normalize: true
-  affinity:
-    name: gaussian_kernel
-    gamma: 0.1
-    theta: "std"
-  sparsifier:
-    name: topk
-    param:
-      mode: fraction
-      value: 0.0
-    binary: false
-    keep_self_loop: false
-    make_symmetric: true
-  label: null
+# Affinity function config
+affinity:
+  gamma: 0.1
+
+# Sparsifier setting
+sparsifier:
+  param:
+    mode: fraction
+    value: ???
+
+label:
