@@ -33,7 +33,7 @@ graph:
     name: topk
     param:
       mode: fraction
-      value: ???
+      value: 0.0
     binary: false
     keep_self_loop: false
     make_symmetric: true
