@@ -1,3 +1,5 @@
 name: empty
+param:
+  name: ${name}
 binary: True
 keep_self_loop: True
