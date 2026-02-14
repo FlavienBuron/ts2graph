@@ -1,11 +1,10 @@
 import json
 from dataclasses import asdict, dataclass
-from typing import Literal
 
 
 @dataclass
 class DistanceSpec:
-    def __init__(self, name: Literal["masked euclidean", "identity"], **kwargs) -> None:
+    def __init__(self, name: str, **kwargs) -> None:
         self.name = name
         self.kwargs = kwargs
 
@@ -25,7 +24,7 @@ class DistanceSpec:
 
 @dataclass
 class AffinitySpec:
-    def __init__(self, name: Literal["gaussian kernel", "identity"], **kwargs) -> None:
+    def __init__(self, name: str, **kwargs) -> None:
         self.name = name
         self.kwargs = kwargs
 
@@ -45,9 +44,7 @@ class AffinitySpec:
 
 @dataclass
 class SparsifierSpec:
-    def __init__(
-        self, name: Literal["topk", "threshold", "fully connected", "empty"], **kwargs
-    ) -> None:
+    def __init__(self, name: str, **kwargs) -> None:
         self.name = name
         self.kwargs = kwargs
 
