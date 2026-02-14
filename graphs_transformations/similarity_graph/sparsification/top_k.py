@@ -14,21 +14,21 @@ class TopK(SparsificationFunction):
 
     def __init__(
         self,
-        k: dict,
+        param: dict,
         binary: bool = False,
         keep_self_loop: bool = False,
         make_symmetric: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.k_cfg = k
+        self.param_cfg = param
         self.binary = binary
         self.keep_self_loop = keep_self_loop
         self.make_symmetric = make_symmetric
 
     def _resolve_k(self, num_nodes: int) -> int:
-        mode = self.k_cfg["mode"]
-        value = self.k_cfg["value"]
+        mode = self.param_cfg["mode"]
+        value = self.param_cfg["value"]
 
         if mode == "absolute":
             return int(value)
