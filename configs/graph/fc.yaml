@@ -1,7 +1,7 @@
 defaults:
   - distance: identity
   - affinity: identity
-  - sparsifier: fc
+  - sparsifier: fully_connected
   - _self_
 
 name: fc
