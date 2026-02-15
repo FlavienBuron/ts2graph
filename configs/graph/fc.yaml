@@ -1,0 +1,9 @@
+defaults:
+  - distance: identity
+  - affinity: identity
+  - sparsifier: fc
+  - _self_
+
+name: fc
+
+label: fc

@@ -1,0 +1,9 @@
+defaults:
+  - distance: identity
+  - affinity: identity
+  - sparsifier: empty
+  - _self_
+
+name: empty
+
+label: empty
