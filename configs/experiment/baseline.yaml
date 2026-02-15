@@ -1,8 +1,4 @@
 defaults:
+  - override /graph: emtpy
+  - override /graph: fc
   - _self_
-
-hydra:
-  mode: MULTIRUN
-  sweeper:
-    params:
-      graph: empty, fc
