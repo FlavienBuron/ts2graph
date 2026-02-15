@@ -1,4 +1,4 @@
 defaults:
-  - override /graph: emtpy
+  - override /graph: empty
   - override /graph: fc
   - _self_
