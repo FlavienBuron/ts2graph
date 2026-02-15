@@ -1,8 +1,8 @@
 defaults:
-  - dataset: airq_small
-  - model: stgi
-  - training: default
-  - graph: ed_rbf_topk
+  - /dataset: airq_small
+  - /model: stgi
+  - /training: default
+  - /graph: ed_rbf_topk
   - _self_
 
 # Top-level Hydra multirun config
