@@ -4,7 +4,7 @@ from ..specs.registry import register_affinity
 from .base import AffinityFunction
 
 
-@register_affinity("gaussian kernel")
+@register_affinity("gaussian_kernel")
 class GaussianKernel(AffinityFunction):
     name = "gaussian kernel (RBF)"
     requires_non_negative = True

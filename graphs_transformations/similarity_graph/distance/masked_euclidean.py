@@ -6,7 +6,7 @@ from ..specs.registry import register_distance
 from .base import DistanceFunction
 
 
-@register_distance("masked euclidean")
+@register_distance("masked_euclidean")
 class MaskedEuclidean(DistanceFunction):
     name = "masked euclidean"
     input_kind = "series"

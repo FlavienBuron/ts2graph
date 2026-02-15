@@ -172,14 +172,21 @@ def run(cfg: DictConfig) -> None:
     sparsifier = cfg.graph.sparsifier
 
     param_name = next(iter(sparsifier), None)  # first key in sparsifier dict
-    param_val = sparsifier[param_name]
+    param_val = sparsifier["param"]
     if isinstance(param_val, dict):
         cfg.graph.label = str(param_val.get("value", "null"))
     else:
         cfg.graph.label = str(param_val)
 
     print(cfg)
-    save_path_dir = cfg.paths.save_path
+    # save_path_dir = cfg.paths.save_path
+    save_path_dir = os.path.join(
+        cfg.paths.save_path,
+        cfg.graph.distance.name,
+        cfg.graph.affinity.name,
+        cfg.graph.sparsifier.name,
+    )
+    print(f"[INFO]: save directory path is '{save_path_dir}'")
     save_file_name = cfg.paths.file_name
     save_file_path = os.path.join(save_path_dir, save_file_name)
     os.makedirs(save_path_dir, exist_ok=True)
