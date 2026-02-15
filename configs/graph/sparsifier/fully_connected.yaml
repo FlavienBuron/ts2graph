@@ -1,3 +1,5 @@
 name: fc
+param:
+  name: fc
 binary: True
 keep_self_loop: True
