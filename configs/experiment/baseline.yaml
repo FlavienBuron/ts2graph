@@ -1,4 +1,9 @@
 defaults:
-  - override /graph: empty
-  - override /graph: fc
+  - override /hydra/sweeper: basic
   - _self_
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      graph: empty,fc
