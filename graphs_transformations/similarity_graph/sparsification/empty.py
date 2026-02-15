@@ -15,7 +15,7 @@ class Empty(SparsificationFunction):
     def __init__(
         self,
         binary: bool = True,
-        keep_self_loop: bool = True,
+        keep_self_loop: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
