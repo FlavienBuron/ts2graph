@@ -2,4 +2,4 @@ name: empty
 param:
   name: empty
 binary: True
-keep_self_loop: True
+keep_self_loop: False
