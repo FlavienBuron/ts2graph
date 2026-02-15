@@ -1,10 +1,10 @@
 defaults:
-  - /distance: identity
-  - /affinity: gaussian_kernel
-  - /sparsifier: threshold
+  - distance: identity
+  - affinity: gaussian_kernel
+  - sparsifier: threshold
   - _self_
 
-name: geo+gaussian+topk
+name: geo_rbf_thresh
 
 distance:
   input: "coordinates"
