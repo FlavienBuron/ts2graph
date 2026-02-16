@@ -173,7 +173,7 @@ def run(cfg: DictConfig) -> None:
 
     param_name = next(iter(sparsifier), None)  # first key in sparsifier dict
     param_val = sparsifier["param"]
-    print(f"DEBUG: {param_val=}")
+    print(f"DEBUG: {type(param_val)=}")
     if isinstance(param_val, dict):
         print(f"DEBUG: {str(param_val.get('value', 'null'))=}")
         cfg.graph.label = str(param_val.get("value", "null"))
