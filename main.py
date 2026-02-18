@@ -423,7 +423,7 @@ def run(cfg: DictConfig) -> None:
     with open(save_file_path, "w") as f:
         json.dump(metrics_data, f, indent=2)
 
-    imputation_path = os.path.join(save_path_dir, "imputation_results.h5")
+    imputation_path = os.path.join(save_path_dir, f"{save_file_name}_imputation.h5")
     with h5py.File(imputation_path, "w") as f:
         f.create_dataset(
             "prediction",
