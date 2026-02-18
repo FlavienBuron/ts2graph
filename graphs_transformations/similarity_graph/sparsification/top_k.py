@@ -34,14 +34,14 @@ class TopK(SparsificationFunction):
             return int(value)
 
         elif mode == "fraction":
-            if not (0.0 < value <= 1.0):
-                raise ValueError("Fractional k must be in ")
+            if not (0.0 <= value <= 1.0):
+                raise ValueError(f"Fractional k must be in [0.0, 1,0], actual {value=}")
             max_k = num_nodes - 1
             k = round(value * max_k)
             print(f"{value=} {num_nodes=} {max_k=} {k=}")
             return max(0, min(k, max_k))
         else:
-            raise ValueError(f"Unknown mode for k value resolutoin: {mode}")
+            raise ValueError(f"Unknown mode for k value resolution: {mode}")
 
     def __call__(self, A: torch.Tensor) -> torch.Tensor:
         N = A.size(0)
