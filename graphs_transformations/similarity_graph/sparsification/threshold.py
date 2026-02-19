@@ -49,6 +49,7 @@ class Threshold(SparsificationFunction):
             raise ValueError(f"Unknown tau mode: {mode}")
 
     def __call__(self, A: torch.Tensor) -> torch.Tensor:
+        print(f"Sparsifier: {self.name}")
         tau = self._resolve_tau(A)
 
         mask = A >= tau

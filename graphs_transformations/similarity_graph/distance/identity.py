@@ -18,6 +18,7 @@ class Identity(DistanceFunction):
     def __call__(
         self, x: torch.Tensor | np.ndarray, mask: Optional[torch.Tensor]
     ) -> torch.Tensor:
+        print(f"Distance: {self.name}")
         if isinstance(x, np.ndarray):
             x = torch.tensor(x)
         return x.detach().clone()

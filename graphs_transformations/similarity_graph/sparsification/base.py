@@ -13,5 +13,4 @@ class SparsificationFunction(ABC):
 
     @abstractmethod
     def __call__(self, A: torch.Tensor) -> torch.Tensor:
-        print(f"Sparsifier: {self.name}")
         """Return the sparse adjacency matrix from the given affinity matrix A"""

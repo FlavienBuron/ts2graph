@@ -20,6 +20,7 @@ class MaskedEuclidean(DistanceFunction):
         self.normalize = normalize
 
     def __call__(self, X: torch.Tensor, mask: Optional[torch.Tensor]) -> torch.Tensor:
+        print(f"Distance: {self.name}")
         if mask is None:
             raise ValueError("Masked Euclidean Distance requires a masked to be passed")
         _, N, _ = X.shape

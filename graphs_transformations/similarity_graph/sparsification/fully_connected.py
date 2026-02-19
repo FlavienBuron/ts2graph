@@ -23,6 +23,7 @@ class FullyConnected(SparsificationFunction):
         self.keep_self_loop = keep_self_loop
 
     def __call__(self, A: torch.Tensor) -> torch.Tensor:
+        print(f"Sparsifier: {self.name}")
         adj = A
         if self.binary:
             adj = torch.ones_like(A)

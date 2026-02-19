@@ -14,4 +14,5 @@ class Identity(AffinityFunction):
         super().__init__(**kwargs)
 
     def __call__(self, D: torch.Tensor) -> torch.Tensor:
+        print(f"Affinity: {self.name}")
         return D

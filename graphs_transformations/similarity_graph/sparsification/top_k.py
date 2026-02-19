@@ -44,6 +44,7 @@ class TopK(SparsificationFunction):
             raise ValueError(f"Unknown mode for k value resolution: {mode}")
 
     def __call__(self, A: torch.Tensor) -> torch.Tensor:
+        print(f"Sparsifier: {self.name}")
         N = A.size(0)
 
         k = self._resolve_k(N)

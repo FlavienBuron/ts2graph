@@ -14,7 +14,6 @@ class AffinityFunction(ABC):
 
     @abstractmethod
     def __call__(self, D: torch.Tensor) -> torch.Tensor:
-        print(f"Affinity: {self.name}")
         """Convert a distance or similarity matrix D
         to an affinity matrix
         """

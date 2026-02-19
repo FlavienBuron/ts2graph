@@ -23,6 +23,7 @@ class Empty(SparsificationFunction):
         self.keep_self_loop = keep_self_loop
 
     def __call__(self, A: torch.Tensor) -> torch.Tensor:
+        print(f"Sparsifier: {self.name}")
         adj = torch.zeros_like(A)
         if self.keep_self_loop:
             adj.fill_diagonal_(1.0)

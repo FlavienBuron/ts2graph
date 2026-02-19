@@ -16,6 +16,7 @@ class GaussianKernel(AffinityFunction):
         self.theta = theta
 
     def __call__(self, D: torch.Tensor):
+        print(f"Affinity: {self.name}")
         valid = torch.isfinite(D) & (D > 0)
         if self.theta == "median":
             theta = D[valid].median()
