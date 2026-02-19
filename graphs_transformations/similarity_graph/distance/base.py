@@ -16,4 +16,5 @@ class DistanceFunction(ABC):
 
     @abstractmethod
     def __call__(self, x: torch.Tensor, mask: Optional[torch.Tensor]) -> torch.Tensor:
+        print(f"Distance: {self.name}")
         """Return the distance/similarity matrix D"""
