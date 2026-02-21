@@ -9,6 +9,7 @@ from .base import DistanceFunction
 
 @register_distance("identity")
 class Identity(DistanceFunction):
+    name = "identity"
     input_kind = "coordinates"
 
     def __init__(self, input: str, **kwargs):
