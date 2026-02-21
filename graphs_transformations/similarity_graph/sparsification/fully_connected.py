@@ -15,18 +15,17 @@ class FullyConnected(SparsificationFunction):
     def __init__(
         self,
         binary: bool = True,
-        keep_self_loop: bool = True,
+        self_loop_weight: float = 0.0,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.binary = binary
-        self.keep_self_loop = keep_self_loop
+        self.self_loop_weight = self_loop_weight
 
     def __call__(self, A: torch.Tensor) -> torch.Tensor:
         print(f"Sparsifier: {self.name}")
         adj = A
         if self.binary:
             adj = torch.ones_like(A)
-        if not self.keep_self_loop:
-            adj.fill_diagonal_(0.0)
+        adj.fill_diagonal_(self.self_loop_weight)
         return adj

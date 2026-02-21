@@ -16,14 +16,14 @@ class Threshold(SparsificationFunction):
         self,
         param: dict,
         binary: bool = False,
-        keep_self_loop: bool = False,
+        self_loop_weight: float = 0.0,
         make_symmetric: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.param_cfg = param
         self.binary = binary
-        self.keep_self_loop = keep_self_loop
+        self.self_loop_weight = self_loop_weight
         self.make_symmetric = make_symmetric
 
     def _resolve_tau(self, A: torch.Tensor):
@@ -56,8 +56,7 @@ class Threshold(SparsificationFunction):
         adj = A * mask
         if self.binary:
             adj = (adj > 0).to(A.dtype)
-        if not self.keep_self_loop:
-            adj.fill_diagonal_(0.0)
+        adj.fill_diagonal_(self.self_loop_weight)
         if self.make_symmetric:
             adj = torch.maximum(adj, adj.T)
 

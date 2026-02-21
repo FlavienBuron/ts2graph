@@ -16,14 +16,14 @@ class TopK(SparsificationFunction):
         self,
         param: dict,
         binary: bool = False,
-        keep_self_loop: bool = False,
+        self_loop_weight: float = 0.0,
         make_symmetric: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.param_cfg = param
         self.binary = binary
-        self.keep_self_loop = keep_self_loop
+        self.self_loop_weight = self_loop_weight
         self.make_symmetric = make_symmetric
 
     def _resolve_k(self, num_nodes: int) -> int:
@@ -59,10 +59,10 @@ class TopK(SparsificationFunction):
 
         A_sparse = A * mask
 
-        if self.keep_self_loop:
+        if self.self_loop_weight < 0.0:
             A_sparse.diagonal().copy_(diag)
         else:
-            A_sparse.fill_diagonal_(0.0)
+            A_sparse.fill_diagonal_(self.self_loop_weight)
 
         if self.make_symmetric:
             A_sparse = torch.maximum(A_sparse, A_sparse.T)

@@ -15,16 +15,15 @@ class Empty(SparsificationFunction):
     def __init__(
         self,
         binary: bool = True,
-        keep_self_loop: bool = False,
+        self_loop_weight: float = 0.0,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.binary = binary
-        self.keep_self_loop = keep_self_loop
+        self.self_loop_weight = self_loop_weight
 
     def __call__(self, A: torch.Tensor) -> torch.Tensor:
         print(f"Sparsifier: {self.name}")
         adj = torch.zeros_like(A)
-        if self.keep_self_loop:
-            adj.fill_diagonal_(1.0)
+        adj.fill_diagonal_(self.self_loop_weight)
         return adj

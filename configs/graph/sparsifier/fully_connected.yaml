@@ -1,5 +1,5 @@
 name: fc
 param:
   name: fc
-binary: True
-keep_self_loop: False
+binary: true
+self_loop_weight: 0.0

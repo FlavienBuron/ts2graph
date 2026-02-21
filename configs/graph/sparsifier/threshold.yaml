@@ -3,5 +3,5 @@ param:
   mode: absolute
   value: ???
 binary: false
-keep_self_loop: false
+self_loop_weight: 0.0
 make_symmetric: false
