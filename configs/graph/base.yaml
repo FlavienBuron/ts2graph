@@ -1,13 +1,7 @@
+defaults:
+  - distance: identity
+  - affinity: gaussian_kernel
+  - sparsifier: threshold
+  - _self_
+
 name: custom
-
-distance:
-  name: identity
-  params: {}
-
-affinity:
-  name: gaussian_kernel
-  params: {}
-
-sparsifier:
-  name: threshold
-  params: {}
