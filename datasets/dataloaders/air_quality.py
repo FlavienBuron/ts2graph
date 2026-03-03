@@ -31,6 +31,8 @@ class AirQualityLoader(GraphLoader):
         self.test_months = [3, 6, 9, 12]
         self.infer_eval_from = "next"
 
+        print(f"DEBUG: {horizon=} {window=}")
+
         data, missing_mask, distances = self.load(
             impute_nans=impute_nans,
             small=small,
