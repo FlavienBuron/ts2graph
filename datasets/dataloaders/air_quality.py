@@ -23,6 +23,8 @@ class AirQualityLoader(GraphLoader):
         nan_method: str = "mean",
         freq: str = "60min",
         masked_sensors: list | None = None,
+        horizon: int = 36,
+        window: int = 36,
     ):
         self.dataset_path = dataset_path
 
@@ -47,6 +49,8 @@ class AirQualityLoader(GraphLoader):
             eval_mask=self.eval_mask,
             freq=freq,
             aggr="nearest",
+            horizon=horizon,
+            window=window,
         )
 
     # @property

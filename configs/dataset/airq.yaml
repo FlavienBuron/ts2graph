@@ -1,0 +1,5 @@
+name: airq
+
+scaling_type: std
+in_sample: true
+windoe: 24

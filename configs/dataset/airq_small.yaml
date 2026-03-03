@@ -1,4 +1,6 @@
-name: airq_small
+defaults:
+  - airq
+  - _self_
 
-scaling_type: std
-in_sample: true
+name: airq_small
+window: 36

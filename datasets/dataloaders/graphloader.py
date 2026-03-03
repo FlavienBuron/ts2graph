@@ -17,6 +17,8 @@ class GraphLoader(Dataset, ABC):
         freq: str | None = None,
         aggr: str = "sum",
         exogenous=None,
+        horizon: int = 36,
+        window: int = 36,
     ) -> None:
         self.eval_mask = self._check_input(torch.tensor(eval_mask))
         self._exogenous_keys = dict()
@@ -68,8 +70,8 @@ class GraphLoader(Dataset, ABC):
         self.trend = None
         self.scaler = None
 
-        self.horizon = 36
-        self.window = 36
+        self.horizon = horizon
+        self.window = window
         self.delay = -self.window
         self.stride = 1
 
