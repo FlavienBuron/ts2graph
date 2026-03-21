@@ -14,8 +14,8 @@ from graphs_transformations.proximity_graphs import from_geo_nn, from_knn, from_
 EARTH_RADIUS = 6371.0088
 
 
-@DatasetRegistry("air", "small")
-@DatasetRegistry("air", "default")
+@DatasetRegistry.register("airq", "small")
+@DatasetRegistry.register("airq", "default")
 class AirQualityLoader(GraphLoader):
     def __init__(
         self,
