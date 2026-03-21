@@ -8,17 +8,19 @@ from sklearn.metrics.pairwise import haversine_distances
 from torch_geometric.utils import to_dense_adj
 
 from datasets.dataloaders.graphloader import GraphLoader
+from datasets.dataset_registry import DatasetRegistry
 from graphs_transformations.proximity_graphs import from_geo_nn, from_knn, from_radius
 
 EARTH_RADIUS = 6371.0088
 
 
+@DatasetRegistry("air", "small")
+@DatasetRegistry("air", "default")
 class AirQualityLoader(GraphLoader):
     def __init__(
         self,
         dataset_path: str = "./datasets/data/air_quality/",
         small: bool = False,
-        normalization_type: str = "min_max",
         impute_nans: bool = True,
         nan_method: str = "mean",
         freq: str = "60min",
@@ -31,7 +33,7 @@ class AirQualityLoader(GraphLoader):
         self.test_months = [3, 6, 9, 12]
         self.infer_eval_from = "next"
 
-        print(f"DEBUG: {horizon=} {window=} {normalization_type=}")
+        print(f"DEBUG: {horizon=} {window=}")
 
         data, missing_mask, distances = self.load(
             impute_nans=impute_nans,

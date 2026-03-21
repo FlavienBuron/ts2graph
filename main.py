@@ -19,9 +19,9 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProg
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from datasets.dataloader import get_dataset
 from datasets.dataloaders.graphloader import GraphLoader
 from datasets.datamodule import DataModule
+from datasets.dataset_registry import DatasetRegistry
 from downstream.imputation.helpers import EpochReport
 from downstream.imputation.imputer import Imputer
 from downstream.imputation.metrics.correlations import (
@@ -199,7 +199,8 @@ def run(cfg: DictConfig) -> None:
     metrics_data = {}
     metrics_data["config"] = OmegaConf.to_container(cfg, resolve=True)
 
-    dataset = get_dataset(cfg.dataset.name)
+    # dataset = get_dataset(cfg.dataset.name)
+    dataset = DatasetRegistry.get(cfg.dataset)
 
     train, val, test = dataset.grin_split(in_sample=cfg.dataset.in_sample)
     dm = DataModule(
