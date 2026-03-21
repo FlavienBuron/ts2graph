@@ -27,6 +27,7 @@ class AirQualityLoader(GraphLoader):
         masked_sensors: list | None = None,
         horizon: int = 36,
         window: int = 36,
+        **kwargs,
     ):
         self.dataset_path = dataset_path
 

@@ -31,4 +31,4 @@ class DatasetRegistry:
                 f"Unknown dataset config: '{config_key}'.Available: {available}"
             )
         loader_class = cls._registry[config_key]
-        return loader_class(config)
+        return loader_class(**config)
