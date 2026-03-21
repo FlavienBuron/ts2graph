@@ -11,6 +11,7 @@ class DatasetRegistry:
         """
         Decorator to register a dataset loader class
         """
+        print(f"DEBUG; registering {name=}")
 
         def wrapper(target_class: Type):
             config_key = f"{name}_{variant}" if variant != "default" else name
