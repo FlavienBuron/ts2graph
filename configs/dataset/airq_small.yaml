@@ -3,4 +3,5 @@ defaults:
   - _self_
 
 name: airq_small
+small: true
 window: 36
