@@ -80,6 +80,7 @@ class GraphLoader(Dataset, ABC):
         ]
 
         self.training_slice = None
+        print(f"DEBUG: {self.horizon=} {self.window=}")
 
     def __len__(self) -> int:
         return len(self._indices)
