@@ -25,7 +25,6 @@ class AirQualityLoader(GraphLoader):
         nan_method: str = "mean",
         freq: str = "60min",
         masked_sensors: list | None = None,
-        horizon: int = 36,
         window: int = 36,
         **kwargs,
     ):
@@ -34,14 +33,11 @@ class AirQualityLoader(GraphLoader):
         self.test_months = [3, 6, 9, 12]
         self.infer_eval_from = "next"
 
-        print(f"DEBUG: {horizon=} {window=}")
-
         data, missing_mask, distances = self.load(
             impute_nans=impute_nans,
             small=small,
             masked_sensors=masked_sensors,
         )
-        print("DEBUG: data loaded")
         self.distances = distances
         self.masked_sensors = (
             list(masked_sensors) if masked_sensors is not None else list()
@@ -49,14 +45,12 @@ class AirQualityLoader(GraphLoader):
         # debug_mask_relationship(
         #     torch.tensor(missing_mask), torch.tensor(self.eval_mask), "AirQuality mask"
         # )
-        print("Initialization GraphLoader")
         super().__init__(
             dataframe=data,
             missing_mask=missing_mask,
             eval_mask=self.eval_mask,
             freq=freq,
             aggr="nearest",
-            horizon=horizon,
             window=window,
         )
 

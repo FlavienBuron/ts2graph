@@ -17,15 +17,12 @@ class GraphLoader(Dataset, ABC):
         freq: str | None = None,
         aggr: str = "sum",
         exogenous=None,
-        horizon: int = 36,
         window: int = 36,
     ) -> None:
         self.eval_mask = self._check_input(torch.tensor(eval_mask))
-        print("evaml mask passed")
         self._exogenous_keys = dict()
         self._reserved_signature = {"data", "trend", "x", "y"}
 
-        print(f"DEBUG: {horizon=} {window=}")
         # reproduce 'pd_dataset' class from GRIN
         self._store_pandas_data(
             dataframe=dataframe,
@@ -72,7 +69,7 @@ class GraphLoader(Dataset, ABC):
         self.trend = None
         self.scaler = None
 
-        self.horizon = horizon
+        self.horizon = window
         self.window = window
         self.delay = -self.window
         self.stride = 1
@@ -82,7 +79,6 @@ class GraphLoader(Dataset, ABC):
         ]
 
         self.training_slice = None
-        print(f"DEBUG: {self.horizon=} {self.window=}")
 
     def __len__(self) -> int:
         return len(self._indices)
