@@ -49,6 +49,7 @@ class AirQualityLoader(GraphLoader):
         # debug_mask_relationship(
         #     torch.tensor(missing_mask), torch.tensor(self.eval_mask), "AirQuality mask"
         # )
+        print("Initialization GraphLoader")
         super().__init__(
             dataframe=data,
             missing_mask=missing_mask,
