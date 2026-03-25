@@ -20,6 +20,7 @@ class GraphLoader(Dataset, ABC):
         horizon: int = 36,
         window: int = 36,
     ) -> None:
+        print(f"DEBUG: {type(eval_mask)=} {eval_mask is None=}")
         self.eval_mask = self._check_input(torch.tensor(eval_mask))
         self._exogenous_keys = dict()
         self._reserved_signature = {"data", "trend", "x", "y"}
