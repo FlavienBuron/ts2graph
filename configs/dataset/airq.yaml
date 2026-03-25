@@ -4,7 +4,6 @@ dataset_path: ./datasets/data/air_quality/
 small: false
 freq: 60min
 masked_sensors: []
-horizon: 36
 scaling_type: std
 in_sample: true
 window: 24
