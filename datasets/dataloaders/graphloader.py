@@ -24,6 +24,7 @@ class GraphLoader(Dataset, ABC):
         self._exogenous_keys = dict()
         self._reserved_signature = {"data", "trend", "x", "y"}
 
+        print(f"DEBUG: {self.horizon=} {self.window=}")
         # reproduce 'pd_dataset' class from GRIN
         self._store_pandas_data(
             dataframe=dataframe,
