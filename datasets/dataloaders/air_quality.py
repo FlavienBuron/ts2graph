@@ -41,6 +41,7 @@ class AirQualityLoader(GraphLoader):
             small=small,
             masked_sensors=masked_sensors,
         )
+        print("DEBUG: data loaded")
         self.distances = distances
         self.masked_sensors = (
             list(masked_sensors) if masked_sensors is not None else list()
@@ -99,7 +100,7 @@ class AirQualityLoader(GraphLoader):
             print("Infering eval mask")
             eval_mask = self._infer_mask(data)
         eval_mask = eval_mask.values.astype("bool")
-        if masked_sensors is not None:
+        if masked_sensors is not None and len(masked_sensors) > 0:
             eval_mask[:masked_sensors] = np.where(
                 missing_mask[:, masked_sensors], True, False
             )
