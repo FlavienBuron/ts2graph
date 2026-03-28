@@ -3,13 +3,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-import torch
 from sklearn.metrics.pairwise import haversine_distances
-from torch_geometric.utils import to_dense_adj
 
 from datasets.dataloaders.graphloader import GraphLoader
 from datasets.dataset_registry import DatasetRegistry
-from graphs_transformations.proximity_graphs import from_geo_nn, from_knn, from_radius
 
 EARTH_RADIUS = 6371.0088
 
@@ -42,9 +39,7 @@ class AirQualityLoader(GraphLoader):
         self.masked_sensors = (
             list(masked_sensors) if masked_sensors is not None else list()
         )
-        # debug_mask_relationship(
-        #     torch.tensor(missing_mask), torch.tensor(self.eval_mask), "AirQuality mask"
-        # )
+
         super().__init__(
             dataframe=data,
             missing_mask=missing_mask,
@@ -126,98 +121,6 @@ class AirQualityLoader(GraphLoader):
             )
             train_idxs = nontest_idxs[~ovl_idxs]
         return train_idxs, val_idxs, test_idxs
-
-    def get_geolocation_graph(
-        self,
-        threshold: float = 0.1,
-        include_self: bool = False,
-        force_symmetric: bool = False,
-        weighted: bool = True,
-    ) -> torch.Tensor:
-        distances = torch.from_numpy(self.distances.to_numpy())
-        theta = distances.std()
-        # adj = np.exp(-(self.distances**2) / (2 * theta**2))
-        adj = torch.exp(-torch.square(distances / theta))
-        mask = adj < threshold
-        adj[mask] = 0
-        print(f"DEBUG: {weighted=}")
-        if not weighted:
-            adj[adj > 0] = 1.0
-        if not include_self:
-            adj.fill_diagonal_(0.0)
-        if force_symmetric:
-            adj = torch.from_numpy(np.maximum.reduce([adj.numpy(), adj.T.numpy()]))
-        return adj
-
-    def get_knn_graph(
-        self,
-        k: float,
-        loop: bool = False,
-        cosine: bool = False,
-        full_dataset: bool = False,
-    ) -> torch.Tensor:
-        total_missing_masK = self.missing_mask | self.eval_mask
-
-        available_rows = (~total_missing_masK).any(dim=(1, 2))
-
-        data_tensor = self.data if full_dataset else self.data[available_rows, :, :]
-        mask_tensor = (
-            self.missing_mask
-            if full_dataset
-            else self.missing_mask[available_rows, :, :]
-        )
-
-        data = data_tensor.permute(1, 0, 2).reshape(self.data.shape[1], -1)
-        mask = mask_tensor.permute(1, 0, 2).reshape(self.data.shape[1], -1)
-
-        edge_index = from_knn(data=data, mask=mask, k=k, loop=loop, cosine=cosine)
-        adj = to_dense_adj(edge_index).squeeze()
-        return adj
-
-    def get_geo_nn_graph(
-        self,
-        k: int | float,
-        include_self: bool = False,
-        force_symmetric: bool = False,
-        weighted: bool = True,
-    ) -> torch.Tensor:
-        return from_geo_nn(
-            self.distances,
-            k=k,
-            include_self=include_self,
-            force_symmetric=force_symmetric,
-            weighted=weighted,
-        )
-
-    def get_radius_graph(
-        self,
-        radius: float,
-        loop: bool = False,
-        cosine: bool = False,
-        full_dataset: bool = False,
-    ) -> torch.Tensor:
-        total_missing_masK = self.missing_mask | self.test_mask | self.eval_mask
-
-        available_rows = (~total_missing_masK).any(dim=(1, 2))
-
-        data_tensor = (
-            self.original_data
-            if full_dataset
-            else self.original_data[available_rows, :, :]
-        )
-        mask_tensor = (
-            self.missing_mask
-            if full_dataset
-            else self.missing_mask[available_rows, :, :]
-        )
-
-        data = data_tensor.permute(1, 0, 2).reshape(self.original_data.shape[1], -1)
-        mask = mask_tensor.permute(1, 0, 2).reshape(self.original_data.shape[1], -1)
-        edge_index = from_radius(
-            data=data, mask=mask, radius=radius, loop=loop, cosine=cosine
-        )
-        adj = to_dense_adj(edge_index).squeeze()
-        return adj
 
     def _geographical_distance(
         self, coords: pd.DataFrame, to_rad: bool = True
