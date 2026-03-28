@@ -54,22 +54,6 @@ class AirQualityLoader(GraphLoader):
             window=window,
         )
 
-    # @property
-    # def training_mask(self):
-    #     return self._mask if self.eval_mask is None else (self._mask & ~self.eval_mask)
-
-    # def __len__(self) -> int:
-    #     return self.original_data.shape[0]
-
-    # def __getitem__(
-    #     self, index: int
-    # ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    #     missing_data = self.current_data[index, :]
-    #     ori_data = self.original_data[index, :]
-    #     missing_mask = self.missing_mask[index, :]
-    #     test_mask = self.test_mask[index, :]
-    #     return missing_data, missing_mask, ori_data.nan_to_num_(0.0), test_mask
-
     def load_raw(
         self, small: bool = False
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
@@ -250,60 +234,6 @@ class AirQualityLoader(GraphLoader):
         dist = haversine_distances(coords_pairs) * _AVG_EARTH_RADIUS_KM
         dist_df = pd.DataFrame(dist, coords.index, coords.index)
         return dist_df
-
-    # def get_dataloader(
-    #     self,
-    #     test_percent: float = 0.2,
-    #     total_missing_percent: float = 0.4,
-    #     mask_pattern: str = "default",
-    #     shuffle: bool = False,
-    #     batch_size: int = 128,
-    # ) -> DataLoader:
-    #     self.split(
-    #         mask_pattern=mask_pattern,
-    #         test_percent=test_percent,
-    #         total_missing_percent=total_missing_percent,
-    #     )
-    #     if self.eval_mask is None:
-    #         raise ValueError("Validation mask should not be None after split")
-    #     self.missing_data = torch.where(self.test_mask, 0.0, self.missing_data)
-    #     self.missing_data = torch.where(self.eval_mask, 0.0, self.missing_data)
-    #     self.current_data = self.missing_data.clone()
-    #     self.missing_mask = self.missing_mask | self.eval_mask | self.test_mask
-    #     return DataLoader(self, shuffle=shuffle, batch_size=batch_size)
-    #
-    # def _normalize(self, data, mask, type: str = "min_max") -> torch.Tensor:
-    #     observed = ~mask
-    #     if type == "min_max":
-    #         min_val = data[observed].min()
-    #         max_val = data[observed].max()
-    #
-    #         return (data - min_val) / ((max_val - min_val) + 1e-6)
-    #     elif type == "std":
-    #         mean_val = data[observed].min()
-    #         std_val = data[observed].std()
-    #
-    #         return (data - mean_val) / (std_val + 1e-8)
-    #     else:
-    #         return data
-    #
-    # def _replace_nan(self, method="mean"):
-    #     print("------------------ Replacing NaNs ------------------")
-    #     if method == "mean":
-    #         if torch.isnan(self.original_data).any():
-    #             # data.nan_to_num_(nan=0.0)
-    #             means = (
-    #                 self.original_data.nanmean(dim=1)
-    #                 .unsqueeze(1)
-    #                 .expand_as(self.original_data)
-    #             )
-    #             # print(f"NaNs in means?: {torch.isnan(means).any()}")
-    #             means = means.nan_to_num(0.0)
-    #             self.missing_data = torch.where(
-    #                 self.missing_mask, means, self.original_data
-    #             )
-    #     elif method == "zero":
-    #         self.missing_data = self.original_data.nan_to_num(nan=0.0)
 
     def _infer_mask(self, data: pd.DataFrame) -> pd.DataFrame:
         observed_mask = data.isna().astype("bool")
