@@ -218,20 +218,6 @@ def run(cfg: DictConfig) -> None:
         dm.dataset.mask[dm.train_slice] |= dm.dataset.eval_mask[dm.train_slice]
     dataset.training_slice = dm.train_slice
 
-    # spatial_graph_technique, spatial_graph_param = args.spatial_graph_technique
-    # temporal_graph_technique = args.temporal_graph_technique[0]
-    # temporal_graph_params = args.temporal_graph_technique[1:]
-    # spatial_graph_param = float(spatial_graph_param)
-
-    # D = graph(torch.from_numpy(dataset.distances.to_numpy()))
-    # print(f"DEBUG: {D=}")
-    # A = dataset.get_geolocation_graph(
-    #     threshold=0.3,
-    #     include_self=args.self_loop,
-    #     weighted=not args.unweighted_graph,
-    # )
-    # print(f"DEBUG: {A=}")
-
     spatial_graph_time = 0.0
     if cfg.use_spatial:
         spatial_adj_matrix, spatial_graph_time = get_spatial_graph(dataset, cfg)
