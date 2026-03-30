@@ -30,22 +30,11 @@ class GraphLoader(Dataset, ABC):
             freq=freq,
             aggr=aggr,
         )
-        # self._mask = self._check_input(torch.tensor(self._mask))
-        # debug_mask_relationship(
-        #     torch.tensor(self.training_mask),
-        #     torch.tensor(self.eval_mask),
-        #     "GraphLoader mask",
-        # )
 
         # Emulate GRIN's SpatioaTemporal classes, into one
         self.data, self.index = self.as_numpy(return_idx=True)
         if self.index is None:
             raise AttributeError("Dataset index is returned as None")
-
-        # self.mask = self.training_mask
-        # debug_mask_relationship(
-        #     torch.tensor(self.mask), torch.tensor(self.eval_mask), "GraphLoader mask"
-        # )
 
         if exogenous is None:
             exogenous = dict()
@@ -59,7 +48,6 @@ class GraphLoader(Dataset, ABC):
         for name, value in exogenous.items():
             self._add_exogenous(value, name, for_window=True, for_horizon=True)
 
-        # self._exogenous_keys["eval_mask"] = dict(for_window=True, for_horizon=True)
         try:
             freq = freq or self.index.freq or self.index.inferred_freq
             self.freq = pd.tseries.frequencies.to_offset(freq)
@@ -309,18 +297,6 @@ class GraphLoader(Dataset, ABC):
     @abstractmethod
     def get_geolocation_graph(self, *args, **kwargs) -> Any:
         pass
-
-    #
-    # @abstractmethod
-    # def get_dataloader(
-    #     self,
-    #     test_percent: float = 0.2,
-    #     total_missing_percent: float = 0.4,
-    #     mask_pattern: str = "default",
-    #     shuffle: bool = False,
-    #     batch_size: int = 128,
-    # ) -> Any:
-    #     pass
 
     @abstractmethod
     def load_raw(self) -> Any:
