@@ -1,0 +1,60 @@
+# @package _global_
+defaults:
+  - _self_
+  - dataset: airq
+
+# ========================================================================
+# Missingness Injection Configuration
+# ========================================================================
+missingness:
+  enabled: true # Always true for generation script
+
+  # Pattern settings
+  pattern: mcar_blocks # mcar_blocks, mcar_points
+  block_size: 10 # Max block size (actual: 1-10)
+
+  # Target rates for ablation study
+  # If cumulative=true: nested scenarios (30% ⊂ 35% ⊂ ...)
+  # If cumulative=false: independent scenarios
+  target_rate: [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
+  cumulative: true
+
+  # Random seed
+  seed: ${seed}
+
+# ========================================================================
+# Cache Configuration
+# ========================================================================
+cache:
+  dir: ./datasets/missingness_scenarios/cache/${dataset.name}_${dataset.variant}
+  index_file: ${cache.dir}/index.json
+  force_regenerate: false # Skip cache, regenerate all
+
+  # Validation
+  validate_hash: true # Verify dataset hash on load
+  min_eval_targets: 50000 # Warn if eval mask too small
+
+# ========================================================================
+# Output Configuration
+# ========================================================================
+output:
+  # Save index file (default: cache.dir/index.json)
+  index_file: ${cache.index_file}
+
+  # Optional: copy index to additional location for versioning
+  # backup_dir: ./experiments/scenarios/v1/
+
+# ========================================================================
+# Hydra Runtime Configuration
+# ========================================================================
+hydra:
+  job:
+    chdir: false # Don't change working directory
+    name: generate_scenarios_${dataset.name}_${dataset.variant}_${now:%Y%m%d_%H%M%S}
+
+  run:
+    dir: ./outputs/generation/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+  sweep:
+    dir: ./outputs/generation/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}

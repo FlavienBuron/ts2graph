@@ -238,9 +238,7 @@ def validate_index(index: Dict, cache_cfg: DictConfig) -> List[str]:
     return warnings
 
 
-@hydra.main(
-    config_path="../configs", config_name="missingness/default", version_base=None
-)
+@hydra.main(config_path="../configs", config_name="missingness", version_base=None)
 def main(cfg: DictConfig):
     """
     Main entry point for scenario generation.
