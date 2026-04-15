@@ -201,7 +201,6 @@ def run(cfg: DictConfig) -> None:
 
     # dataset = get_dataset(cfg.dataset.name)
     dataset = DatasetRegistry.get(cfg.dataset)
-    print(f"DEBUG: {type(dataset)}")
 
     train, val, test = dataset.grin_split(in_sample=cfg.dataset.in_sample)
     dm = DataModule(

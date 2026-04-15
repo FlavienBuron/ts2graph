@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -7,6 +7,7 @@ from sklearn.metrics.pairwise import haversine_distances
 
 from datasets.dataloaders.graphloader import GraphLoader
 from datasets.dataset_registry import DatasetRegistry
+from datasets.missingness_scenarios import ScenarioManager
 
 EARTH_RADIUS = 6371.0088
 
@@ -23,12 +24,16 @@ class AirQualityLoader(GraphLoader):
         freq: str = "60min",
         masked_sensors: list | None = None,
         window: int = 36,
-        **kwargs,
+        missingness: Optional[Dict] = None,
+        missingness_rate: Optional[float] = None**kwargs,
     ):
         self.dataset_path = dataset_path
 
         self.test_months = [3, 6, 9, 12]
         self.infer_eval_from = "next"
+
+        self.missingness_config = missingness or {}
+        self.missingness_rate = missingness_rate
 
         data, missing_mask, distances = self.load(
             impute_nans=impute_nans,
@@ -62,29 +67,67 @@ class AirQualityLoader(GraphLoader):
         stations = pd.DataFrame(pd.read_hdf(path, key="stations"))
         return data, stations, eval_mask
 
-    def load(
+    def _default_load(
         self,
+        data_raw: pd.DataFrame,
+        stations: pd.DataFrame,
+        loaded_eval_mask: Optional[pd.DataFrame],
         impute_nans: bool = True,
         small: bool = False,
         masked_sensors: list | None = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame]:
         data, stations, eval_mask = self.load_raw(small=small)
-        missing_mask = (~np.isnan(data.values)).astype("bool")  # 0=missing, 1=observed
-        if eval_mask is None:
+        missing_mask = (~np.isnan(data_raw.values)).astype(
+            "bool"
+        )  # 0=missing, 1=observed
+        if loaded_eval_mask is None:
             print("Infering eval mask")
             eval_mask = self._infer_mask(data)
+        else:
+            eval_mask = loaded_eval_mask
         eval_mask = eval_mask.values.astype("bool")
         if masked_sensors is not None and len(masked_sensors) > 0:
-            eval_mask[:masked_sensors] = np.where(
+            eval_mask[:, masked_sensors] = np.where(
                 missing_mask[:, masked_sensors], True, False
             )
         self.eval_mask = eval_mask
         if impute_nans:
             data = data.fillna(self._compute_mean(data))
+        else:
+            data = data_raw.copy()
 
         stations_coords = stations.loc[:, ["latitude", "longitude"]]
         dist = self._geographical_distance(stations_coords)
         return data, missing_mask, dist
+
+    def _load_with_missingness(
+        self,
+        data_raw: pd.DataFrame,
+        stations: pd.DataFrame,
+        impute_nans: bool,
+        masked_sensors: Optional[List[int]],
+    ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
+        baseline_mask = ~np.isnan(data_raw.values)
+        baseline_missing_rate = 1.0 - baseline_mask.mean()
+
+        target_rate = self.missingness_rate
+        if target_rate is None:
+            target_rates = self.missingness_config.get("target_rate", [0.40])
+            if isinstance(target_rates, (int, float)):
+                target_rate = target_rates
+            else:
+                # Default to first rate for single-dataset loading
+                target_rate = target_rates[0]
+                print(f"⚠️  No rate specified; using first: {target_rate:.0%}")
+
+        # Initialize injection manager
+        scenario_manager = ScenarioManager(
+            cache_dir=self.missingness_config.get(
+                "cache_dir", "./datasets/missingness_scenarios/cache"
+            )
+        )
+
+        return pd.DataFrame(), np.array([]), np.array([]), np.array([])
 
     def grin_split(
         self,

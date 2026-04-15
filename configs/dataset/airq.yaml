@@ -7,3 +7,13 @@ masked_sensors: []
 scaling_type: std
 in_sample: true
 window: 24
+
+missingness:
+  enabled: false
+  pattern: mcar_blocks
+  block_size: 10
+  target_rates: ???
+  cumulative: true
+  cache_dir: ./datasets/missingness_scenarios/cache
+  force_generate: false
+  seed: ${seed}
