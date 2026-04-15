@@ -200,3 +200,4 @@ pip-selfcheck.json
 ### Project-specific Ignores ###
 datasets/data/*
 !datasets/data/.gitkeep
+!scripts/
