@@ -38,7 +38,7 @@ import numpy as np
 
 from datasets.missingness_scenarios._cache import (
     ScenarioCache,
-    _compute_data_hash,
+    compute_data_hash,
 )
 from datasets.missingness_scenarios._config import ScenarioConfig, ScenarioResult
 from datasets.missingness_scenarios._generator import (
@@ -74,7 +74,7 @@ class ScenarioManager:
         """
         Compute and set data hash for cache validation.
         """
-        self._data_hash = _compute_data_hash(data)
+        self._data_hash = compute_data_hash(data)
 
     def get_scenario(
         self,
