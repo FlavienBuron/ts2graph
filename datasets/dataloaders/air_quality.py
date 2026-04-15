@@ -25,7 +25,8 @@ class AirQualityLoader(GraphLoader):
         masked_sensors: list | None = None,
         window: int = 36,
         missingness: Optional[Dict] = None,
-        missingness_rate: Optional[float] = None**kwargs,
+        missingness_rate: Optional[float] = None,
+        **kwargs,
     ):
         self.dataset_path = dataset_path
 
@@ -126,6 +127,11 @@ class AirQualityLoader(GraphLoader):
                 "cache_dir", "./datasets/missingness_scenarios/cache"
             )
         )
+        scenario_manager.set_data_hash(data_raw.values)
+        scenario_manager.set_original_missing_from_mask(mask=baseline_mask)
+
+        # Generate scenario
+        scenario = scenario_manager.get_scenario(shape)
 
         return pd.DataFrame(), np.array([]), np.array([]), np.array([])
 
