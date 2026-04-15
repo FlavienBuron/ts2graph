@@ -1,14 +1,6 @@
+# @package _global_
 defaults:
   - _self_
-
-# ========================================================================
-# Dataset Configuration
-# ========================================================================
-dataset:
-  name: airq # Dataset registry key
-  variant: default # "default" or "small"
-  path: ./datasets/data/air_quality/
-  small: ${eq:${dataset.variant}, small} # Auto-set from variant
 
 # ========================================================================
 # Missingness Injection Configuration
