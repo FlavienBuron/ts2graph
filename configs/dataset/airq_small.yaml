@@ -4,6 +4,7 @@ defaults:
 
 name: airq_small
 small: true
+variant: small
 window: 36
 
 missingness:

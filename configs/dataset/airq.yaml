@@ -2,6 +2,7 @@ name: airq
 
 dataset_path: ./datasets/data/air_quality/
 small: false
+variant: full
 freq: 60min
 masked_sensors: []
 scaling_type: std
