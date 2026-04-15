@@ -239,7 +239,7 @@ def validate_index(index: Dict, cache_cfg: DictConfig) -> List[str]:
 
 
 @hydra.main(
-    config_path="../configs/missingness/", config_name="default", version_base=None
+    config_path="../configs", config_name="missingness/default", version_base=None
 )
 def main(cfg: DictConfig):
     """
