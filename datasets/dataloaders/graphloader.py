@@ -287,18 +287,6 @@ class GraphLoader(Dataset, ABC):
         )
 
     @abstractmethod
-    def get_knn_graph(self, k: float, *args, **kwargs) -> Any:
-        pass
-
-    @abstractmethod
-    def get_radius_graph(self, radius: float, *args, **kwargs) -> Any:
-        pass
-
-    @abstractmethod
-    def get_geolocation_graph(self, *args, **kwargs) -> Any:
-        pass
-
-    @abstractmethod
     def load_raw(self) -> Any:
         pass
 
