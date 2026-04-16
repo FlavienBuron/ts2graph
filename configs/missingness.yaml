@@ -20,7 +20,7 @@ missingness:
   cumulative: true
 
   # Random seed
-  seed: ${seed}
+  seed: 42
 
 # ========================================================================
 # Cache Configuration
