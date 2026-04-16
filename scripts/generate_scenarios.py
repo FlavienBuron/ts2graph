@@ -251,7 +251,6 @@ def main(cfg: DictConfig):
     data, stations = load_baseline_data(cfg.dataset)
 
     print(f"   Shape: {data.shape}")
-    print(f"   Columns: {list(data.columns)}")
 
     baseline_missing = np.isnan(data.values).mean()
     data_hash = compute_data_hash(data.values)
