@@ -47,7 +47,7 @@ import numpy as np
 import pandas as pd
 from omegaconf import DictConfig
 
-import datasets  # noqa: F401
+import datasets.dataloaders  # noqa: F401
 from datasets.dataset_registry import DatasetRegistry
 from datasets.missingness_scenarios import ScenarioManager
 from datasets.missingness_scenarios._cache import ScenarioCache, compute_data_hash
