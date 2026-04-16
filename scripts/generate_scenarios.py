@@ -254,7 +254,7 @@ def main(cfg: DictConfig):
     print(f"   Columns: {list(data.columns)}")
 
     baseline_missing = np.isnan(data.values).mean()
-    data_hash = compute_data_hash(data)
+    data_hash = compute_data_hash(data.values)
 
     print(f"   Shape: {data.shape}")
     print(f"   Baseline missing: {baseline_missing:.2%}")
