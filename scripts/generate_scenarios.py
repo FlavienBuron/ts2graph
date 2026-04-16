@@ -45,7 +45,7 @@ from typing import Dict, List, Tuple
 import hydra
 import numpy as np
 import pandas as pd
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from datasets.dataset_registry import DatasetRegistry
 from datasets.missingness_scenarios import ScenarioManager
@@ -68,7 +68,7 @@ def load_baseline_data(dataset_cfg: DictConfig) -> Tuple[pd.DataFrame, pd.DataFr
     }
 
     # Get loader from registry
-    loader = DatasetRegistry.get(OmegaConf.create(loader_config))
+    loader = DatasetRegistry.get(dataset_cfg)
 
     # Load raw data
     data, stations, _ = loader.load_raw(small=dataset_cfg.get("small", False))
