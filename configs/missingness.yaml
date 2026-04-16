@@ -16,7 +16,7 @@ missingness:
   # Target rates for ablation study
   # If cumulative=true: nested scenarios (30% ⊂ 35% ⊂ ...)
   # If cumulative=false: independent scenarios
-  target_rate: [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
+  target_rates: [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
   cumulative: true
 
   # Random seed
