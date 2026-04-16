@@ -237,8 +237,8 @@ class AirQualityLoader(GraphLoader):
             data_mean = data_mean.fillna(nan_mean)
             conditions = conditions[1:]
         if data_mean.isna().values.sum():
-            data_mean = data_mean.fillna(method="ffill")
-            data_mean = data_mean.fillna(method="bfill")
+            data_mean = data_mean.ffill()
+            data_mean = data_mean.bfill()
         return data_mean
 
     def _disjoint_months(
