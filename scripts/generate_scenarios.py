@@ -58,14 +58,6 @@ def load_baseline_data(dataset_cfg: DictConfig) -> Tuple[pd.DataFrame, pd.DataFr
 
     Returns data and stations without any imputation or injection.
     """
-    # Build loader config (minimal, no injection)
-    loader_config = {
-        "name": dataset_cfg.name,
-        "variant": dataset_cfg.variant,
-        "dataset_path": dataset_cfg.path,
-        "small": dataset_cfg.get("small", False),
-        "impute_nans": False,  # Keep original NaNs for baseline computation
-    }
 
     # Get loader from registry
     loader = DatasetRegistry.get(dataset_cfg)
