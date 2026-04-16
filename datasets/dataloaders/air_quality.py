@@ -36,10 +36,10 @@ class AirQualityLoader(GraphLoader):
         self.missingness_config = missingness or {}
         self.missingness_rate = missingness_rate
 
-        data, missing_mask, distances = self.load(
-            impute_nans=impute_nans,
-            small=small,
-            masked_sensors=masked_sensors,
+        data_raw, stations, eval_mask = self.load_raw(small)
+
+        data, missing_mask, distances = self._default_load(
+            data_raw, stations, eval_mask, impute_nans, small, masked_sensors
         )
         self.distances = distances
         self.masked_sensors = (
