@@ -169,7 +169,7 @@ def main(cfg: DictConfig):
         )
 
     # List all cached scenarios
-    all_cached = cache.list_cached()
+    all_cached = mgr.cache.list_cached()
     print(f"\n💾 Total cached scenarios: {len(all_cached)}")
 
     print("\n✅ Done!")
