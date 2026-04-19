@@ -144,20 +144,19 @@ def main(cfg: DictConfig):
             block_size=cfg.missingness.block_size,
             seed=cfg.missingness.seed,
             cumulative=True,
+            force_regenerate=cfg.cache.force_regenerate,
         )
     else:
-        scenarios = {}
-        for rate in target_rates:
-            scenario = mgr.get_scenario(
-                shape=data.shape,
-                base_missing_rate=baseline_missing,
-                target_rate=target_rates[0],
-                pattern=cfg.missingness.pattern,
-                block_size=cfg.missingness.block_size,
-                seed=cfg.missingness.seed,
-                force_regenerate=cfg.cache.force_regenerate,
-            )
-            scenarios[rate] = scenario
+        scenarios = mgr.get_scenario_batch(
+            shape=data.shape,
+            base_missing_rate=baseline_missing,
+            target_rates=target_rates,
+            pattern=cfg.missingness.pattern,
+            block_size=cfg.missingness.block_size,
+            seed=cfg.missingness.seed,
+            cumulative=False,  # ← Independent mode
+            force_regenerate=cfg.cache.force_regenerate,
+        )
 
     # ========================================================================
     # STEP 4: Summary
@@ -167,7 +166,7 @@ def main(cfg: DictConfig):
     for rate, scenario in scenarios.items():
         meta = scenario.metadata
         print(
-            f"   {rate:.0%}: {scenario.eval_mask.sum():,} eval targets "
+            f"   {rate:.0%}: {scenario.eval_mask_newly.sum():,} eval targets "
             f"(actual: {meta.get('actual_rate', 'N/A'):.2%})"
         )
 

@@ -32,9 +32,11 @@ Usage:
     eval_targets = data[scenario['eval_mask'] == 1]
 """
 
+import re
 from typing import Dict, List, Optional
 
 import numpy as np
+from pandas.core.computation.ops import Op
 
 from datasets.missingness_scenarios._cache import (
     ScenarioCache,
@@ -85,6 +87,7 @@ class ScenarioManager:
         block_size: int = 10,
         seed: int = 42,
         force_regenerate: bool = False,
+        eval_fraction: Optional[float] = None,
     ) -> ScenarioResult:
         """
         Get or generate a missingness scenario.
@@ -106,13 +109,25 @@ class ScenarioManager:
             block_size=block_size,
             dataset_shape=shape,
             dataset_hash=self._data_hash or "",
+            injection_mode="independent",
+            eval_fraction=eval_fraction,
+            is_first_rate=eval_fraction is None,
         )
 
         # Try cache
         if not force_regenerate:
             cached = self.cache.load_scenario(config)
             if cached is not None:
-                return cached
+                # Check if cached result matches requested eval_fraction
+                cached_eval_fraction = cached.metadata.get("eval_fraction")
+                if cached_eval_fraction is None:
+                    raise AttributeError(
+                        "Eval fraction could not be retrieved from the cached scenario"
+                    )
+                if eval_fraction is None or np.isclose(
+                    cached_eval_fraction, eval_fraction
+                ):
+                    return cached
 
         # Generate new scenario
         print(f"Generating scenario: {config.get_cache_key()}")
@@ -121,11 +136,13 @@ class ScenarioManager:
             result = inject_mcar_blocks(
                 config,
                 self._original_missing_mask,
+                eval_fraction,
             )
         elif pattern == "mcar_points":
             result = inject_mcar_points(
                 config,
                 self._original_missing_mask,
+                eval_fraction,
             )
         # elif pattern == "mar_systematic":
         #     full_mask, eval_mask = inject_mar_systematic(
@@ -148,6 +165,7 @@ class ScenarioManager:
         block_size: int = 10,
         seed: int = 42,
         cumulative: bool = True,
+        force_regenerate: bool = False,
     ) -> Dict[float, ScenarioResult]:
         """
         Get multiple scenarios. If cumulative=True, they are nested.
@@ -156,13 +174,15 @@ class ScenarioManager:
             self._original_missing_mask = np.ones(shape, dtype=int)
 
         results = {}
+        T, N = self._original_missing_mask.shape
+        total_positions = T * N
 
         if cumulative and pattern == "mcar_blocks":
-            injector = MCARCumulativeGenerator(
+            generator = MCARCumulativeGenerator(
                 baseline_mask=self._original_missing_mask, seed=seed
             )
 
-            for rate in sorted(target_rates):
+            for i, rate in enumerate(sorted(target_rates)):
                 config = ScenarioConfig(
                     seed=seed,
                     base_missing_rate=base_missing_rate,
@@ -171,26 +191,67 @@ class ScenarioManager:
                     block_size=block_size,
                     dataset_shape=shape,
                     dataset_hash=self._data_hash or "",
+                    injection_mode="cumulative",
+                    eval_fraction=None,
+                    is_first_rate=(i == 0),
                 )
-                injection_result = injector.inject_block_to_rate(config)
+                # Try cache
+                if not force_regenerate:
+                    cached = self.cache.load_scenario(config)
+                    if cached is not None:
+                        generator.cumulative_eval_mask = cached.eval_mask_cumulative
+                        if config.is_first_rate:
+                            generator.fixed_eval_mask = cached.eval_mask_fixed
+                            generator.first_rate = rate
+                            generator.first_rate_eval_fraction = cached.metadata[
+                                "eval_fraction"
+                            ]
+                        results[rate] = cached
+                        continue
 
-                injection_result.metadata.update(
+                result = generator.inject_block_to_rate(config)
+
+                result.metadata.update(
                     {
                         "cumulative": True,
                     }
                 )
 
-                results[rate] = injection_result
+                self.cache.save(result)
+
+                results[rate] = result
         else:
-            for rate in target_rates:
-                results[rate] = self.get_scenario(
+            # ================================================================
+            # INDEPENDENT MODE: Subsample eval masks to first rate's fraction
+            # ================================================================
+
+            # Step 1: Generate first rate to determine eval fraction
+            first_rate = sorted(target_rates)[0]
+            first_result = self.get_scenario(
+                shape=shape,
+                target_rate=first_rate,
+                pattern=pattern,
+                block_size=block_size,
+                seed=seed + int(first_rate * 100),
+                base_missing_rate=base_missing_rate,
+                eval_fraction=None,
+            )
+            eval_fraction = float(first_result.eval_mask_fixed.mean())
+            self.cache.save(first_result)
+            results[first_rate] = first_result
+
+            for rate in target_rates[1:]:
+                result = self.get_scenario(
                     shape=shape,
                     target_rate=rate,
                     pattern=pattern,
                     block_size=block_size,
                     seed=seed + int(rate * 100),
                     base_missing_rate=base_missing_rate,
+                    eval_fraction=eval_fraction,
                 )
+                self.cache.save(result)
+                results[rate] = result
 
         return results
 
