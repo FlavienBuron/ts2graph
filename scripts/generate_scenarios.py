@@ -164,7 +164,7 @@ def main(cfg: DictConfig):
     for rate, scenario in scenarios.items():
         meta = scenario.metadata
         print(
-            f"   {rate:.0%}: {scenario.eval_mask_newly.sum():,} eval targets "
+            f"   {rate:.0%}: {scenario.eval_mask_fixed.sum():,} eval targets "
             f"(actual: {meta.get('actual_rate', 'N/A'):.2%})"
         )
 
