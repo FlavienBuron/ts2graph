@@ -49,7 +49,7 @@ from omegaconf import DictConfig
 import datasets.dataloaders  # noqa: F401
 from datasets.dataset_registry import DatasetRegistry
 from datasets.missingness_scenarios import ScenarioManager
-from datasets.missingness_scenarios._cache import ScenarioCache, compute_data_hash
+from datasets.missingness_scenarios._cache import compute_data_hash
 
 
 def load_baseline_data(dataset_cfg: DictConfig) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -86,6 +86,7 @@ def main(cfg: DictConfig):
 
     print(f"\n📦 Loading baseline  {cfg.dataset.name}_{cfg.dataset.variant}")
     data, stations = load_baseline_data(cfg.dataset)
+    baseline_mask = (~np.isnan(data.values)).astype(int)
 
     print(f"   Shape: {data.shape}")
 
@@ -100,21 +101,23 @@ def main(cfg: DictConfig):
     # STEP 2: Initialize Cache
     # ========================================================================
 
-    cache = ScenarioCache(cache_dir=cfg.cache.dir)
-    print(f"\n💾 Cache directory: {cfg.cache.dir}")
+    # Initialize scenario manager
+    mgr = ScenarioManager(cache_dir=cfg.cache.dir)
+    mgr.set_data_hash(data.values)
+    mgr.set_original_missing_from_mask(baseline_mask)
+
+    print(f"\nCache directory: {cfg.cache.dir}")
 
     # Check existing scenarios
-    existing = cache.list_cached()
+    existing = mgr.cache.list_cached()
     if existing and not cfg.cache.force_regenerate:
         print(f"   Found {len(existing)} existing scenarios")
-        available_rates = cache.list_available_rates()
+        available_rates = mgr.cache.list_available_rates()
         print(f"   Available rates: {[f'{r:.0%}' for r in available_rates]}")
 
     # ========================================================================
     # STEP 3: Generate Scenarios
     # ========================================================================
-
-    baseline_mask = (~np.isnan(data.values)).astype(int)
 
     # Prepare target rates
     target_rates = cfg.missingness.target_rates
@@ -128,11 +131,6 @@ def main(cfg: DictConfig):
     print(f"   Target rates: {[f'{r:.0%}' for r in target_rates]}")
     print(f"   Cumulative: {cfg.missingness.cumulative}")
     print(f"   Seed: {cfg.missingness.seed}")
-
-    # Initialize scenario manager
-    mgr = ScenarioManager(cache_dir=cfg.cache.dir)
-    mgr.set_data_hash(data.values)
-    mgr.set_original_missing_from_mask(baseline_mask)
 
     # Generate scenarios
     if cfg.missingness.cumulative and len(target_rates) > 1:
