@@ -4,7 +4,6 @@ defaults:
   - model: stgi
   - training: default
   - graph: ed_rbf_topk
-  - missingness: default
   - _self_
 
 seed: 42
