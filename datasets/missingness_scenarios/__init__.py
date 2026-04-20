@@ -86,8 +86,10 @@ class ScenarioManager:
         pattern: str = "mcar_blocks",
         block_size: int = 10,
         seed: int = 42,
+        cumulative: bool = False,
         force_regenerate: bool = False,
         eval_fraction: Optional[float] = None,
+        is_first_rate: bool = False,
     ) -> ScenarioResult:
         """
         Get or generate a missingness scenario.
@@ -109,9 +111,9 @@ class ScenarioManager:
             block_size=block_size,
             dataset_shape=shape,
             dataset_hash=self._data_hash or "",
-            injection_mode="independent",
+            injection_mode="cumulative" if cumulative else "independent",
             eval_fraction=eval_fraction,
-            is_first_rate=eval_fraction is None,
+            is_first_rate=(eval_fraction is None) and is_first_rate,
         )
 
         # Try cache

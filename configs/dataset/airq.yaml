@@ -20,3 +20,4 @@ missingness:
   cache_dir: ./datasets/missingness_scenarios/cache/${dataset.name}_${dataset.variant}
   force_generate: false
   seed: ${seed}
+  first_rate: 0.3

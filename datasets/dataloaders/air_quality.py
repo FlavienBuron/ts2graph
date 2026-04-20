@@ -137,6 +137,14 @@ class AirQualityLoader(GraphLoader):
             target_rate = target_rates[0]
             print(f"⚠️  No rate specified; using first: {target_rate:.0%}")
 
+        first_rate = self.missingness_config.get("first_rate", 0.3)
+        is_first_rate = False
+        eval_fraction = 0.0
+        if target_rate == first_rate:
+            is_first_rate = True
+        else:
+            eval_fraction = first_rate - baseline_missing_rate
+
         # Initialize injection manager
         scenario_manager = ScenarioManager(
             cache_dir=self.missingness_config.get(
@@ -159,7 +167,10 @@ class AirQualityLoader(GraphLoader):
             pattern=self.missingness_config.get("pattern", "mcar_blocks"),
             block_size=self.missingness_config.get("block_size", 10),
             seed=self.missingness_config.get("seed", 42),
+            cumulative=self.missingness_config.get("cumulative", False),
             force_regenerate=self.missingness_config.get("force_regenerate", False),
+            eval_fraction=None if is_first_rate else eval_fraction,
+            is_first_rate=is_first_rate,
         )
 
         # Store scenario reference for main.py to access all eval masks
