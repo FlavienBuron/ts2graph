@@ -13,7 +13,7 @@ missingness:
   enabled: false
   pattern: mcar_blocks
   block_size: 10
-  target_rates: ???
+  target_rate: ???
   cumulative: true
   cache_dir: ./datasets/missingness_scenarios/cache/${dataset.name}_${dataset.variant}
   force_generate: false
