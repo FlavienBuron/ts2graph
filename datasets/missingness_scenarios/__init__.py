@@ -198,6 +198,7 @@ class ScenarioManager:
                     eval_fraction=None,
                     is_first_rate=(i == 0),
                 )
+                print(f"[DEBUG] {config=}")
                 # Try cache
                 if not force_regenerate:
                     cached = self.cache.load_scenario(config)
