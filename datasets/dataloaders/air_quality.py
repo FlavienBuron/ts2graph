@@ -125,6 +125,8 @@ class AirQualityLoader(GraphLoader):
         baseline_mask = ~np.isnan(data_raw.values)
         baseline_missing_rate = 1.0 - baseline_mask.mean()
 
+        print(f"[DEBUG] {self.missingness_config=}")
+
         eval_mask_mode = self.missingness_config.get("eval_mask_mode", "fixed")
 
         target_rates = self.missingness_config.get("target_rate", 0.40)
@@ -144,6 +146,11 @@ class AirQualityLoader(GraphLoader):
         scenario_manager.set_data_hash(data_raw.values)
         scenario_manager.set_original_missing_from_mask(mask=baseline_mask)
 
+        print(f"[DEBUG] {scenario_manager.cache.list_cached()=}")
+        # Retrieve scenario from cache
+        print(f"🔧 Retrieving missingness scenario: {target_rate:.0%}")
+        print(f"   Pattern: {self.missingness_config.get('pattern', 'mcar_blocks')}")
+        print(f"   Eval mask mode: {eval_mask_mode}")
         # Generate scenario
         scenario = scenario_manager.get_scenario(
             shape=data_raw.shape,
