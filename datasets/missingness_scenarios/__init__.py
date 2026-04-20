@@ -115,6 +115,7 @@ class ScenarioManager:
             eval_fraction=eval_fraction,
             is_first_rate=(eval_fraction is None) and is_first_rate,
         )
+        print(f"[DEBUG] {config=}")
 
         # Try cache
         if not force_regenerate:
