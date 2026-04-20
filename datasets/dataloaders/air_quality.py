@@ -146,7 +146,7 @@ class AirQualityLoader(GraphLoader):
         scenario_manager.set_data_hash(data_raw.values)
         scenario_manager.set_original_missing_from_mask(mask=baseline_mask)
 
-        print(f"[DEBUG] {scenario_manager.cache.list_cached()=}")
+        print(f"[DEBUG] {scenario_manager.cache.list_available_rates()=}")
         # Retrieve scenario from cache
         print(f"🔧 Retrieving missingness scenario: {target_rate:.0%}")
         print(f"   Pattern: {self.missingness_config.get('pattern', 'mcar_blocks')}")
