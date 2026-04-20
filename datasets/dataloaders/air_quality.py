@@ -24,7 +24,7 @@ class AirQualityLoader(GraphLoader):
         freq: str = "60min",
         masked_sensors: list | None = None,
         window: int = 36,
-        missingness: Optional[Dict] = None,
+        missingness_config: Optional[Dict] = None,
         missingness_rate: Optional[float] = None,
         **kwargs,
     ):
@@ -33,14 +33,30 @@ class AirQualityLoader(GraphLoader):
         self.test_months = [3, 6, 9, 12]
         self.infer_eval_from = "next"
 
-        self.missingness_config = missingness or {}
+        self.missingness_config = missingness_config or {}
         self.missingness_rate = missingness_rate
 
-        data_raw, stations, eval_mask = self.load_raw(small)
+        data_raw, stations, eval_mask_loaded = self.load_raw(small)
 
-        data, missing_mask, distances = self._default_load(
-            data_raw, stations, eval_mask, impute_nans, small, masked_sensors
-        )
+        if self.missingness_config.get("enabled", False):
+            # INJECTION MODE: Apply/retrieve missingness scenario
+            data, missing_mask, eval_mask, distances = self._load_with_missingness(
+                data_raw=data_raw,
+                stations=stations,
+                impute_nans=impute_nans,
+                masked_sensors=masked_sensors,
+            )
+        else:
+            # BASELINE MODE: Load as before (backward compatible)
+            data, missing_mask, distances = self._default_load(
+                data_raw=data_raw,
+                stations=stations,
+                loaded_eval_mask=eval_mask_loaded,
+                impute_nans=impute_nans,
+                masked_sensors=masked_sensors,
+            )
+            eval_mask = self.eval_mask  # Set by _load_baseline
+
         self.distances = distances
         self.masked_sensors = (
             list(masked_sensors) if masked_sensors is not None else list()
@@ -49,7 +65,7 @@ class AirQualityLoader(GraphLoader):
         super().__init__(
             dataframe=data,
             missing_mask=missing_mask,
-            eval_mask=self.eval_mask,
+            eval_mask=eval_mask,
             freq=freq,
             aggr="nearest",
             window=window,
@@ -107,9 +123,11 @@ class AirQualityLoader(GraphLoader):
         stations: pd.DataFrame,
         impute_nans: bool,
         masked_sensors: Optional[List[int]],
-    ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray, pd.DataFrame]:
         baseline_mask = ~np.isnan(data_raw.values)
         baseline_missing_rate = 1.0 - baseline_mask.mean()
+
+        eval_mask_mode = self.missingness_config.get("eval_mask_mode", "fixed")
 
         target_rate = self.missingness_rate
         if target_rate is None:
@@ -131,9 +149,61 @@ class AirQualityLoader(GraphLoader):
         scenario_manager.set_original_missing_from_mask(mask=baseline_mask)
 
         # Generate scenario
-        scenario = scenario_manager.get_scenario(shape)
+        scenario = scenario_manager.get_scenario(
+            shape=data_raw.shape,
+            base_missing_rate=baseline_missing_rate,
+            target_rate=target_rate,
+            pattern=self.missingness_config.get("pattern", "mcar_blocks"),
+            block_size=self.missingness_config.get("block_size", 10),
+            seed=self.missingness_config.get("seed", 42),
+            force_regenerate=self.missingness_config.get("force_regenerate", False),
+        )
 
-        return pd.DataFrame(), np.array([]), np.array([]), np.array([])
+        # Store scenario reference for main.py to access all eval masks
+        self._scenario = scenario
+
+        # Select eval mask based on mode
+        if eval_mask_mode == "fixed":
+            eval_mask = scenario.eval_mask_fixed
+        elif eval_mask_mode == "newly":
+            eval_mask = scenario.eval_mask_newly
+        elif eval_mask_mode == "cumulative":
+            eval_mask = scenario.eval_mask_cumulative
+        else:
+            raise ValueError(f"Unknown eval_mask_mode: {eval_mask_mode}")
+
+        # Log scenario info
+        meta = scenario.metadata
+        print(f"   Actual missing: {meta.get('actual_rate', 'N/A'):.2%}")
+        print(f"   Eval targets: {eval_mask.sum():,} ({eval_mask.mean():.2%} of data)")
+        print(f"   Eval fraction: {meta.get('eval_fraction', 'N/A'):.1%}")
+        print(f"   Injection mode: {meta.get('injection_mode', 'N/A')}")
+
+        # Handle masked_sensors override
+        if masked_sensors is not None and len(masked_sensors) > 0:
+            eval_mask[:, masked_sensors] = np.where(
+                baseline_mask[:, masked_sensors].astype(bool), True, False
+            )
+
+        # Impute original NaNs for model input
+        if impute_nans:
+            data_imputed = data_raw.fillna(self._compute_mean(data_raw))
+        else:
+            data_imputed = data_raw.copy()
+
+        # Store eval_mask for later access
+        self.eval_mask = eval_mask.astype(int)
+
+        # Compute distances
+        stations_coords = stations.loc[:, ["latitude", "longitude"]]
+        distances = self._geographical_distance(stations_coords)
+
+        return (
+            data_imputed,
+            scenario.full_mask.astype(int),
+            eval_mask.astype(int),
+            distances,
+        )
 
     def grin_split(
         self,

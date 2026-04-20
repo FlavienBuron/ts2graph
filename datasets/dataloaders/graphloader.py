@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 import torch
 from einops import rearrange
 from torch.utils.data import Dataset
+
+from datasets.missingness_scenarios._config import ScenarioResult
 
 
 class GraphLoader(Dataset, ABC):
@@ -19,6 +21,7 @@ class GraphLoader(Dataset, ABC):
         exogenous=None,
         window: int = 36,
     ) -> None:
+        self._scenario: Optional[ScenarioResult] = None
         self.eval_mask = self._check_input(torch.tensor(eval_mask))
         self._exogenous_keys = dict()
         self._reserved_signature = {"data", "trend", "x", "y"}
@@ -66,7 +69,7 @@ class GraphLoader(Dataset, ABC):
             :: self.stride
         ]
 
-        self.training_slice = None
+        self.training_slice: Optional[np.ndarray] = None
 
     def __len__(self) -> int:
         return len(self._indices)

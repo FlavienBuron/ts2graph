@@ -2,6 +2,8 @@ from typing import Dict, Type
 
 from omegaconf import DictConfig
 
+from datasets.dataloaders.graphloader import GraphLoader
+
 
 class DatasetRegistry:
     _registry: Dict[str, Type] = {}
@@ -21,7 +23,7 @@ class DatasetRegistry:
         return wrapper
 
     @classmethod
-    def get(cls, config: DictConfig) -> Type:
+    def get(cls, config: DictConfig) -> GraphLoader:
         """Get loader class by config key"""
         config_key = config.name
         if config_key not in cls._registry:

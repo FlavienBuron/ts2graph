@@ -357,11 +357,14 @@ def run(cfg: DictConfig) -> None:
     trainer.fit(task, datamodule=dm)
     fit_report = report.as_dict()
     metrics_data.update(fit_report)
+
+    # Load last best checkpoint
     task.load_state_dict(
         torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
             "state_dict"
         ]
     )
+
     outputs = trainer.predict(task, datamodule=dm)
     if outputs is None:
         print("Trainer prediction return None results")
@@ -370,36 +373,56 @@ def run(cfg: DictConfig) -> None:
     _, imputation, mask = aggregate_predictions(outputs)
     imputation = imputation.squeeze(-1).cpu().numpy()
 
-    eval_mask = dataset.eval_mask[dm.test_slice]
     df_true = dataset.df.iloc[dm.test_slice]
-
     index = dataset.data_timestamps(dm.test_set.indices, flatten=False)["horizon"]
 
+    # Create prediction dataframe
     aggr_methods = ["mean"]
-
     df_hats = prediction_dataframe(
         imputation, index, dataset.df.columns, aggregate_by=aggr_methods
     )
     df_hats = dict(zip(aggr_methods, df_hats))
     prediction_metrics = {"prediction_metrics": {}}
 
+    eval_masks = {}
+
+    # Check if dataset has multi-eval mask attributes
+    if hasattr(dataset, "_scenario") and dataset._scenario is not None:
+        # Multi-eval mask mode (from injection)
+        scenario = dataset._scenario
+        eval_masks["fixed"] = scenario.eval_mask_fixed[dm.test_slice]
+        eval_masks["newly"] = scenario.eval_mask_newly[dm.test_slice]
+        eval_masks["cumulative"] = scenario.eval_mask_cumulative[dm.test_slice]
+        print("✅ Using multi-eval masks from scenario")
+    else:
+        # Single eval mask mode (baseline or legacy)
+        eval_masks["primary"] = dataset.eval_mask[dm.test_slice]
+        print("✅ Using single eval mask (baseline mode)")
+
     for aggr_by, df_hat in df_hats.items():
         print(f"- AGGREGATE BY {aggr_by.upper()}")
 
-        pred_tensor = torch.tensor(df_hat.values)
-        true_tensor = torch.tensor(df_true.values)
+        for mask_name, eval_mask in eval_masks.items():
+            print(f"\nEval Mask: {mask_name.upper()}")
+            print(
+                f"  Test eval targets: {eval_mask.sum():,} ({eval_mask.mean():.2%} of test)"
+            )
 
-        mask_tensor = eval_mask.detach().clone().squeeze()
+            pred_tensor = torch.tensor(df_hat.values)
+            true_tensor = torch.tensor(df_true.values)
 
-        for metric_name, metric_fn in metrics.items():
-            if hasattr(metric_fn, "reset"):
-                metric_fn.reset()
+            mask_tensor = eval_mask.detach().clone().squeeze()
+            for metric_name, metric_fn in metrics.items():
+                if hasattr(metric_fn, "reset"):
+                    metric_fn.reset()
 
-            metric_fn.update(pred_tensor, true_tensor, mask_tensor)
+                metric_fn.update(pred_tensor, true_tensor, mask_tensor)
 
-            error = metric_fn.compute().item()
-            print(f" {metric_name}: {error:.4f}")
-            prediction_metrics["prediction_metrics"].update({metric_name: error})
+                error = metric_fn.compute().item()
+                print(f"{mask_name} {metric_name}: {error:.4f}")
+                prediction_metrics["prediction_metrics"].update(
+                    {f"{mask_name}_{metric_name}": error}
+                )
 
     metrics_data.update(prediction_metrics)
 
@@ -426,8 +449,22 @@ def run(cfg: DictConfig) -> None:
             compression_opts=4,
         )
         f.create_dataset(
-            "eval_mask",
-            data=eval_mask.numpy().astype(np.uint8),  # bool → uint8 is safer in HDF5
+            "eval_mask_fixed",
+            data=eval_masks["fixed"].astype(np.uint8),  # bool → uint8 is safer in HDF5
+            compression="gzip",
+            compression_opts=4,
+        )
+        f.create_dataset(
+            "eval_mask_newly",
+            data=eval_masks["newly"].astype(np.uint8),  # bool → uint8 is safer in HDF5
+            compression="gzip",
+            compression_opts=4,
+        )
+        f.create_dataset(
+            "eval_mask_cumulative",
+            data=eval_masks["cumulative"].astype(
+                np.uint8
+            ),  # bool → uint8 is safer in HDF5
             compression="gzip",
             compression_opts=4,
         )
