@@ -1,3 +1,4 @@
+# @package dataset
 name: airq
 
 dataset_path: ./datasets/data/air_quality/
@@ -15,6 +16,7 @@ missingness:
   block_size: 10
   target_rate: ???
   cumulative: true
+  eval_mask_mode: fixed
   cache_dir: ./datasets/missingness_scenarios/cache/${dataset.name}_${dataset.variant}
   force_generate: false
   seed: ${seed}
