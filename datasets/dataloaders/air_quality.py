@@ -24,8 +24,7 @@ class AirQualityLoader(GraphLoader):
         freq: str = "60min",
         masked_sensors: list | None = None,
         window: int = 36,
-        missingness_config: Optional[Dict] = None,
-        missingness_rate: Optional[float] = None,
+        missingness: Optional[Dict] = None,
         **kwargs,
     ):
         self.dataset_path = dataset_path
@@ -33,8 +32,7 @@ class AirQualityLoader(GraphLoader):
         self.test_months = [3, 6, 9, 12]
         self.infer_eval_from = "next"
 
-        self.missingness_config = missingness_config or {}
-        self.missingness_rate = missingness_rate
+        self.missingness_config = missingness or {}
 
         data_raw, stations, eval_mask_loaded = self.load_raw(small)
 
@@ -129,15 +127,13 @@ class AirQualityLoader(GraphLoader):
 
         eval_mask_mode = self.missingness_config.get("eval_mask_mode", "fixed")
 
-        target_rate = self.missingness_rate
-        if target_rate is None:
-            target_rates = self.missingness_config.get("target_rate", [0.40])
-            if isinstance(target_rates, (int, float)):
-                target_rate = target_rates
-            else:
-                # Default to first rate for single-dataset loading
-                target_rate = target_rates[0]
-                print(f"⚠️  No rate specified; using first: {target_rate:.0%}")
+        target_rates = self.missingness_config.get("target_rate", 0.40)
+        if isinstance(target_rates, (int, float)):
+            target_rate = target_rates
+        else:
+            # Default to first rate for single-dataset loading
+            target_rate = target_rates[0]
+            print(f"⚠️  No rate specified; using first: {target_rate:.0%}")
 
         # Initialize injection manager
         scenario_manager = ScenarioManager(
