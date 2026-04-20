@@ -1,3 +1,4 @@
+# @package dataset
 name: airq
 
 dataset_path: ./datasets/data/air_quality/
