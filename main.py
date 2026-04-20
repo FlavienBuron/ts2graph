@@ -202,6 +202,15 @@ def run(cfg: DictConfig) -> None:
     # dataset = get_dataset(cfg.dataset.name)
     dataset = DatasetRegistry.get(cfg.dataset)
 
+    # Log injection info if enabled
+    if cfg.dataset.get("missingness", {}).get("enabled", False):
+        print("   Missingness injection ENABLED")
+        print(f"   Target rate: {cfg.dataset.missingness.target_rate:.0%}")
+        print(f"   Eval mask mode: {cfg.dataset.missingness.eval_mask_mode}")
+        print(f"   Pattern: {cfg.dataset.missingness.pattern}")
+    else:
+        print("   Baseline mode (no injection)")
+
     train, val, test = dataset.grin_split(in_sample=cfg.dataset.in_sample)
     dm = DataModule(
         copy.deepcopy(dataset),
