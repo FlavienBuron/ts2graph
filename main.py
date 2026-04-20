@@ -200,7 +200,9 @@ def run(cfg: DictConfig) -> None:
     metrics_data["config"] = OmegaConf.to_container(cfg, resolve=True)
 
     # dataset = get_dataset(cfg.dataset.name)
-    dataset = DatasetRegistry.get(cfg.dataset)
+
+    dataset_cfg = OmegaConf.to_container(cfg.dataset, resolve=True)
+    dataset = DatasetRegistry.get(dataset_cfg)
 
     # Log injection info if enabled
     if cfg.dataset.get("missingness", {}).get("enabled", False):
