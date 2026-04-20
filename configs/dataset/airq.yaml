@@ -15,6 +15,6 @@ missingness:
   block_size: 10
   target_rates: ???
   cumulative: true
-  cache_dir: ./datasets/missingness_scenarios/cache
+  cache_dir: ./datasets/missingness_scenarios/cache/${dataset.name}_${datasets.variant}
   force_generate: false
   seed: ${seed}
