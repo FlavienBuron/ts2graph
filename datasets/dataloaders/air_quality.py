@@ -214,8 +214,8 @@ class AirQualityLoader(GraphLoader):
 
         return (
             data_imputed,
-            scenario.full_mask.astype(int),
-            eval_mask.astype(int),
+            scenario.full_mask.astype(bool),
+            eval_mask.astype(bool),
             distances,
         )
 
