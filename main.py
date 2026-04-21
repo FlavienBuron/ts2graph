@@ -398,6 +398,7 @@ def run(cfg: DictConfig) -> None:
     eval_masks = {}
 
     # Check if dataset has multi-eval mask attributes
+    print(f"[DEBUG] {hasattr(dataset, '_scenario')=}")
     if hasattr(dataset, "_scenario") and dataset._scenario is not None:
         # Multi-eval mask mode (from injection)
         scenario = dataset._scenario
@@ -418,7 +419,7 @@ def run(cfg: DictConfig) -> None:
         for mask_name, eval_mask in eval_masks.items():
             print(f"\nEval Mask: {mask_name.upper()}")
             print(
-                f"  Test eval targets: {eval_mask.astype(int).sum().item():,} ({eval_mask.astype(int).mean().item():.2%} of test)"
+                f"  Test eval targets: {eval_mask.sum():,} ({eval_mask.mean():.2%} of test)"
             )
 
             pred_tensor = torch.tensor(df_hat.values)
