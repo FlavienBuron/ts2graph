@@ -399,7 +399,7 @@ def run(cfg: DictConfig) -> None:
 
     # Check if dataset has multi-eval mask attributes
     print(f"[DEBUG] {hasattr(dataset, '_scenario')=}")
-    if hasattr(dataset, "_scenario") and dataset._scenario is not None:
+    if dataset._scenario is not None:
         # Multi-eval mask mode (from injection)
         scenario = dataset._scenario
         eval_masks["fixed"] = scenario.eval_mask_fixed[dm.test_slice].astype(int)
