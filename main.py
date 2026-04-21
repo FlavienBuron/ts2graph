@@ -416,6 +416,7 @@ def run(cfg: DictConfig) -> None:
         print(f"- AGGREGATE BY {aggr_by.upper()}")
 
         for mask_name, eval_mask in eval_masks.items():
+            print(f"[DEBUG] {type(eval_mask)=}")
             print(f"\nEval Mask: {mask_name.upper()}")
             print(
                 f"  Test eval targets: {eval_mask.sum():,} ({eval_mask.mean():.2%} of test)"
