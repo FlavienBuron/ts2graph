@@ -401,9 +401,11 @@ def run(cfg: DictConfig) -> None:
     if hasattr(dataset, "_scenario") and dataset._scenario is not None:
         # Multi-eval mask mode (from injection)
         scenario = dataset._scenario
-        eval_masks["fixed"] = scenario.eval_mask_fixed[dm.test_slice]
-        eval_masks["newly"] = scenario.eval_mask_newly[dm.test_slice]
-        eval_masks["cumulative"] = scenario.eval_mask_cumulative[dm.test_slice]
+        eval_masks["fixed"] = scenario.eval_mask_fixed[dm.test_slice].astype(int)
+        eval_masks["newly"] = scenario.eval_mask_newly[dm.test_slice].astype(int)
+        eval_masks["cumulative"] = scenario.eval_mask_cumulative[dm.test_slice].astype(
+            int
+        )
         print("✅ Using multi-eval masks from scenario")
     else:
         # Single eval mask mode (baseline or legacy)
