@@ -418,7 +418,7 @@ def run(cfg: DictConfig) -> None:
         for mask_name, eval_mask in eval_masks.items():
             print(f"\nEval Mask: {mask_name.upper()}")
             print(
-                f"  Test eval targets: {eval_mask.sum().item():,} ({eval_mask.mean().item():.2%} of test)"
+                f"  Test eval targets: {eval_mask.astype(int).sum().item():,} ({eval_mask.astype(int).mean().item():.2%} of test)"
             )
 
             pred_tensor = torch.tensor(df_hat.values)
