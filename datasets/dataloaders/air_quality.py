@@ -67,6 +67,7 @@ class AirQualityLoader(GraphLoader):
             freq=freq,
             aggr="nearest",
             window=window,
+            scenario=self._scenario,
         )
 
     def load_raw(

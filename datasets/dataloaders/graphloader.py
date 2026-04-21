@@ -20,8 +20,9 @@ class GraphLoader(Dataset, ABC):
         aggr: str = "sum",
         exogenous=None,
         window: int = 36,
+        scenario: Optional[ScenarioResult] = None,
     ) -> None:
-        self._scenario: Optional[ScenarioResult] = None
+        self._scenario: Optional[ScenarioResult] = scenario
         self.eval_mask = self._check_input(torch.tensor(eval_mask))
         self._exogenous_keys = dict()
         self._reserved_signature = {"data", "trend", "x", "y"}
