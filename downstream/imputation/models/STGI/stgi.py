@@ -130,7 +130,7 @@ class STGI(nn.Module):
 
             # back to [B, N, S]
             x_c = rearrange(x_flat, "(b s) n 1 -> b n s", b=B, s=S)
-            x_c = x_c_skip + (1 - m_c) * x_c
+            x_c = x_c_skip + (~m_c) * x_c
 
             # === Temporal GNN ===
             if self.use_temporal:
