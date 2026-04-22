@@ -106,6 +106,7 @@ class STGI(nn.Module):
         channel_outputs = []
         for channel in range(C):
             x_c = x[:, channel, :, :]  # [B, N, S]
+            x_c_skip = x_c.clone()
             # m_c = mask[:, channel, :, :]  # [B, N, S]
             # === Spatial GNN ===
 
@@ -123,10 +124,12 @@ class STGI(nn.Module):
                     x_flat = gnn_layer(x_flat, self.spatial_edge_index)
 
                 if i < len(self.gnn_layers) - 1:
-                    x_flat = F.relu(x_flat)
+                    # x_flat = F.relu(x_flat)
+                    x_flat = F.leaky_relu(x_flat, negative_slope=0.01)
 
             # back to [B, N, S]
             x_c = rearrange(x_flat, "(b s) n 1 -> b n s", b=B, s=S)
+            x_c = x_c_skip + x_c
             # if self.use_spatial:
             #     spatial_outputs = torch.zeros_like(x_c)
             #
