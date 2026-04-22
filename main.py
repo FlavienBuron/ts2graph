@@ -172,7 +172,10 @@ def run(cfg: DictConfig) -> None:
 
     # Registers a conditional resolver: ${cond:condition, true_val, false_val}
     OmegaConf.register_new_resolver(
-        "cond", lambda cond, t, f: t if cond else f, use_cache=False
+        "cond",
+        lambda cond, t, f: t if cond else f,
+        use_cache=False,
+        replace=True,
     )
 
     sparsifier = cfg.graph.sparsifier
