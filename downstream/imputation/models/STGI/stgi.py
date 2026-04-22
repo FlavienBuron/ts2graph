@@ -106,6 +106,7 @@ class STGI(nn.Module):
         channel_outputs = []
         for channel in range(C):
             x_c = x[:, channel, :, :]  # [B, N, S]
+            m_c = mask[:, channel, :, :]
             x_c_skip = x_c.clone()
             # m_c = mask[:, channel, :, :]  # [B, N, S]
             # === Spatial GNN ===
@@ -129,28 +130,7 @@ class STGI(nn.Module):
 
             # back to [B, N, S]
             x_c = rearrange(x_flat, "(b s) n 1 -> b n s", b=B, s=S)
-            # x_c = x_c_skip + x_c
-            # if self.use_spatial:
-            #     spatial_outputs = torch.zeros_like(x_c)
-            #
-            #     for batch in range(B):
-            #         for step in range(S):
-            #             x_t = x_c[batch, :, step].unsqueeze(-1)
-            #             for i, gnn_layer in enumerate(self.gnn_layers):
-            #                 if isinstance(gnn_layer, pyg_nn.GCNConv):
-            #                     x_t = gnn_layer(
-            #                         x_t,
-            #                         self.spatial_edge_index,
-            #                         self.spatial_edge_weight,
-            #                     )
-            #                 else:
-            #                     x_t = gnn_layer(x_t, self.spatial_edge_index)
-            #                 if i < len(self.gnn_layers) - 1:
-            #                     x_t = F.relu(x_t)
-            #             spatial_outputs[batch, :, step] = x_t.squeeze(-1)
-            #
-            #     # x_c = torch.where(m_c, x_c, spatial_outputs)
-            #     x_c = spatial_outputs
+            x_c = x_c_skip + (1 - m_c) * x_c
 
             # === Temporal GNN ===
             if self.use_temporal:
