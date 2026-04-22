@@ -6,7 +6,7 @@ import os
 import random
 from functools import partial
 from time import perf_counter
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional
 
 import h5py
 import hydra
@@ -195,6 +195,7 @@ def run(cfg: DictConfig) -> None:
     )
     print(f"[INFO]: save directory path is '{save_path_dir}'")
     save_file_name = cfg.paths.file_name
+    print(f"[INFO]: save file name is '{save_file_name}'")
     save_file_path = os.path.join(save_path_dir, save_file_name)
     os.makedirs(save_path_dir, exist_ok=True)
     OmegaConf.save(cfg, os.path.join(cfg.paths.save_path, "resolved_config.yaml"))
@@ -208,7 +209,12 @@ def run(cfg: DictConfig) -> None:
     # dataset = get_dataset(cfg.dataset.name)
 
     dataset_cfg = OmegaConf.to_container(cfg.dataset, resolve=True)
-    dataset = DatasetRegistry.get(dataset_cfg)
+    if isinstance(dataset_cfg, Dict):
+        dataset = DatasetRegistry.get(dataset_cfg)
+    else:
+        raise TypeError(
+            "Dataset config should resolve to a Dict, got ", type(dataset_cfg)
+        )
 
     # Log injection info if enabled
     if cfg.dataset.get("missingness", {}).get("enabled", False):
