@@ -27,6 +27,7 @@ class AirQualityLoader(GraphLoader):
         missingness: Optional[Dict] = None,
         **kwargs,
     ):
+        self._scenario = None
         self.dataset_path = dataset_path
 
         self.test_months = [3, 6, 9, 12]
