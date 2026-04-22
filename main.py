@@ -424,7 +424,7 @@ def run(cfg: DictConfig) -> None:
             pred_tensor = torch.tensor(df_hat.values)
             true_tensor = torch.tensor(df_true.values)
 
-            mask_tensor = eval_mask.detach().clone().squeeze()
+            mask_tensor = torch.tensor(eval_mask)
             for metric_name, metric_fn in metrics.items():
                 if hasattr(metric_fn, "reset"):
                     metric_fn.reset()
