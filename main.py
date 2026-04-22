@@ -169,6 +169,12 @@ def make_deterministic(seed: int):
 def run(cfg: DictConfig) -> None:
     print("#" * 100)
     make_deterministic(cfg.seed)
+
+    # Registers a conditional resolver: ${cond:condition, true_val, false_val}
+    OmegaConf.register_new_resolver(
+        "cond", lambda cond, t, f: t if cond else f, use_cache=False
+    )
+
     sparsifier = cfg.graph.sparsifier
 
     param_name = next(iter(sparsifier), None)  # first key in sparsifier dict
