@@ -38,6 +38,15 @@ class ScenarioConfig:
         for key, value in d.items():
             if isinstance(value, np.ndarray):
                 d[key] = value.tolist()
+        if isinstance(d.get("base_missing_rate"), float):
+            d["base_missing_rate"] = round(d["base_missing_rate"], 6)
+        if isinstance(d.get("target_missing_rate"), float):
+            d["target_missing_rate"] = round(d["target_missing_rate"], 6)
+        if isinstance(d.get("eval_fraction"), float):
+            d["eval_fraction"] = round(d["eval_fraction"], 6)
+        if isinstance(d.get("min_sensors_covered"), float):
+            d["min_sensors_covered"] = round(d["min_sensors_covered"], 6)
+
         if isinstance(d.get("dataset_shape"), tuple):
             d["dataset_shape"] = list(d["dataset_shape"])
         return d
