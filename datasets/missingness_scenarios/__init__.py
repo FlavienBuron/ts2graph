@@ -186,6 +186,7 @@ class ScenarioManager:
             generator = MCARCumulativeGenerator(
                 baseline_mask=self._original_missing_mask, seed=seed
             )
+            print(f"[DEBUG]: {seed=}")
 
             for i, rate in enumerate(sorted(target_rates)):
                 config = ScenarioConfig(
@@ -204,6 +205,7 @@ class ScenarioManager:
                 # Try cache
                 if not force_regenerate:
                     cached = self.cache.load_scenario(config)
+                    print(f"[DEBUG] {cached=}")
                     if cached is not None:
                         print(f"[DEBUG] {cached.config=}")
                         generator.cumulative_eval_mask = cached.eval_mask_cumulative
