@@ -280,6 +280,11 @@ def run(cfg: DictConfig) -> None:
     gnn_model = None
     print(f"Running using model {cfg.model.name}")
     if model == "stgi":
+        model_cfg = OmegaConf.to_container(cfg.model, resolve=True)
+        if not isinstance(model_cfg, Dict):
+            raise TypeError(
+                f"Model config should resolve to Dict, got {type(model_cfg)}"
+            )
         model_kwargs = {
             "adj": spatial_adj_matrix,
             "in_dim": dm.d_in,
@@ -291,6 +296,8 @@ def run(cfg: DictConfig) -> None:
             "temporal_graph_fn": temporal_graph_fn,
             "add_self_loops": False,
         }
+        other_kwargs = {k: v for k, v in model_cfg.items() if k not in model_kwargs}
+        model_kwargs = {**model_kwargs, **other_kwargs}
         gnn_model = STGI
     elif model == "grin":
         args = {}
