@@ -67,6 +67,7 @@ class STGI(nn.Module):
         **kwargs,
     ) -> nn.ModuleList:
         """Helper method to build GNN layers"""
+        print(f"[DEBUG] {kwargs=}")
 
         layers = nn.ModuleList()
         init_signature = inspect.signature(ModelClass.__init__)
