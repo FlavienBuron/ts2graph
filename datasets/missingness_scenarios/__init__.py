@@ -115,7 +115,6 @@ class ScenarioManager:
             eval_fraction=eval_fraction,
             is_first_rate=(eval_fraction is None) and is_first_rate,
         )
-        print(f"[DEBUG] {config=}")
 
         # Try cache
         if not force_regenerate:
@@ -180,13 +179,10 @@ class ScenarioManager:
         T, N = self._original_missing_mask.shape
         total_positions = T * N
 
-        print(f"[DEBUG] {seed=}")
-
         if cumulative and pattern == "mcar_blocks":
             generator = MCARCumulativeGenerator(
                 baseline_mask=self._original_missing_mask, seed=seed
             )
-            print(f"[DEBUG]: {seed=}")
 
             for i, rate in enumerate(sorted(target_rates)):
                 config = ScenarioConfig(
@@ -201,7 +197,6 @@ class ScenarioManager:
                     eval_fraction=None,
                     is_first_rate=(i == 0),
                 )
-                print(f"[DEBUG] {config=}")
                 # Try cache
                 if not force_regenerate:
                     cached = self.cache.load_scenario(config)
