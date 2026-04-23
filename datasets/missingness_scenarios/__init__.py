@@ -180,6 +180,8 @@ class ScenarioManager:
         T, N = self._original_missing_mask.shape
         total_positions = T * N
 
+        print(f"[DEBUG] {seed=}")
+
         if cumulative and pattern == "mcar_blocks":
             generator = MCARCumulativeGenerator(
                 baseline_mask=self._original_missing_mask, seed=seed
