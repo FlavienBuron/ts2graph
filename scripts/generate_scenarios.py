@@ -90,7 +90,7 @@ def main(cfg: DictConfig):
 
     print(f"   Shape: {data.shape}")
 
-    baseline_missing = np.isnan(data.values).mean()
+    baseline_missing = np.round(np.isnan(data.values).mean(), 6)
     data_hash = compute_data_hash(data.values)
 
     print(f"   Shape: {data.shape}")
