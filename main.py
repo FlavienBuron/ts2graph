@@ -188,7 +188,11 @@ def run(cfg: DictConfig) -> None:
     else:
         cfg.graph.label = str(param_val)
 
-    print(cfg)
+    res_cfg = OmegaConf.to_container(cfg, resolve=True)
+    print(res_cfg)
+
+    metrics_data = {}
+    metrics_data["config"] = res_cfg
     # save_path_dir = cfg.paths.save_path
     save_path_dir = os.path.join(
         cfg.paths.save_path,
@@ -205,9 +209,6 @@ def run(cfg: DictConfig) -> None:
     model = cfg.model.name.lower()
 
     print(f"{cfg.use_spatial=} {cfg.use_temporal=}")
-
-    metrics_data = {}
-    metrics_data["config"] = OmegaConf.to_container(cfg, resolve=True)
 
     # dataset = get_dataset(cfg.dataset.name)
 
