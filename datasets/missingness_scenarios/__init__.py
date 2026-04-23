@@ -205,6 +205,7 @@ class ScenarioManager:
                 if not force_regenerate:
                     cached = self.cache.load_scenario(config)
                     if cached is not None:
+                        print(f"[DEBUG] {cached.config=}")
                         generator.cumulative_eval_mask = cached.eval_mask_cumulative
                         if config.is_first_rate:
                             generator.fixed_eval_mask = cached.eval_mask_fixed
