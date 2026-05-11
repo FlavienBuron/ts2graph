@@ -122,13 +122,8 @@ def main(cfg: DictConfig):
     pattern = cfg.missingness.pattern
     is_aligned = pattern in ("aligned_blocks", "aligned")
 
-    # Determine target levels (rates for MCAR, sensor fractions for aligned)
-    if is_aligned:
-        target_rates = sorted([float(x) for x in cfg.missingness.sensor_coverage_levels])
-        print(f"   Pattern: {pattern} (sensor coverage levels)")
-    else:
-        target_rates = sorted([float(r) for r in cfg.missingness.target_rates])
-        print(f"   Pattern: {pattern} (global missing rates)")
+    target_rates = sorted([float(x) for x in cfg.missingness.target_rates])
+    print(f"   Pattern: {pattern} (sensor coverage levels)")
 
     print("\nGenerating scenarios:")
     print(f"   Pattern: {cfg.missingness.pattern}")

@@ -125,7 +125,7 @@ class AirQualityLoader(GraphLoader):
 
         if is_aligned:
             # Aligned blocks: target = sensor coverage fraction
-            coverage_levels = self.missingness_config.get("sensor_coverage_levels", [0.3])
+            coverage_levels = self.missingness_config.get("target_rate", [0.3])
             target_rate = coverage_levels[0] if isinstance(coverage_levels, list) else float(coverage_levels)
 
             # Eval fraction is a direct upper-bound from config (not derived from rates)
