@@ -23,5 +23,3 @@ missingness:
   force_generate: false
   seed: ${seed}
   first_rate: 0.3
-
-  suffix: ${cond:${eq:${dataset.missingness.pattern}, aligned_blocks}, cov${dataset.missingness.sensor_coverage_levels.0}, rate${dataset.missingness.target_rate}}

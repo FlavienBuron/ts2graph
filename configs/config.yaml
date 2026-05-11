@@ -14,10 +14,9 @@ use_temporal: false
 task: true
 
 paths:
-  suffix: ${cond:${eq:${dataset.missingness.pattern}, aligned_blocks}, cov${dataset.missingness.sensor_coverage_levels.0}, rate${dataset.missingness.target_rates}}
   root: ./experiments/results
   save_path: ${paths.root}/${model.name}/${graph.name}/${dataset.name}/${cond:${dataset.missingness.enabled}, missing_${dataset.missingness.pattern}, default}/ln${model.layer_num}/${model.layer_type}/${now:%Y%m%d}/
-  file_name: ${now:%Y%m%d_%H%M%S}_${model.name}_${dataset.name}_${mode}_${graph.label}_${paths.suffix}, ''}.json
+  file_name: ${now:%Y%m%d_%H%M%S}_${model.name}_${dataset.name}_${mode}_${graph.label}${cond:${dataset.missingness.enabled}, _${dataset.missingness.pattern}_${dataset.missingness.target_rate}, ''}.json
 
 hydra:
   job:
