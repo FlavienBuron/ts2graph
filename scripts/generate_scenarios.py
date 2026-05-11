@@ -120,7 +120,7 @@ def main(cfg: DictConfig):
     # ========================================================================
 
     pattern = cfg.missingness.pattern
-    is_aligned = pattern in ("aligned_block", "aligned")
+    is_aligned = pattern in ("aligned_blocks", "aligned")
 
     # Determine target levels (rates for MCAR, sensor fractions for aligned)
     if is_aligned:
