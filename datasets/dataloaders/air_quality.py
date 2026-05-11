@@ -57,9 +57,7 @@ class AirQualityLoader(GraphLoader):
             eval_mask = self.eval_mask  # Set by _load_baseline
 
         self.distances = distances
-        self.masked_sensors = (
-            list(masked_sensors) if masked_sensors is not None else list()
-        )
+        self.masked_sensors = list(masked_sensors) if masked_sensors is not None else list()
 
         super().__init__(
             dataframe=data,
@@ -71,9 +69,7 @@ class AirQualityLoader(GraphLoader):
             scenario=self._scenario,
         )
 
-    def load_raw(
-        self, small: bool = False
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
+    def load_raw(self, small: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
         if small:
             path = os.path.join(self.dataset_path, "small36.h5")
             eval_mask = pd.DataFrame(pd.read_hdf(path, "eval_mask"))
@@ -94,9 +90,7 @@ class AirQualityLoader(GraphLoader):
         masked_sensors: list | None = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame]:
         data, stations, eval_mask = self.load_raw(small=small)
-        missing_mask = (~np.isnan(data_raw.values)).astype(
-            "bool"
-        )  # 0=missing, 1=observed
+        missing_mask = (~np.isnan(data_raw.values)).astype("bool")  # 0=missing, 1=observed
         if loaded_eval_mask is None:
             print("Infering eval mask")
             eval_mask = self._infer_mask(data)
@@ -104,9 +98,7 @@ class AirQualityLoader(GraphLoader):
             eval_mask = loaded_eval_mask
         eval_mask = eval_mask.values.astype("bool")
         if masked_sensors is not None and len(masked_sensors) > 0:
-            eval_mask[:, masked_sensors] = np.where(
-                missing_mask[:, masked_sensors], True, False
-            )
+            eval_mask[:, masked_sensors] = np.where(missing_mask[:, masked_sensors], True, False)
         self.eval_mask = eval_mask
         if impute_nans:
             data = data.fillna(self._compute_mean(data))
@@ -127,49 +119,57 @@ class AirQualityLoader(GraphLoader):
         baseline_mask = ~np.isnan(data_raw.values)
         baseline_missing_rate = 1.0 - baseline_mask.mean()
 
+        pattern = self.missingness_config.get("pattern", "mcar_blocks")
+        is_aligned = pattern in ("aligned_blocks", "aligned")
         eval_mask_mode = self.missingness_config.get("eval_mask_mode", "fixed")
 
-        target_rates = self.missingness_config.get("target_rate", 0.40)
-        if isinstance(target_rates, (int, float)):
-            target_rate = target_rates
-        else:
-            # Default to first rate for single-dataset loading
-            target_rate = target_rates[0]
-            print(f"⚠️  No rate specified; using first: {target_rate:.0%}")
+        if is_aligned:
+            # Aligned blocks: target = sensor coverage fraction
+            coverage_levels = self.missingness_config.get("sensor_coverage_levels", [0.3])
+            target_rate = coverage_levels[0] if isinstance(coverage_levels, list) else float(coverage_levels)
 
-        first_rate = self.missingness_config.get("first_rate", 0.3)
-        is_first_rate = False
-        eval_fraction = 0.0
-        if target_rate == first_rate:
-            is_first_rate = True
+            # Eval fraction is a direct upper-bound from config (not derived from rates)
+            eval_fraction = self.missingness_config.get("eval_fraction", 0.047)
+            is_first_rate = True  # Eval logic is independent of baseline for aligned
         else:
-            eval_fraction = first_rate - baseline_missing_rate
+            # MCAR: target = global missing rate
+            target_rates = self.missingness_config.get("target_rate", 0.40)
+            target_rate = target_rates[0] if isinstance(target_rates, list) else float(target_rates)
+
+            first_rate = self.missingness_config.get("first_rate", 0.3)
+            is_first_rate = target_rate == first_rate
+            eval_fraction = None if is_first_rate else max(0.0, first_rate - baseline_missing_rate)
+
+        aligned_kwargs = {}
+        if is_aligned:
+            aligned_kwargs["data_index"] = pd.DatetimeIndex(data_raw.index)
+            aligned_kwargs["sensor_fraction"] = float(target_rate)
+            aligned_kwargs["sensor_pattern"] = self.missingness_config.get("sensor_pattern", "random")
+            aligned_kwargs["placement"] = self.missingness_config.get("placement", "span_all")
+            aligned_kwargs["test_months"] = self.missingness_config.get("test_months", [3, 6, 9, 12])
 
         # Initialize injection manager
-        scenario_manager = ScenarioManager(
-            cache_dir=self.missingness_config.get(
-                "cache_dir", "./datasets/missingness_scenarios/cache"
-            )
-        )
+        scenario_manager = ScenarioManager(cache_dir=self.missingness_config.get("cache_dir", "./datasets/missingness_scenarios/cache"))
         scenario_manager.set_data_hash(data_raw.values)
         scenario_manager.set_original_missing_from_mask(mask=baseline_mask)
 
-        # Retrieve scenario from cache
-        print(f"🔧 Retrieving missingness scenario: {target_rate:.0%}")
-        print(f"   Pattern: {self.missingness_config.get('pattern', 'mcar_blocks')}")
+        rate_type = "sensor coverage" if is_aligned else "missing rate"
+        print(f"🔧 Retrieving missingness scenario: {target_rate:.0%} ({rate_type})")
+        print(f"   Pattern: {pattern} | Block size: {self.missingness_config.get('block_size', 10)}")
         print(f"   Eval mask mode: {eval_mask_mode}")
         # Generate scenario
         scenario = scenario_manager.get_scenario(
             shape=data_raw.shape,
             base_missing_rate=baseline_missing_rate,
-            target_rate=target_rate,
+            target_rate=target_rate if not is_aligned else 0.0,
             pattern=self.missingness_config.get("pattern", "mcar_blocks"),
             block_size=self.missingness_config.get("block_size", 10),
             seed=self.missingness_config.get("seed", 42),
             cumulative=self.missingness_config.get("cumulative", False),
             force_regenerate=self.missingness_config.get("force_regenerate", False),
-            eval_fraction=None if is_first_rate else eval_fraction,
+            eval_fraction=eval_fraction,
             is_first_rate=is_first_rate,
+            **aligned_kwargs,
         )
 
         # Store scenario reference for main.py to access all eval masks
@@ -194,9 +194,7 @@ class AirQualityLoader(GraphLoader):
 
         # Handle masked_sensors override
         if masked_sensors is not None and len(masked_sensors) > 0:
-            eval_mask[:, masked_sensors] = np.where(
-                baseline_mask[:, masked_sensors].astype(bool), True, False
-            )
+            eval_mask[:, masked_sensors] = np.where(baseline_mask[:, masked_sensors].astype(bool), True, False)
 
         # Impute original NaNs for model input
         if impute_nans:
@@ -224,39 +222,27 @@ class AirQualityLoader(GraphLoader):
         in_sample: bool = False,
         window: int = 36,
     ):
-        nontest_idxs, test_idxs = self._disjoint_months(
-            months=self.test_months, sync_mode="horizon"
-        )
+        nontest_idxs, test_idxs = self._disjoint_months(months=self.test_months, sync_mode="horizon")
         if in_sample:
             train_idxs = np.arange(len(self))
             val_months = [(m - 1) % 12 for m in self.test_months]
             _, val_idxs = self._disjoint_months(months=val_months, sync_mode="horizon")
         else:
-            val_len = (
-                int(val_len * len(nontest_idxs)) if val_len < 1 else val_len
-            ) // len(self.test_months)
+            val_len = (int(val_len * len(nontest_idxs)) if val_len < 1 else val_len) // len(self.test_months)
             # get indices of first day of each testing month
             delta_idxs = np.diff(test_idxs)
-            end_month_idxs = test_idxs[1:][
-                np.flatnonzero(delta_idxs > delta_idxs.min())
-            ]
+            end_month_idxs = test_idxs[1:][np.flatnonzero(delta_idxs > delta_idxs.min())]
             if len(end_month_idxs) < len(self.test_months):
                 end_month_idxs = np.insert(end_month_idxs, 0, test_idxs[0])
             # expand month indices
-            month_val_idxs = [
-                np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs
-            ]
+            month_val_idxs = [np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs]
             val_idxs = np.concatenate(month_val_idxs) % len(self)
             # remove overlapping indices from training set
-            ovl_idxs, _ = self.overlapping_indices(
-                nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True
-            )
+            ovl_idxs, _ = self.overlapping_indices(nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True)
             train_idxs = nontest_idxs[~ovl_idxs]
         return train_idxs, val_idxs, test_idxs
 
-    def _geographical_distance(
-        self, coords: pd.DataFrame, to_rad: bool = True
-    ) -> pd.DataFrame:
+    def _geographical_distance(self, coords: pd.DataFrame, to_rad: bool = True) -> pd.DataFrame:
         """
         Compute the geographical distance between coordinates points
         """
@@ -272,9 +258,7 @@ class AirQualityLoader(GraphLoader):
 
     def _infer_mask(self, data: pd.DataFrame) -> pd.DataFrame:
         observed_mask = data.isna().astype("bool")
-        eval_mask = pd.DataFrame(index=data.index, columns=data.columns, data=0).astype(
-            "bool"
-        )
+        eval_mask = pd.DataFrame(index=data.index, columns=data.columns, data=0).astype("bool")
         if self.infer_eval_from == "previous":
             offset = -1
         elif self.infer_eval_from == "next":
@@ -287,18 +271,11 @@ class AirQualityLoader(GraphLoader):
             j = (i + offset) % length
             year_i, month_i = months[i]
             year_j, month_j = months[j]
-            mask_j = observed_mask[
-                (data.index.year == year_j) & (data.index.month == month_j)
-            ]
-            mask_i = mask_j.shift(
-                1, pd.DateOffset(months=12 * (year_i - year_j) + (month_i - month_j))
-            )
+            mask_j = observed_mask[(data.index.year == year_j) & (data.index.month == month_j)]
+            mask_i = mask_j.shift(1, pd.DateOffset(months=12 * (year_i - year_j) + (month_i - month_j)))
             mask_i = mask_i[~mask_i.index.duplicated(keep="first")]
             mask_i = mask_i[np.isin(mask_i.index, data.index)]
-            eval_mask.loc[mask_i.index] = (
-                ~mask_i.loc[mask_i.index].astype(bool)
-                & data.loc[mask_i.index].astype(bool)
-            ).astype(eval_mask.dtypes.iloc[0])
+            eval_mask.loc[mask_i.index] = (~mask_i.loc[mask_i.index].astype(bool) & data.loc[mask_i.index].astype(bool)).astype(eval_mask.dtypes.iloc[0])
         return eval_mask
 
     def _compute_mean(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -336,9 +313,7 @@ class AirQualityLoader(GraphLoader):
             horizon_offset = self.horizon_offset
             start, end = horizon_offset, horizon_offset + self.horizon - 1
         else:
-            raise ValueError(
-                f"Invalid sync mode type: {sync_mode}. Expected 'window' or 'horizon'"
-            )
+            raise ValueError(f"Invalid sync mode type: {sync_mode}. Expected 'window' or 'horizon'")
         if self.index is not None:
             # after idxs
             start_in_months = np.isin(self.index[self._indices + start].month, months)
@@ -348,12 +323,8 @@ class AirQualityLoader(GraphLoader):
 
             # before idxs
             months_before = np.setdiff1d(np.arange(1, 13), months)
-            start_in_months = np.isin(
-                self.index[self._indices + start].month, months_before
-            )
-            end_in_months = np.isin(
-                self.index[self._indices + end].month, months_before
-            )
+            start_in_months = np.isin(self.index[self._indices + start].month, months_before)
+            end_in_months = np.isin(self.index[self._indices + end].month, months_before)
             idxs_in_months = start_in_months & end_in_months
             prev_idxs = idxs[idxs_in_months]
 
@@ -361,12 +332,8 @@ class AirQualityLoader(GraphLoader):
         else:
             raise ValueError
 
-    def overlapping_indices(
-        self, idxs1, idxs2, sync_mode="window", as_mask=False
-    ) -> tuple[np.ndarray, np.ndarray]:
-        assert sync_mode in ["window", "horizon"], (
-            "sync_mode can only be 'window' or 'horizon'"
-        )
+    def overlapping_indices(self, idxs1, idxs2, sync_mode="window", as_mask=False) -> tuple[np.ndarray, np.ndarray]:
+        assert sync_mode in ["window", "horizon"], "sync_mode can only be 'window' or 'horizon'"
         timestamp1 = self.data_timestamps(idxs1, flatten=False)[sync_mode]
         timestamp2 = self.data_timestamps(idxs2, flatten=False)[sync_mode]
         common_timestamps = np.intersect1d(np.unique(timestamp1), np.unique(timestamp2))
@@ -378,14 +345,10 @@ class AirQualityLoader(GraphLoader):
         return np.sort(idxs1[m1]), np.sort(idxs2[m2])
 
     def expand_indices(self, indices=None, unique=False) -> Dict:
-        ds_indices = dict.fromkeys(
-            [time for time in ["window", "horizon"] if getattr(self, time) > 0]
-        )
+        ds_indices = dict.fromkeys([time for time in ["window", "horizon"] if getattr(self, time) > 0])
         indices = np.arange(len(self._indices)) if indices is None else indices
         if "window" in ds_indices:
-            window_idxs = [
-                np.arange(idx, idx + self.window) for idx in self._indices[indices]
-            ]
+            window_idxs = [np.arange(idx, idx + self.window) for idx in self._indices[indices]]
             ds_indices["window"] = np.concatenate(window_idxs)
         if "horizon" in ds_indices:
             horizon_idxs = [
@@ -397,17 +360,12 @@ class AirQualityLoader(GraphLoader):
             ]
             ds_indices["horizon"] = np.concatenate(horizon_idxs)
         if unique:
-            ds_indices = {
-                k: np.unique(v) for k, v in ds_indices.items() if v is not None
-            }
+            ds_indices = {k: np.unique(v) for k, v in ds_indices.items() if v is not None}
         return ds_indices
 
     def data_timestamps(self, indices=None, flatten=True) -> Dict:
         ds_indices = self.expand_indices(indices, unique=False)
         ds_timestamp = {k: self.index[v] for k, v in ds_indices.items()}
         if not flatten:
-            ds_timestamp = {
-                k: np.array(v).reshape(-1, getattr(self, k))
-                for k, v in ds_timestamp.items()
-            }
+            ds_timestamp = {k: np.array(v).reshape(-1, getattr(self, k)) for k, v in ds_timestamp.items()}
         return ds_timestamp
