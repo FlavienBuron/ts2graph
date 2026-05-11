@@ -17,10 +17,22 @@ missingness:
   # If cumulative=true: nested scenarios (30% ⊂ 35% ⊂ ...)
   # If cumulative=false: independent scenarios
   target_rates: [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
+
+  # Aligned: sensor coverage levels (interpreted as target_rates when pattern=aligned_block)
+  sensor_coverage_levels: [0.10, 0.20, 0.30]
   cumulative: true
 
   # Random seed
   seed: 42
+
+  # Eval fraction upper bound (applies to all patterns)
+  eval_fraction: 0.047 # 4.7% of total dataset
+
+  # Aligned-specific parameters
+  aligned:
+    sensor_pattern: random # top, random
+    placement: span_all # span_all, test_only, train_only, random_quarter
+    test_months: [3, 6, 9, 12]
 
 # ========================================================================
 # Cache Configuration

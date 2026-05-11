@@ -32,20 +32,23 @@ class ScenarioConfig:
     # (first rate determines fixed eval mask)
     is_first_rate: bool = field(default=False)
 
+    # Aligned/Block-specific parameters
+    sensor_fraction: float = 0.2
+    sensor_pattern: str = "top"  # top, random,
+    placement: str = "span_all"  # span_all, test_only, train_only, random_quarter
+    test_months: list[int] = field(default_factory=lambda: [3, 6, 9, 12])
+    aligned_across_sensors: bool = field(default=False)
+
     def to_dict(self) -> dict:
         """Convert to dict, ensuring all values are JSON-serializable."""
         d = asdict(self)
         for key, value in d.items():
             if isinstance(value, np.ndarray):
                 d[key] = value.tolist()
-        if isinstance(d.get("base_missing_rate"), float):
-            d["base_missing_rate"] = round(d["base_missing_rate"], 6)
-        if isinstance(d.get("target_missing_rate"), float):
-            d["target_missing_rate"] = round(d["target_missing_rate"], 6)
-        if isinstance(d.get("eval_fraction"), float):
-            d["eval_fraction"] = round(d["eval_fraction"], 6)
-        if isinstance(d.get("min_sensors_covered"), float):
-            d["min_sensors_covered"] = round(d["min_sensors_covered"], 6)
+        float_fields = ["base_missing_rate", "target_missing_rate", "eval_fraction", "min_sensors_covered", "sensor_fraction"]
+        for k in float_fields:
+            if isinstance(d.get(k), float):
+                d[k] = round(d[k], 6)
 
         if isinstance(d.get("dataset_shape"), tuple):
             d["dataset_shape"] = list(d["dataset_shape"])
@@ -99,9 +102,7 @@ class ScenarioResult:
 
         # Verify cumulative = fixed OR newly (no overlap)
         expected_cumulative = np.logical_or(self.eval_mask_fixed, self.eval_mask_newly)
-        assert np.array_equal(self.eval_mask_cumulative, expected_cumulative), (
-            "eval_mask_cumulative should be logical OR of fixed and newly"
-        )
+        assert np.array_equal(self.eval_mask_cumulative, expected_cumulative), "eval_mask_cumulative should be logical OR of fixed and newly"
 
     def save_hdf5(self, filepath: str):
         """
@@ -116,9 +117,7 @@ class ScenarioResult:
 
             f.create_dataset("eval_mask_fixed", data=self.eval_mask_fixed.tolist())
             f.create_dataset("eval_mask_newly", data=self.eval_mask_newly.tolist())
-            f.create_dataset(
-                "eval_mask_cumulative", data=self.eval_mask_cumulative.tolist()
-            )
+            f.create_dataset("eval_mask_cumulative", data=self.eval_mask_cumulative.tolist())
 
             # Store config as JSON string attribute
             f.attrs["config_json"] = self.config.to_json()
