@@ -92,9 +92,7 @@ def get_decay_function(name: Optional[str]) -> Optional[Callable[[int, int], flo
         raise ValueError(f"Unsupported decay function: '{name}'")
 
 
-def get_spatial_graph(
-    dataset: GraphLoader, cfg: DictConfig
-) -> tuple[torch.Tensor, float]:
+def get_spatial_graph(dataset: GraphLoader, cfg: DictConfig) -> tuple[torch.Tensor, float]:
     start = perf_counter()
     graph = similarity_graph.build(cfg)
     end = perf_counter()
@@ -150,9 +148,7 @@ def get_temporal_graph_function(technique: str, parameter: list[float]) -> Calla
         return partial(ts2net.tsnet_qn, breaks=breaks)
 
     def empty_temporal_graph():
-        return torch.empty((2, 0), dtype=torch.long), torch.empty(
-            (0,), dtype=torch.float
-        )
+        return torch.empty((2, 0), dtype=torch.long), torch.empty((0,), dtype=torch.float)
 
     return empty_temporal_graph
 
@@ -216,14 +212,12 @@ def run(cfg: DictConfig) -> None:
     if isinstance(dataset_cfg, Dict):
         dataset = DatasetRegistry.get(dataset_cfg)
     else:
-        raise TypeError(
-            "Dataset config should resolve to a Dict, got ", type(dataset_cfg)
-        )
+        raise TypeError("Dataset config should resolve to a Dict, got ", type(dataset_cfg))
 
     # Log injection info if enabled
     if cfg.dataset.get("missingness", {}).get("enabled", False):
         print("   Missingness injection ENABLED")
-        print(f"   Target rate: {cfg.dataset.missingness.target_rate:.0%}")
+        print(f"   Target rate: {cfg.dataset.missingness.target_rates:.0%}")
         print(f"   Eval mask mode: {cfg.dataset.missingness.eval_mask_mode}")
         print(f"   Pattern: {cfg.dataset.missingness.pattern}")
     else:
@@ -282,9 +276,7 @@ def run(cfg: DictConfig) -> None:
     if model == "stgi":
         model_cfg = OmegaConf.to_container(cfg.model, resolve=True)
         if not isinstance(model_cfg, Dict):
-            raise TypeError(
-                f"Model config should resolve to Dict, got {type(model_cfg)}"
-            )
+            raise TypeError(f"Model config should resolve to Dict, got {type(model_cfg)}")
         model_kwargs = {
             "adj": spatial_adj_matrix,
             "in_dim": dm.d_in,
@@ -355,9 +347,7 @@ def run(cfg: DictConfig) -> None:
         patience=cfg.training.early_stopping.patience,
         mode=cfg.training.early_stopping.mode,
     )
-    checkpoint_callback = ModelCheckpoint(
-        dirpath=logdir, save_top_k=1, monitor="val_mae", mode="min"
-    )
+    checkpoint_callback = ModelCheckpoint(dirpath=logdir, save_top_k=1, monitor="val_mae", mode="min")
     task = Imputer(
         model_class=gnn_model,
         model_kwargs=model_kwargs,
@@ -393,11 +383,7 @@ def run(cfg: DictConfig) -> None:
     metrics_data.update(fit_report)
 
     # Load last best checkpoint
-    task.load_state_dict(
-        torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)[
-            "state_dict"
-        ]
-    )
+    task.load_state_dict(torch.load(checkpoint_callback.best_model_path, lambda storage, loc: storage)["state_dict"])
 
     outputs = trainer.predict(task, datamodule=dm)
     if outputs is None:
@@ -412,9 +398,7 @@ def run(cfg: DictConfig) -> None:
 
     # Create prediction dataframe
     aggr_methods = ["mean"]
-    df_hats = prediction_dataframe(
-        imputation, index, dataset.df.columns, aggregate_by=aggr_methods
-    )
+    df_hats = prediction_dataframe(imputation, index, dataset.df.columns, aggregate_by=aggr_methods)
     df_hats = dict(zip(aggr_methods, df_hats))
     prediction_metrics = {"prediction_metrics": {}}
 
@@ -426,9 +410,7 @@ def run(cfg: DictConfig) -> None:
         scenario = dataset._scenario
         eval_masks["fixed"] = scenario.eval_mask_fixed[dm.test_slice].astype(int)
         eval_masks["newly"] = scenario.eval_mask_newly[dm.test_slice].astype(int)
-        eval_masks["cumulative"] = scenario.eval_mask_cumulative[dm.test_slice].astype(
-            int
-        )
+        eval_masks["cumulative"] = scenario.eval_mask_cumulative[dm.test_slice].astype(int)
         print("✅ Using multi-eval masks from scenario")
     else:
         # Single eval mask mode (baseline or legacy)
@@ -440,9 +422,7 @@ def run(cfg: DictConfig) -> None:
 
         for mask_name, eval_mask in eval_masks.items():
             print(f"\nEval Mask: {mask_name.upper()}")
-            print(
-                f"  Test eval targets: {eval_mask.sum():,} ({eval_mask.mean():.2%} of test)"
-            )
+            print(f"  Test eval targets: {eval_mask.sum():,} ({eval_mask.mean():.2%} of test)")
 
             pred_tensor = torch.tensor(df_hat.values)
             true_tensor = torch.tensor(df_true.values)
@@ -456,9 +436,7 @@ def run(cfg: DictConfig) -> None:
 
                 error = metric_fn.compute().item()
                 print(f"{mask_name} {metric_name}: {error:.4f}")
-                prediction_metrics["prediction_metrics"].update(
-                    {f"{mask_name}_{metric_name}": error}
-                )
+                prediction_metrics["prediction_metrics"].update({f"{mask_name}_{metric_name}": error})
 
     metrics_data.update(prediction_metrics)
 
@@ -498,9 +476,7 @@ def run(cfg: DictConfig) -> None:
         )
         f.create_dataset(
             "eval_mask_cumulative",
-            data=eval_masks["cumulative"].astype(
-                np.uint8
-            ),  # bool → uint8 is safer in HDF5
+            data=eval_masks["cumulative"].astype(np.uint8),  # bool → uint8 is safer in HDF5
             compression="gzip",
             compression_opts=4,
         )
