@@ -14,8 +14,8 @@ missingness:
   enabled: false
   pattern: mcar_blocks
   block_size: 10
-  target_rates: [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
-  sensor_coverage_levels: [0.10, 0.20, 0.30]
+  target_rates: ???
+  sensor_coverage_levels: ???
   eval_fraction: 0.047
   cumulative: true
   eval_mask_mode: fixed
