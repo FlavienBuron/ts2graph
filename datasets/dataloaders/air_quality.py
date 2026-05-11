@@ -157,6 +157,7 @@ class AirQualityLoader(GraphLoader):
         print(f"🔧 Retrieving missingness scenario: {target_rate:.0%} ({rate_type})")
         print(f"   Pattern: {pattern} | Block size: {self.missingness_config.get('block_size', 10)}")
         print(f"   Eval mask mode: {eval_mask_mode}")
+        print(f"[DEBUG] {self.missingness_config=}")
         # Generate scenario
         scenario = scenario_manager.get_scenario(
             shape=data_raw.shape,
