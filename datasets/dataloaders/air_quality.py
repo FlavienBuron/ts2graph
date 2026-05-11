@@ -133,7 +133,7 @@ class AirQualityLoader(GraphLoader):
             is_first_rate = True  # Eval logic is independent of baseline for aligned
         else:
             # MCAR: target = global missing rate
-            target_rates = self.missingness_config.get("target_rate", 0.40)
+            target_rates = self.missingness_config.get("target_rates", 0.40)
             target_rate = target_rates[0] if isinstance(target_rates, list) else float(target_rates)
 
             first_rate = self.missingness_config.get("first_rate", 0.3)
