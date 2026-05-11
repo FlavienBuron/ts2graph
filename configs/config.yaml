@@ -16,7 +16,7 @@ task: true
 paths:
   root: ./experiments/results
   save_path: ${paths.root}/${model.name}/${graph.name}/${dataset.name}/${cond:${dataset.missingness.enabled}, missing_${dataset.missingness.pattern}, default}/ln${model.layer_num}/${model.layer_type}/${now:%Y%m%d}/
-  file_name: ${now:%Y%m%d_%H%M%S}_${model.name}_${dataset.name}_${mode}_${graph.label}$_{cond:${dataset.missingness.enabled}, _${dataset.missingness.pattern}_${dataset.missingness.target_rate}, ''}.json
+  file_name: ${now:%Y%m%d_%H%M%S}_${model.name}_${dataset.name}_${mode}_${graph.label}${cond:${dataset.missingness.enabled}, _${dataset.missingness.pattern}_${dataset.missingness.target_rate}, ''}.json
 
 hydra:
   job:
