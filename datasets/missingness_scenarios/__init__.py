@@ -275,7 +275,7 @@ class ScenarioManager:
                         placement=placement,
                         test_months=test_months,
                     )
-                    __import__("pprint").pprint(f"[DEBUG] {ScenarioConfig.to_dict()=}")
+                    __import__("pprint").pprint(f"[DEBUG] {config.to_dict()=}")
                     if not force_regenerate:
                         cached = self.cache.load_scenario(config)
                         if cached is not None:
