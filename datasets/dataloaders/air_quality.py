@@ -132,7 +132,9 @@ class AirQualityLoader(GraphLoader):
             is_first_rate = target_rate == first_rate
 
             # Eval fraction is a direct upper-bound from config (not derived from rates)
-            eval_fraction = self.missingness_config.get("eval_fraction", 0.047)
+            eval_fraction_max = self.missingness_config.get("eval_fraction", 0.047)
+            eval_fraction = None if is_first_rate else eval_fraction_max
+
         else:
             # MCAR: target = global missing rate
             target_rates = self.missingness_config.get("target_rate", 0.40)
