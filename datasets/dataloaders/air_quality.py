@@ -128,9 +128,11 @@ class AirQualityLoader(GraphLoader):
             coverage_levels = self.missingness_config.get("target_rate", [0.3])
             target_rate = coverage_levels[0] if isinstance(coverage_levels, list) else float(coverage_levels)
 
+            first_rate = self.missingness_config.get("first_rate", 0.1)
+            is_first_rate = target_rate == first_rate
+
             # Eval fraction is a direct upper-bound from config (not derived from rates)
             eval_fraction = self.missingness_config.get("eval_fraction", 0.047)
-            is_first_rate = True  # Eval logic is independent of baseline for aligned
         else:
             # MCAR: target = global missing rate
             target_rates = self.missingness_config.get("target_rate", 0.40)
