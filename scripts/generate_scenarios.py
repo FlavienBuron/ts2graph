@@ -148,7 +148,7 @@ def main(cfg: DictConfig):
         seed=cfg.missingness.seed,
         cumulative=cfg.missingness.cumulative,
         force_regenerate=cfg.cache.force_regenerate,
-        eval_fraction=cfg.missingness.eval_fraction if is_aligned else None,
+        eval_fraction=None,
         # Aligned kwargs (ignored for MCAR)
         data_index=data_index,
         sensor_pattern=cfg.missingness.aligned.sensor_pattern,

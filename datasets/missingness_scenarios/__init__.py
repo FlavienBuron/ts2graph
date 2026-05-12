@@ -269,7 +269,7 @@ class ScenarioManager:
                         dataset_shape=shape,
                         dataset_hash=self._data_hash or "",
                         injection_mode="cumulative",
-                        eval_fraction=eval_fraction,
+                        eval_fraction=None,
                         is_first_rate=(i == 0),
                         sensor_fraction=frac,
                         sensor_pattern=sensor_pattern,
