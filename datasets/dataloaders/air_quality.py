@@ -188,9 +188,9 @@ class AirQualityLoader(GraphLoader):
 
         # Log scenario info
         meta = scenario.metadata
-        print(f"   Actual missing: {meta.get('actual_rate', 'N/A'):.2%}")
-        print(f"   Eval targets: {eval_mask.sum():,} ({eval_mask.mean():.2%} of data)")
-        print(f"   Eval fraction: {meta.get('eval_fraction', 'N/A'):.1%}")
+        print(f"   Actual missing: {meta.get('actual_rate', 'N/A'):.4%}")
+        print(f"   Eval targets: {eval_mask.sum():,} ({eval_mask.mean():.4%} of data)")
+        print(f"   Eval fraction: {meta.get('eval_fraction', 'N/A'):.4%}")
         print(f"   Injection mode: {meta.get('injection_mode', 'N/A')}")
 
         # Handle masked_sensors override
