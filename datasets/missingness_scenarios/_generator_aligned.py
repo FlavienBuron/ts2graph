@@ -192,7 +192,7 @@ def inject_aligned_blocks(
 
     if config.eval_fraction is not None and newly_injected.any():
         subsample_rng = np.random.default_rng(config.seed + hash(config.target_missing_rate) % 10000)
-        fixed_eval_mask = _subsample_eval_mask(
+        eval_mask_fixed = _subsample_eval_mask(
             newly_injected=newly_injected,
             target_eval_fraction=config.eval_fraction,
             total_positions=total_elements,
@@ -203,7 +203,9 @@ def inject_aligned_blocks(
         )
         eval_mask_types = ["fixed_subsampled", "newly_full"]
     else:
-        raise ValueError("eval_fraction should be defined for Aligned Blocks case")
+        # raise ValueError("eval_fraction should be defined for Aligned Blocks case")
+        eval_mask_fixed = newly_injected
+        eval_mask_types = ["rate_specific"]
 
     blocks_injected = [[int(block_start), int(block_end), int(s)] for s in affected_sensors]
     achieved_coverage = len(affected_sensors) / N
@@ -213,7 +215,7 @@ def inject_aligned_blocks(
         config=config,
         full_mask=current_mask.copy(),
         baseline_mask=baseline_mask.copy(),
-        eval_mask_fixed=fixed_eval_mask.copy(),
+        eval_mask_fixed=eval_mask_fixed.copy(),
         eval_mask_newly=newly_injected.copy(),
         eval_mask_cumulative=newly_injected.copy(),
         metadata={
@@ -224,10 +226,10 @@ def inject_aligned_blocks(
             "newly_injected_count": int(newly_injected.sum()),
             "actual_rate": float(achieved_missing_rate),
             "injection_mode": "independent",
-            "eval_fraction": float(fixed_eval_mask.sum() / total_elements),
-            "eval_fraction_requested": float(config.eval_fraction),
+            "eval_fraction": float(eval_mask_fixed.sum() / total_elements),
+            "eval_fraction_requested": float(config.eval_fraction or 0),
             "eval_mask_types": eval_mask_types,
-            "eval_fixed_points": int(fixed_eval_mask.sum()),
+            "eval_fixed_points": int(eval_mask_fixed.sum()),
             "eval_newly_points": int(newly_injected.sum()),
         },
     )
