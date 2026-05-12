@@ -162,7 +162,7 @@ class AirQualityLoader(GraphLoader):
         scenario = scenario_manager.get_scenario(
             shape=data_raw.shape,
             base_missing_rate=baseline_missing_rate,
-            target_rate=target_rate if not is_aligned else 0.0,
+            target_rate=target_rate,
             pattern=self.missingness_config.get("pattern", "mcar_blocks"),
             block_size=self.missingness_config.get("block_size", 10),
             seed=self.missingness_config.get("seed", 42),
