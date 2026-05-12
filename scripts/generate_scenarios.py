@@ -180,7 +180,7 @@ def main(cfg: DictConfig):
         if is_aligned:
             coverage = meta.get("achieved_sensor_coverage", "N/A")
             eval_frac = meta.get("eval_fraction_achieved", 0)
-            print(f"   {rate:.0%} coverage: {eval_pts:,} eval targets (achieved coverage: {coverage:.0%}, eval: {eval_frac:.1%})")
+            print(f"   {rate:.0%} coverage: {eval_pts:,} eval targets (achieved coverage: {coverage:.0%}, eval: {eval_frac:.4%})")
         else:
             print(f"   {rate:.0%} rate: {eval_pts:,} eval targets (actual missing: {actual_rate:.2%})")
 
