@@ -110,7 +110,18 @@ class ScenarioResult:
         """
         import h5py
 
+        required_datasets = {"full_mask", "baseline_mask", "eval_mask_fixed", "eval_mask_newly", "eval_mask_cumulative"}
+        required_attrs = {"config_json", "cache_key", "metadata_json"}
+
         with h5py.File(filepath, "w") as f:
+            # 🔍 Validate file structure before loading
+            missing_ds = required_datasets - set(f.keys())
+            if missing_ds:
+                raise ValueError(f"Corrupted/incomplete cache: missing datasets {missing_ds}")
+
+            missing_attr = required_attrs - set(f.attrs.keys())
+            if missing_attr:
+                raise ValueError(f"Corrupted/incomplete cache: missing attributes {missing_attr}")
             # Store masks as datasets
             f.create_dataset("full_mask", data=self.full_mask.tolist())
             f.create_dataset("baseline_mask", data=self.baseline_mask.tolist())
