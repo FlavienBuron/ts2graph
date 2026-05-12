@@ -136,6 +136,7 @@ class ScenarioManager:
             placement=placement,
             test_months=test_months if test_months is not None else [],
         )
+        __import__("pprint").pprint(f"[DEBUG] {config.to_dict()=}")
 
         # Try cache
         if not force_regenerate:
