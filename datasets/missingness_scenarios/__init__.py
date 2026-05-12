@@ -262,7 +262,7 @@ class ScenarioManager:
                     config = ScenarioConfig(
                         seed=seed,
                         base_missing_rate=base_missing_rate,
-                        target_missing_rate=0.0,  # Ignored for aligned
+                        target_missing_rate=frac,  # Ignored for aligned
                         pattern=pattern,
                         block_size=block_size,
                         dataset_shape=shape,
@@ -275,6 +275,7 @@ class ScenarioManager:
                         placement=placement,
                         test_months=test_months,
                     )
+                    __import__("pprint").pprint(f"[DEBUG] {ScenarioConfig=}")
                     if not force_regenerate:
                         cached = self.cache.load_scenario(config)
                         if cached is not None:
