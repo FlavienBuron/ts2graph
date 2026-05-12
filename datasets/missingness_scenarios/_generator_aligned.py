@@ -90,26 +90,27 @@ class AlignedBlockCumulativeGenerator:
         # Update cumulative eval mask
         self._cumulative_eval_mask = np.logical_or(self._cumulative_eval_mask, newly_injected)
 
-        if config.eval_fraction is not None and newly_injected.any():
-            subsample_rng = np.random.default_rng(config.seed + hash(config.target_missing_rate) % 10000)
-            fixed_eval_mask = _subsample_eval_mask(
-                newly_injected=newly_injected,
-                target_eval_fraction=config.eval_fraction,
-                total_positions=self.total_elements,
-                block_start=block_start,
-                block_end=block_end,
-                affected_sensors=affected_sensors,
-                rng=subsample_rng,
-            )
-            eval_mask_types = ["fixed_subsampled", "newly_full", "cumulative"]
-        else:
-            raise ValueError("eval_fraction should be defined for Aligned Blocks case")
+        # if config.eval_fraction is not None and newly_injected.any():
+        #     subsample_rng = np.random.default_rng(config.seed + hash(config.target_missing_rate) % 10000)
+        #     fixed_eval_mask = _subsample_eval_mask(
+        #         newly_injected=newly_injected,
+        #         target_eval_fraction=config.eval_fraction,
+        #         total_positions=self.total_elements,
+        #         block_start=block_start,
+        #         block_end=block_end,
+        #         affected_sensors=affected_sensors,
+        #         rng=subsample_rng,
+        #     )
+        #     eval_mask_types = ["fixed_subsampled", "newly_full", "cumulative"]
+        # else:
+        #     raise ValueError("eval_fraction should be defined for Aligned Blocks case")
 
         # Set fixed eval mask at first successful injection
         if self._fixed_eval_mask is None:
-            self._fixed_eval_mask = fixed_eval_mask.copy()
+            self._fixed_eval_mask: np.ndarray = newly_injected.copy()
             self._first_rate = config.sensor_fraction
             self._first_rate_eval_fraction = float(newly_injected.mean())
+            print(f"Fixed eval mask set at {config.sensor_fraction:.0%}: {self._fixed_eval_mask.sum():,} positions ({self._first_rate_eval_fraction:.1%})")
 
         self._last_block_end = block_end
 
