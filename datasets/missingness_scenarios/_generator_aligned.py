@@ -47,9 +47,11 @@ class AlignedBlockCumulativeGenerator:
         if config.sensor_fraction <= 0:
             raise ValueError(f"sensor_fraction must be > 0 for aligned block pettern, got {config.sensor_fraction}")
 
+        block_size = _resolve_block_size(config.block_size, self.T)
+
         # Compute block placement (single position for all affected sensors)
         block_start, block_end = _compute_aligned_placement(
-            block_size=config.block_size,
+            block_size=block_size,
             data_index=self.data_index,
             placement=config.placement,
             test_months=config.test_months,
@@ -160,6 +162,8 @@ def inject_aligned_blocks(
     T, N = baseline_mask.shape
     total_elements = T * N
 
+    block_size = _resolve_block_size(config.block_size, T)
+
     current_mask = baseline_mask.copy()
 
     if config.sensor_fraction <= 0:
@@ -167,7 +171,7 @@ def inject_aligned_blocks(
 
     # Compute single aligned block position
     block_start, block_end = _compute_aligned_placement(
-        block_size=config.block_size,
+        block_size=block_size,
         data_index=data_index,
         placement=config.placement,
         test_months=config.test_months,
@@ -367,3 +371,19 @@ def _subsample_eval_mask(
     eval_mask[start : start + n_timesteps, affected_sensors] = True
     eval_mask &= newly_injected
     return eval_mask
+
+
+def _resolve_block_size(config_value, total_length: int) -> int:
+    """
+    Resolve block size from config:
+    - If 0 < value < 1: treat as ratio of total_length
+    - Otherwise: treat as absolute timesteps
+    """
+    if not isinstance(config_value, (int, float)):
+        raise TypeError(f"block_size must be int or float, got {type(config_value)}")
+    if config_value <= 0:
+        raise ValueError(f"block_size must be > 0, got {config_value}")
+
+    if config_value < 1.0:
+        return max(1, int(round(config_value * total_length)))
+    return max(1, int(config_value))
