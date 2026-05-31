@@ -1,0 +1,6 @@
+name: sliding_euclidean
+input_kind: series
+
+lag_fraction: 0.20
+min_overlap: 1
+normalize: false
