@@ -1,0 +1,7 @@
+name: sliding_huber
+input_kind: series
+
+lag_fraction: 0.10
+delta: 1.0
+normalize: false
+min_overlap: 1
