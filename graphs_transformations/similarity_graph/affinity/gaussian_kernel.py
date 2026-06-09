@@ -10,9 +10,9 @@ class GaussianKernel(AffinityFunction):
     requires_non_negative = True
     epsilon = 1e-6
 
-    def __init__(self, gamma: float = 1.0, theta: str = "std", **kwargs) -> None:
+    def __init__(self, theta: str = "std", **kwargs) -> None:
         super().__init__(**kwargs)
-        self.gamma = gamma
+        self.gamma = 1.0
         self.theta = theta
 
     def _normalize(self, D: torch.Tensor, valid: torch.Tensor):
