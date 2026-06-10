@@ -9,22 +9,18 @@ class GaussianKernel(AffinityFunction):
     name = "gaussian kernel (RBF)"
     requires_non_negative = True
 
-    def __init__(self, theta: str = "std", **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.gamma = 1.0
-        self.theta = theta
 
     def __call__(self, D: torch.Tensor):
         print(f"Affinity: {self.name}")
+
         valid = torch.isfinite(D) & (D > 0)
 
         D = self._normalize(D, valid)
 
-        if self.theta == "median":
-            theta = D[valid].median()
-        else:
-            theta = D[valid].std()
-        theta = theta.clamp_min(self.epsilon)
-        A = torch.exp(-self.gamma * ((D / theta) ** 2))
+        A = torch.exp(-(D**2))
+
         A[~valid] = 0.0
+
         return A
