@@ -8,6 +8,7 @@ class AffinityFunction(ABC):
     requires_non_negative: bool = True
     preserves_order: bool = True
     output_range: str = "[0, 1]"
+    epsilon = 1e-6
 
     def __init__(self, **kwargs):
         pass
@@ -17,3 +18,7 @@ class AffinityFunction(ABC):
         """Convert a distance or similarity matrix D
         to an affinity matrix
         """
+
+    def _normalize(self, D: torch.Tensor, valid: torch.Tensor):
+        scale = D[valid].median()
+        return D / scale.clamp_min(self.epsilon)

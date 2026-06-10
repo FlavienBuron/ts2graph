@@ -15,4 +15,8 @@ class Identity(AffinityFunction):
 
     def __call__(self, D: torch.Tensor) -> torch.Tensor:
         print(f"Affinity: {self.name}")
+        valid = torch.isfinite(D) & (D > 0)
+
+        D = self._normalize(D, valid)
+
         return D
