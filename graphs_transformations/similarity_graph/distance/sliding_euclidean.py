@@ -25,27 +25,26 @@ class SlidingEuclidean(DistanceFunction):
         print(f"Distance: {self.name}")
         if mask is None:
             raise ValueError("Masked Euclidean Distance requires a masked to be passed")
-        T, N, _ = X.shape
+        T, N, F = X.shape
         max_lag = int(round(self.lag_fraction * T))
+        lags = torch.arange(-max_lag, max_lag + 1)
         D = torch.full((N, N), float("inf"))
-        total_pairs = N * (N - 1) // 2
-        total_steps = total_pairs * (2 * max_lag + 1)
-        current_step = 0
+
+        # precompute squared values for efficiency
+        X = X.squeeze(-1) if F == 1 else X
+        mask = mask.squeeze(-1).bool()
 
         for i in range(N):
-            Xi = X[:, i, :]
-            Mi = mask[:, i, :]
+            Xi = X[:, i]
+            Mi = mask[:, i]
 
             for j in range(i + 1, N):
-                Xj = X[:, j, :]
-                Mj = mask[:, j, :]
+                Xj = X[:, j]
+                Mj = mask[:, j]
 
                 best = float("inf")
-                best_K = 1
 
-                for tau in range(-max_lag, max_lag + 1):
-                    current_step += 1
-                    print(f"{current_step}/{total_steps}", end="\r")
+                for tau in lags.tolist():
                     if tau >= 0:
                         Xi_tau = Xi[: T - tau]
                         Xj_tau = Xj[tau:]
@@ -65,27 +64,14 @@ class SlidingEuclidean(DistanceFunction):
                         continue
 
                     diff = Xi_tau[Mij] - Xj_tau[Mij]
-                    square = diff.square().flatten()
-                    running = 0.0
+                    square = (diff * diff).sum().item()
                     if self.normalize:
-                        threshold = (best**2) * max(best_K, 1)
+                        Dij = (square / K) ** 0.5
                     else:
-                        threshold = best**2
+                        Dij = square**0.5
 
-                    for v in square:
-                        running += float(v)
-                        if running >= threshold:
-                            break
-                    else:
-                        # full evaluation only if not pruned
-                        if self.normalize:
-                            Dij = (running / K) ** 0.5
-                        else:
-                            Dij = running**0.5
+                    best = min(best, float(Dij))
 
-                        if Dij < best:
-                            best = Dij
-                            best_K = K
                 D[i, j] = D[j, i] = best
         D.fill_diagonal_(0.0)
         return D
