@@ -28,6 +28,9 @@ class SlidingEuclidean(DistanceFunction):
         T, N, _ = X.shape
         max_lag = int(round(self.lag_fraction * T))
         D = torch.full((N, N), float("inf"))
+        total_pairs = N * (N - 1) // 2
+        total_steps = total_pairs * (2 * max_lag + 1)
+        current_step = 0
 
         for i in range(N):
             Xi = X[:, i, :]
@@ -41,6 +44,8 @@ class SlidingEuclidean(DistanceFunction):
                 best_K = 1
 
                 for tau in range(-max_lag, max_lag + 1):
+                    current_step += 1
+                    print(f"{current_step}/{total_steps}", end="\r")
                     if tau >= 0:
                         Xi_tau = Xi[: T - tau]
                         Xj_tau = Xj[tau:]
