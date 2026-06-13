@@ -38,6 +38,7 @@ class SlidingEuclidean(DistanceFunction):
                 Mj = mask[:, j, :]
 
                 best = float("inf")
+                best_K = 1
 
                 for tau in range(-max_lag, max_lag + 1):
                     if tau >= 0:
@@ -59,13 +60,27 @@ class SlidingEuclidean(DistanceFunction):
                         continue
 
                     diff = Xi_tau[Mij] - Xj_tau[Mij]
+                    square = diff.square().flatten()
+                    running = 0.0
                     if self.normalize:
-                        Dij = torch.linalg.norm(diff) / K.float().sqrt()
+                        threshold = (best**2) * max(best_K, 1)
                     else:
-                        Dij = torch.linalg.norm(diff)
+                        threshold = best**2
 
-                    best = min(best, float(Dij))
+                    for v in square:
+                        running += float(v)
+                        if running >= threshold:
+                            break
+                    else:
+                        # full evaluation only if not pruned
+                        if self.normalize:
+                            Dij = (running / K) ** 0.5
+                        else:
+                            Dij = running**0.5
 
+                        if Dij < best:
+                            best = Dij
+                            best_K = K
                 D[i, j] = D[j, i] = best
         D.fill_diagonal_(0.0)
         return D
