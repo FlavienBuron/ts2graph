@@ -1,0 +1,3 @@
+name: pearson_similarity
+input_kind: series
+normalize: false

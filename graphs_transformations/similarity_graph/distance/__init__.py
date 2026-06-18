@@ -5,6 +5,7 @@ from .identity import Identity
 from .masked_canberra import MaskedCanberra
 from .masked_chebyshev import MaskedChebyshev
 from .masked_euclidean import MaskedEuclidean
+from .pearson_similarity import PearsonSimilarity
 from .sliding_canberra import SlidingCanberra
 from .sliding_euclidean import SlidingEuclidean
 from .sliding_huber import SlidingHuber
@@ -21,5 +22,6 @@ __all__ = [
     "DTW",
     "ERP",
     "TWED",
+    "PearsonSimilarity",
     "Identity",
 ]
