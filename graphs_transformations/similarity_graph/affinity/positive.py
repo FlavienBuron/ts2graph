@@ -7,7 +7,7 @@ from .base import AffinityFunction
 @register_affinity("positive")
 class Positive(AffinityFunction):
     name = "positive"
-    requires_non_negative = True
+    requires_non_negative = False
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
