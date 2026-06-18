@@ -13,3 +13,6 @@ python-louvain
 maturin
 patchelf
 einops
+h5py
+hydra-core --upgrade
+git+https://github.com/aras-y/DTW_with_missing_values.git
