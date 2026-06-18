@@ -3,4 +3,4 @@ input_kind: series
 
 series_fraction: 0.1
 missing_value_restrictions: "full"
-missing_value_adjustment: "proportion_od_missing_values"
+missing_value_adjustment: "proportion_of_missing_values"

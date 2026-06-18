@@ -20,7 +20,7 @@ class DTW(DistanceFunction):
         self,
         series_fraction: float = 0.1,
         missing_value_restrictions: str = "full",
-        missing_value_adjustment: str = "proportion_od_missing_values",
+        missing_value_adjustment: str = "proportion_of_missing_values",
         use_c: bool = True,
         **kwargs,
     ):
