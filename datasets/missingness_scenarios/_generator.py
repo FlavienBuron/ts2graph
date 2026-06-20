@@ -48,6 +48,7 @@ class MCARCumulativeGenerator:
         self,
         config: ScenarioConfig,
     ) -> ScenarioResult:
+        block_size = _resolve_block_size(config.block_size, self.T)
         count_observed_before = self.current_mask.sum()
 
         # Convert target missing rate to target observed rate
@@ -59,9 +60,7 @@ class MCARCumulativeGenerator:
             newly_injected = np.zeros_like(self.current_mask, dtype=bool)
 
             # Update cumulative eval mask (no change)
-            self.cumulative_eval_mask = np.logical_or(
-                self.cumulative_eval_mask, newly_injected
-            )
+            self.cumulative_eval_mask = np.logical_or(self.cumulative_eval_mask, newly_injected)
 
             # Set fixed eval mask if first rate
             if self.fixed_eval_mask is None:
@@ -90,23 +89,18 @@ class MCARCumulativeGenerator:
         self.current_mask, newly_injected, blocks_injected = _inject_block_core(
             self.current_mask.copy(),
             target_observed_count,
-            config.block_size,
+            block_size,
             self.rng,
         )
 
         # Update cumulative mask
-        self.cumulative_eval_mask = np.logical_or(
-            self.cumulative_eval_mask, newly_injected
-        )
+        self.cumulative_eval_mask = np.logical_or(self.cumulative_eval_mask, newly_injected)
         # Set fixed eval mask at first rate
         if self.fixed_eval_mask is None:
             self.fixed_eval_mask = newly_injected.copy()
             self.first_rate = config.target_missing_rate
             self.first_rate_eval_fraction = float(newly_injected.mean())
-            print(
-                f"Fixed eval mask set at {config.target_missing_rate:.0%}: "
-                f"{self.fixed_eval_mask.sum():,} positions ({self.first_rate_eval_fraction:.1%})"
-            )
+            print(f"Fixed eval mask set at {config.target_missing_rate:.0%}: {self.fixed_eval_mask.sum():,} positions ({self.first_rate_eval_fraction:.1%})")
 
         actual_missing_rate = float(1.0 - self.current_mask.mean())
 
@@ -150,9 +144,7 @@ def _inject_block_core(
 
     valid_map = current_mask.copy()
     kernel = np.ones(block_size)
-    scores = np.apply_along_axis(
-        lambda x: np.convolve(x, kernel, mode="valid"), axis=0, arr=valid_map
-    )
+    scores = np.apply_along_axis(lambda x: np.convolve(x, kernel, mode="valid"), axis=0, arr=valid_map)
 
     # Collect ALL positions (sizes 1 to block_size)
     all_blocks = []
@@ -214,9 +206,7 @@ def _subsample_eval_mask(
         return newly_injected.copy()
 
     # Randomly subsample to target count
-    selected_indices = rng.choice(
-        available_positions, size=target_eval_count, replace=False
-    )
+    selected_indices = rng.choice(available_positions, size=target_eval_count, replace=False)
     subsampled = np.zeros_like(newly_injected.flatten())
     subsampled[selected_indices] = 1
 
@@ -235,6 +225,7 @@ def inject_mcar_blocks(
     T, N = baseline_mask.shape
     total = T * N
     target_rate = config.target_missing_rate
+    block_size = _resolve_block_size(config.block_size, T)
 
     current_mask = baseline_mask.copy()
     target_observed_count = total - int(target_rate * total)
@@ -276,7 +267,7 @@ def inject_mcar_blocks(
     current_mask, newly_injected, blocks_injected = _inject_block_core(
         current_mask,
         target_observed_count,
-        config.block_size,
+        block_size,
         rng,
     )
 
@@ -285,9 +276,7 @@ def inject_mcar_blocks(
     # Determine eval masks (subsampled or not)
     if eval_fraction is not None:
         # Subsample to fixed eval fraction
-        subsample_rng = np.random.default_rng(
-            config.seed + hash(config.target_missing_rate) % 10000
-        )
+        subsample_rng = np.random.default_rng(config.seed + hash(config.target_missing_rate) % 10000)
         eval_mask_fixed = _subsample_eval_mask(
             newly_injected=newly_injected,
             target_eval_fraction=eval_fraction,
@@ -334,3 +323,19 @@ def inject_mcar_points(
         baseline_mask=baseline_mask,
         eval_fraction=eval_fraction,
     )
+
+
+def _resolve_block_size(config_value, total_length: int) -> int:
+    """
+    Resolve block size from config:
+    - If 0 < value < 1: treat as ratio of total_length
+    - Otherwise: treat as absolute timesteps
+    """
+    if not isinstance(config_value, (int, float)):
+        raise TypeError(f"block_size must be int or float, got {type(config_value)}")
+    if config_value <= 0:
+        raise ValueError(f"block_size must be > 0, got {config_value}")
+
+    if config_value < 1.0:
+        return max(1, int(round(config_value * total_length)))
+    return max(1, int(config_value))
