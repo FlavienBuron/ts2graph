@@ -34,7 +34,7 @@ class ScenarioConfig:
 
     # Aligned/Block-specific parameters
     sensor_fraction: float = 0.1
-    sensor_pattern: str = "top"  # top, random,
+    sensor_pattern: str = "random"  # top, random,
     placement: str = "span_all"  # span_all, test_only, train_only, random_quarter
     test_months: list[int] = field(default_factory=lambda: [3, 6, 9, 12])
     aligned_across_sensors: bool = field(default=False)
