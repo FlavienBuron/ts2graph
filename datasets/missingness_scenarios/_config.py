@@ -33,7 +33,7 @@ class ScenarioConfig:
     is_first_rate: bool = field(default=False)
 
     # Aligned/Block-specific parameters
-    sensor_fraction: float = 0.2
+    sensor_fraction: float = 0.1
     sensor_pattern: str = "top"  # top, random,
     placement: str = "span_all"  # span_all, test_only, train_only, random_quarter
     test_months: list[int] = field(default_factory=lambda: [3, 6, 9, 12])
