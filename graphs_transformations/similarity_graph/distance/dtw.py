@@ -2,7 +2,7 @@ import hashlib
 import multiprocessing as mp
 import os
 from concurrent.futures import ProcessPoolExecutor
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import dtw_missing.dtw_missing as dtw_m
 import h5py
@@ -13,38 +13,99 @@ from ..specs.registry import register_distance
 from .base import DistanceFunction
 
 
-def _compute_dtw_pair(args: Tuple) -> Tuple[int, int, float]:
+def init_worker(X_np: np.ndarray, mask_np: Optional[np.ndarray]):
     """
-    Worker function to compute DTW for a single pair.
-    Must be at the top level of the file to be picklable by multiprocessing.
+    Initializes global variables in each worker process.
+    This avoids pickling the massive 3D arrays for every single task.
     """
-    i, j, xi_np, xj_np, mi_np, mj_np, window_len, restrictions, adjustment, use_c, F = args
+    global _X_WORKER, _MASK_WORKER
+    _X_WORKER = X_np
+    _MASK_WORKER = mask_np
 
-    # 1. Inject NaNs based on masks
+
+# def _compute_dtw_pair(args: Tuple) -> Tuple[int, int, float]:
+#     """
+#     Worker function to compute DTW for a single pair.
+#     Must be at the top level of the file to be picklable by multiprocessing.
+#     """
+#     i, j, xi_np, xj_np, mi_np, mj_np, window_len, restrictions, adjustment, use_c, F = args
+#
+#     # 1. Inject NaNs based on masks
+#     if mi_np is not None:
+#         xi = xi_np.copy()
+#         xi[~mi_np] = np.nan
+#         xj = xj_np.copy()
+#         xj[~mj_np] = np.nan
+#     else:
+#         xi, xj = xi_np, xj_np
+#
+#     # 2. Squeeze to 1D if univariate
+#     if F == 1:
+#         xi = xi.squeeze(-1)
+#         xj = xj.squeeze(-1)
+#
+#     # 3. Compute DTW
+#     cost = dtw_m.warping_paths(
+#         s1=xi,
+#         s2=xj,
+#         window=window_len,
+#         missing_value_restrictions=restrictions,
+#         missing_value_adjustment=adjustment,
+#         use_c=use_c,
+#     )[0]
+#
+#     return i, j, cost
+
+
+def _compute_dtw_row(args: Tuple) -> Tuple[int, List[Tuple[int, float]]]:
+    """
+    Computes DTW for a single row i against all j > i.
+    """
+    i, N, F, window_len, restrictions, adjustment, use_c = args
+
+    # Access the globally initialized arrays (No IPC overhead here!)
+    xi_np = _X_WORKER[:, i, :]
+    mi_np = _MASK_WORKER[:, i, :] if _MASK_WORKER is not None else None
+
+    # Pre-compute xi (with NaNs injected) ONCE per row
     if mi_np is not None:
         xi = xi_np.copy()
         xi[~mi_np] = np.nan
-        xj = xj_np.copy()
-        xj[~mj_np] = np.nan
     else:
-        xi, xj = xi_np, xj_np
+        xi = xi_np
 
-    # 2. Squeeze to 1D if univariate
     if F == 1:
         xi = xi.squeeze(-1)
-        xj = xj.squeeze(-1)
 
-    # 3. Compute DTW
-    cost = dtw_m.warping_paths(
-        s1=xi,
-        s2=xj,
-        window=window_len,
-        missing_value_restrictions=restrictions,
-        missing_value_adjustment=adjustment,
-        use_c=use_c,
-    )[0]
+    row_results = []
 
-    return i, j, cost
+    for j in range(i + 1, N):
+        xj_np = _X_WORKER[:, j, :]
+        mj_np = _MASK_WORKER[:, j, :] if _MASK_WORKER is not None else None
+
+        # 1. Inject NaNs for xj
+        if mj_np is not None:
+            xj = xj_np.copy()
+            xj[~mj_np] = np.nan
+        else:
+            xj = xj_np
+
+        if F == 1:
+            xj = xj.squeeze(-1)
+
+        # 2. Compute DTW
+        cost = dtw_m.warping_paths(
+            s1=xi,
+            s2=xj,
+            window=window_len,
+            missing_value_restrictions=restrictions,
+            missing_value_adjustment=adjustment,
+            use_c=use_c,
+        )[0]
+
+        row_results.append((j, cost))
+
+    return i, row_results
 
 
 @register_distance("dtw")
@@ -146,50 +207,70 @@ class DTW(DistanceFunction):
         #
         #         D[i, j] = D[j, i] = cost
 
+        # T, N, F = X.shape
+        # window_len = max(1, int(self.series_fraction * T))
+        #
+        # # Convert to NumPy ONCE to avoid pickling overhead in multiprocessing
+        # X_np = np.ascontiguousarray(X.cpu().numpy())
+        # mask_np = np.ascontiguousarray(mask.cpu().numpy()) if mask is not None else None
+        #
+        # # Pre-extract 1D slices for each node.
+        # # This prevents passing the massive 3D array to every worker process.
+        # X_list = [X_np[:, i, :] for i in range(N)]
+        # mask_list = [mask_np[:, i, :] for i in range(N)] if mask_np is not None else [None] * N
+        #
+        # # Build the task list
+        # tasks = []
+        # for i in range(N):
+        #     for j in range(i + 1, N):
+        #         tasks.append(
+        #             (
+        #                 i,
+        #                 j,
+        #                 X_list[i],
+        #                 X_list[j],
+        #                 mask_list[i],
+        #                 mask_list[j],
+        #                 window_len,
+        #                 self.missing_value_restrictions,
+        #                 self.missing_value_adjustment,
+        #                 self.use_c,
+        #                 F,
+        #             )
+        #         )
+        # print(f"Computing {len(tasks):,} pairs using {self.n_jobs} CPU cores...")
+        #
+        # D = torch.full((N, N), float("inf"))
+        #
+        # # Use ProcessPoolExecutor to bypass the Python GIL
+        # with ProcessPoolExecutor(max_workers=self.n_jobs) as executor:
+        #     # executor.map preserves order, but we just need to unpack the results
+        #     for i, j, cost in executor.map(_compute_dtw_pair, tasks):
+        #         D[i, j] = cost
+        #         D[j, i] = cost
+
         T, N, F = X.shape
         window_len = max(1, int(self.series_fraction * T))
 
-        # Convert to NumPy ONCE to avoid pickling overhead in multiprocessing
+        # Convert to contiguous NumPy arrays ONCE
         X_np = np.ascontiguousarray(X.cpu().numpy())
         mask_np = np.ascontiguousarray(mask.cpu().numpy()) if mask is not None else None
 
-        # Pre-extract 1D slices for each node.
-        # This prevents passing the massive 3D array to every worker process.
-        X_list = [X_np[:, i, :] for i in range(N)]
-        mask_list = [mask_np[:, i, :] for i in range(N)] if mask_np is not None else [None] * N
+        # Create exactly N tasks (437 tasks).
+        # Notice we DO NOT pass X_np or mask_np here. They are passed via initializer.
+        tasks = [(i, N, F, window_len, self.missing_value_restrictions, self.missing_value_adjustment, self.use_c) for i in range(N)]
 
-        # Build the task list
-        tasks = []
-        for i in range(N):
-            for j in range(i + 1, N):
-                tasks.append(
-                    (
-                        i,
-                        j,
-                        X_list[i],
-                        X_list[j],
-                        mask_list[i],
-                        mask_list[j],
-                        window_len,
-                        self.missing_value_restrictions,
-                        self.missing_value_adjustment,
-                        self.use_c,
-                        F,
-                    )
-                )
-        print(f"Computing {len(tasks):,} pairs using {self.n_jobs} CPU cores...")
+        print(f"Computing {N * (N - 1) // 2:,} pairs across {N} row-tasks using {self.n_jobs} CPU cores...")
 
         D = torch.full((N, N), float("inf"))
 
-        # Use ProcessPoolExecutor to bypass the Python GIL
-        with ProcessPoolExecutor(max_workers=self.n_jobs) as executor:
-            # executor.map preserves order, but we just need to unpack the results
-            for i, j, cost in executor.map(_compute_dtw_pair, tasks):
-                D[i, j] = cost
-                D[j, i] = cost
-
-        D.fill_diagonal_(0.0)
-
+        # The initializer passes the heavy arrays to each worker process exactly ONCE.
+        with ProcessPoolExecutor(max_workers=self.n_jobs, initializer=init_worker, initargs=(X_np, mask_np)) as executor:
+            # executor.map sends only the tiny 'tasks' tuples (just integers/strings)
+            for i, row_results in executor.map(_compute_dtw_row, tasks):
+                for j, cost in row_results:
+                    D[i, j] = cost
+                    D[j, i] = cost
         D.fill_diagonal_(0.0)
 
         if use_cache:
