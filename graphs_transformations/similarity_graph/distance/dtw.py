@@ -1,13 +1,50 @@
 import hashlib
+import multiprocessing as mp
 import os
-from typing import Optional
+from concurrent.futures import ProcessPoolExecutor
+from typing import Optional, Tuple
 
 import dtw_missing.dtw_missing as dtw_m
 import h5py
+import numpy as np
 import torch
 
 from ..specs.registry import register_distance
 from .base import DistanceFunction
+
+
+def _compute_dtw_pair(args: Tuple) -> Tuple[int, int, float]:
+    """
+    Worker function to compute DTW for a single pair.
+    Must be at the top level of the file to be picklable by multiprocessing.
+    """
+    i, j, xi_np, xj_np, mi_np, mj_np, window_len, restrictions, adjustment, use_c, F = args
+
+    # 1. Inject NaNs based on masks
+    if mi_np is not None:
+        xi = xi_np.copy()
+        xi[~mi_np] = np.nan
+        xj = xj_np.copy()
+        xj[~mj_np] = np.nan
+    else:
+        xi, xj = xi_np, xj_np
+
+    # 2. Squeeze to 1D if univariate
+    if F == 1:
+        xi = xi.squeeze(-1)
+        xj = xj.squeeze(-1)
+
+    # 3. Compute DTW
+    cost = dtw_m.warping_paths(
+        s1=xi,
+        s2=xj,
+        window=window_len,
+        missing_value_restrictions=restrictions,
+        missing_value_adjustment=adjustment,
+        use_c=use_c,
+    )[0]
+
+    return i, j, cost
 
 
 @register_distance("dtw")
@@ -27,6 +64,7 @@ class DTW(DistanceFunction):
         use_c: bool = True,
         cache_dir: Optional[str] = None,
         scenario_key: Optional[str] = None,
+        n_jobs: int = -1,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -36,6 +74,7 @@ class DTW(DistanceFunction):
         self.use_c = use_c
         self.cache_dir = cache_dir
         self.scenario_key = scenario_key
+        self.n_jobs = n_jobs if n_jobs > 0 else mp.cpu_count()
 
         self._memory_cache = {}
 
@@ -65,47 +104,91 @@ class DTW(DistanceFunction):
                     except Exception as e:
                         print(f"Warning: Failed to read cache {cache_path}. Error: {e}")
 
+        # T, N, F = X.shape
+        # window_len = max(1, int(self.series_fraction * T))
+        #
+        # D = torch.full(
+        #     (N, N),
+        #     float("inf"),
+        # )
+        #
+        # for i in range(N):
+        #     Xi = X[:, i, :].clone()
+        #
+        #     for j in range(i + 1, N):
+        #         Xj = X[:, j, :].clone()
+        #
+        #         if mask is not None:
+        #             Mi = mask[:, i, :].bool()
+        #             Mj = mask[:, j, :].bool()
+        #
+        #             Xi = Xi.clone()
+        #             Xj = Xj.clone()
+        #
+        #             Xi[~Mi] = float("nan")
+        #             Xj[~Mj] = float("nan")
+        #
+        #         xi_np = Xi.cpu().numpy()
+        #         xj_np = Xj.cpu().numpy()
+        #
+        #         if F == 1:
+        #             xi_np = xi_np.squeeze(-1)
+        #             xj_np = xj_np.squeeze(-1)
+        #
+        #         cost = dtw_m.warping_paths(
+        #             s1=xi_np,
+        #             s2=xj_np,
+        #             window=window_len,
+        #             missing_value_restrictions=self.missing_value_restrictions,
+        #             missing_value_adjustment=self.missing_value_adjustment,
+        #             use_c=self.use_c,
+        #         )[0]
+        #
+        #         D[i, j] = D[j, i] = cost
+
         T, N, F = X.shape
         window_len = max(1, int(self.series_fraction * T))
 
-        D = torch.full(
-            (N, N),
-            float("inf"),
-        )
+        # Convert to NumPy ONCE to avoid pickling overhead in multiprocessing
+        X_np = np.ascontiguousarray(X.cpu().numpy())
+        mask_np = np.ascontiguousarray(mask.cpu().numpy()) if mask is not None else None
 
+        # Pre-extract 1D slices for each node.
+        # This prevents passing the massive 3D array to every worker process.
+        X_list = [X_np[:, i, :] for i in range(N)]
+        mask_list = [mask_np[:, i, :] for i in range(N)] if mask_np is not None else [None] * N
+
+        # Build the task list
+        tasks = []
         for i in range(N):
-            Xi = X[:, i, :].clone()
-
             for j in range(i + 1, N):
-                Xj = X[:, j, :].clone()
+                tasks.append(
+                    (
+                        i,
+                        j,
+                        X_list[i],
+                        X_list[j],
+                        mask_list[i],
+                        mask_list[j],
+                        window_len,
+                        self.missing_value_restrictions,
+                        self.missing_value_adjustment,
+                        self.use_c,
+                        F,
+                    )
+                )
+        print(f"Computing {len(tasks):,} pairs using {self.n_jobs} CPU cores...")
 
-                if mask is not None:
-                    Mi = mask[:, i, :].bool()
-                    Mj = mask[:, j, :].bool()
+        D = torch.full((N, N), float("inf"))
 
-                    Xi = Xi.clone()
-                    Xj = Xj.clone()
+        # Use ProcessPoolExecutor to bypass the Python GIL
+        with ProcessPoolExecutor(max_workers=self.n_jobs) as executor:
+            # executor.map preserves order, but we just need to unpack the results
+            for i, j, cost in executor.map(_compute_dtw_pair, tasks):
+                D[i, j] = cost
+                D[j, i] = cost
 
-                    Xi[~Mi] = float("nan")
-                    Xj[~Mj] = float("nan")
-
-                xi_np = Xi.cpu().numpy()
-                xj_np = Xj.cpu().numpy()
-
-                if F == 1:
-                    xi_np = xi_np.squeeze(-1)
-                    xj_np = xj_np.squeeze(-1)
-
-                cost = dtw_m.warping_paths(
-                    s1=xi_np,
-                    s2=xj_np,
-                    window=window_len,
-                    missing_value_restrictions=self.missing_value_restrictions,
-                    missing_value_adjustment=self.missing_value_adjustment,
-                    use_c=self.use_c,
-                )[0]
-
-                D[i, j] = D[j, i] = cost
+        D.fill_diagonal_(0.0)
 
         D.fill_diagonal_(0.0)
 
