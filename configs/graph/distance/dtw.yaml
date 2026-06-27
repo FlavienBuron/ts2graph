@@ -1,7 +1,7 @@
 name: dtw
 input_kind: series
 
-series_fraction: 0.1
+series_fraction: 0.01
 missing_value_restrictions: "full"
 missing_value_adjustment: "proportion_of_missing_values"
 
