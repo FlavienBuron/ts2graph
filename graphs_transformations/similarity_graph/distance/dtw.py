@@ -61,7 +61,7 @@ class DTW(DistanceFunction):
         series_fraction: float = 0.1,
         missing_value_restrictions: str = "full",
         missing_value_adjustment: str = "proportion_of_missing_values",
-        use_c: bool = True,
+        use_c: bool = False,
         cache_dir: Optional[str] = None,
         scenario_key: Optional[str] = None,
         n_jobs: int = -1,
