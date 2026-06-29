@@ -2,8 +2,8 @@ import hashlib
 import multiprocessing as mp
 import os
 import time
-from concurrent.futures import ProcessPoolExecutor
-from typing import List, Optional, Tuple
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import Optional
 
 import dtw_missing.dtw_missing as dtw_m
 import h5py
@@ -13,57 +13,43 @@ import torch
 from ..specs.registry import register_distance
 from .base import DistanceFunction
 
-# # ============================================================
-# # Worker global state
-# # ============================================================
-# _X_WORKER = None
-# _MASK_WORKER = None
 
-
-def init_worker(X_np: np.ndarray, mask_np: Optional[np.ndarray]):
+def init_worker(X_np, mask_np):
     global _X_WORKER, _MASK_WORKER
     _X_WORKER = X_np
     _MASK_WORKER = mask_np
 
 
-def _compute_dtw_row(args: Tuple) -> Tuple[int, List[Tuple[int, float]]]:
-    i, N, F, window_len, restrictions, adjustment, use_c = args
+def _compute_dtw_pair(args):
+    i, j, window_len, restrictions, adjustment, use_c, F = args
 
-    xi_np = _X_WORKER[:, i, :]
-    mi_np = _MASK_WORKER[:, i, :] if _MASK_WORKER is not None else None
+    xi = _X_WORKER[i]
+    xj = _X_WORKER[j]
 
-    xi = xi_np.copy() if mi_np is not None else xi_np
-    if mi_np is not None:
-        xi[~mi_np] = np.nan
+    if _MASK_WORKER is not None:
+        mi = _MASK_WORKER[i]
+        mj = _MASK_WORKER[j]
+
+        xi = xi.copy()
+        xj = xj.copy()
+
+        xi[~mi] = np.nan
+        xj[~mj] = np.nan
 
     if F == 1:
-        xi = xi.squeeze(-1)
+        xi = xi.reshape(-1)
+        xj = xj.reshape(-1)
 
-    row_results = []
+    cost = dtw_m.warping_paths(
+        s1=xi,
+        s2=xj,
+        window=window_len,
+        missing_value_restrictions=restrictions,
+        missing_value_adjustment=adjustment,
+        use_c=use_c,
+    )[0]
 
-    for j in range(i + 1, N):
-        xj_np = _X_WORKER[:, j, :]
-        mj_np = _MASK_WORKER[:, j, :] if _MASK_WORKER is not None else None
-
-        xj = xj_np.copy() if mj_np is not None else xj_np
-        if mj_np is not None:
-            xj[~mj_np] = np.nan
-
-        if F == 1:
-            xj = xj.squeeze(-1)
-
-        cost = dtw_m.warping_paths(
-            s1=xi,
-            s2=xj,
-            window=window_len,
-            missing_value_restrictions=restrictions,
-            missing_value_adjustment=adjustment,
-            use_c=use_c,
-        )[0]
-
-        row_results.append((j, cost))
-
-    return i, row_results
+    return i, j, float(cost)
 
 
 @register_distance("dtw")
@@ -165,99 +151,51 @@ class DTW(DistanceFunction):
         #
         #         D[i, j] = D[j, i] = cost
 
-        # T, N, F = X.shape
-        # window_len = max(1, int(self.series_fraction * T))
-        #
-        # # Convert to NumPy ONCE to avoid pickling overhead in multiprocessing
-        # X_np = np.ascontiguousarray(X.cpu().numpy())
-        # mask_np = np.ascontiguousarray(mask.cpu().numpy()) if mask is not None else None
-        #
-        # # Pre-extract 1D slices for each node.
-        # # This prevents passing the massive 3D array to every worker process.
-        # X_list = [X_np[:, i, :] for i in range(N)]
-        # mask_list = [mask_np[:, i, :] for i in range(N)] if mask_np is not None else [None] * N
-        #
-        # # Build the task list
-        # tasks = []
-        # for i in range(N):
-        #     for j in range(i + 1, N):
-        #         tasks.append(
-        #             (
-        #                 i,
-        #                 j,
-        #                 X_list[i],
-        #                 X_list[j],
-        #                 mask_list[i],
-        #                 mask_list[j],
-        #                 window_len,
-        #                 self.missing_value_restrictions,
-        #                 self.missing_value_adjustment,
-        #                 self.use_c,
-        #                 F,
-        #             )
-        #         )
-        # print(f"Computing {len(tasks):,} pairs using {self.n_jobs} CPU cores...")
-        #
-        # D = torch.full((N, N), float("inf"))
-        #
-        # # Use ProcessPoolExecutor to bypass the Python GIL
-        # with ProcessPoolExecutor(max_workers=self.n_jobs) as executor:
-        #     # executor.map preserves order, but we just need to unpack the results
-        #     for i, j, cost in executor.map(_compute_dtw_pair, tasks):
-        #         D[i, j] = cost
-        #         D[j, i] = cost
-
         T, N, F = X.shape
         window_len = max(1, int(self.series_fraction * T))
 
-        # Convert to contiguous NumPy arrays ONCE
         X_np = np.ascontiguousarray(X.cpu().numpy())
         mask_np = np.ascontiguousarray(mask.cpu().numpy()) if mask is not None else None
 
-        # Create exactly N tasks (437 tasks).
-        # Notice we DO NOT pass X_np or mask_np here. They are passed via initializer.
-        tasks = [(i, N, F, window_len, self.missing_value_restrictions, self.missing_value_adjustment, self.use_c) for i in range(N)]
+        tasks = [(i, j, window_len, self.missing_value_restrictions, self.missing_value_adjustment, self.use_c, F) for i in range(N) for j in range(i + 1, N)]
 
-        print(f"Computing {N * (N - 1) // 2:,} pairs across {N} row-tasks using {self.n_jobs} CPU cores...")
+        print(f"Computing {len(tasks):,} pairs using {self.n_jobs} cores...")
 
         D = torch.full((N, N), float("inf"))
 
-        # ====================================================
-        # Progress tracking
-        # ====================================================
-        start_time = time.perf_counter()
-        last_print = start_time
-        completed_rows = 0
-        total_rows = N
-        total_pairs = N * (N - 1) // 2
-        completed_pairs = 0
+        start = time.perf_counter()
+        last_report = start
+        completed = 0
+        total = len(tasks)
 
-        # The initializer passes the heavy arrays to each worker process exactly ONCE.
-        with ProcessPoolExecutor(max_workers=self.n_jobs, initializer=init_worker, initargs=(X_np, mask_np)) as executor:
-            for i, row_results in executor.map(_compute_dtw_row, tasks):
-                for j, cost in row_results:
-                    D[i, j] = cost
-                    D[j, i] = cost
-                    completed_pairs += 1
+        with ProcessPoolExecutor(
+            max_workers=self.n_jobs,
+            initializer=init_worker,
+            initargs=(X_np, mask_np),
+            mp_context=mp.get_context("spawn"),
+        ) as executor:
+            futures = {executor.submit(_compute_dtw_pair, t): t for t in tasks}
 
-                completed_rows += 1
+            for future in as_completed(futures):
+                i, j, cost = future.result()
+                D[i, j] = cost
+                D[j, i] = cost
+
+                completed += 1
 
                 now = time.perf_counter()
-                if now - last_print >= 20:  # every 20s
-                    elapsed = now - start_time
-                    pair_rate = completed_pairs / elapsed if elapsed > 0 else 0
-                    eta = (total_pairs - completed_pairs) / pair_rate if pair_rate > 0 else float("inf")
+                if now - last_report > 30:
+                    elapsed = now - start
+                    rate = completed / elapsed
+                    eta = (total - completed) / rate if rate > 0 else float("inf")
 
-                    print(
-                        f"[DTW] rows {completed_rows}/{total_rows} "
-                        f"({completed_rows / total_rows:.1%}) | "
-                        f"pairs {completed_pairs:,}/{total_pairs:,} "
-                        f"({completed_pairs / total_pairs:.1%}) | "
-                        f"{pair_rate:.1f} pairs/s | "
-                        f"ETA {eta / 60:.1f} min"
-                    )
+                    print(f"{completed:,}/{total:,} ({completed / total * 100:.1f}%) | {rate:.2f} pairs/s | ETA {eta / 60:.1f} min")
 
-                    last_print = now
+                    last_report = now
+                    # for i, j, cost in executor.map(_compute_dtw_pair, tasks, chunksize=128):
+                    #     D[i, j] = cost
+                    #     D[j, i] = cost
+
         D.fill_diagonal_(0.0)
 
         if use_cache:
