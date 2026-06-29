@@ -1,6 +1,7 @@
 import hashlib
 import multiprocessing as mp
 import os
+import time
 from concurrent.futures import ProcessPoolExecutor
 from typing import List, Optional, Tuple
 
@@ -12,67 +13,28 @@ import torch
 from ..specs.registry import register_distance
 from .base import DistanceFunction
 
+# # ============================================================
+# # Worker global state
+# # ============================================================
+# _X_WORKER = None
+# _MASK_WORKER = None
+
 
 def init_worker(X_np: np.ndarray, mask_np: Optional[np.ndarray]):
-    """
-    Initializes global variables in each worker process.
-    This avoids pickling the massive 3D arrays for every single task.
-    """
     global _X_WORKER, _MASK_WORKER
     _X_WORKER = X_np
     _MASK_WORKER = mask_np
 
 
-# def _compute_dtw_pair(args: Tuple) -> Tuple[int, int, float]:
-#     """
-#     Worker function to compute DTW for a single pair.
-#     Must be at the top level of the file to be picklable by multiprocessing.
-#     """
-#     i, j, xi_np, xj_np, mi_np, mj_np, window_len, restrictions, adjustment, use_c, F = args
-#
-#     # 1. Inject NaNs based on masks
-#     if mi_np is not None:
-#         xi = xi_np.copy()
-#         xi[~mi_np] = np.nan
-#         xj = xj_np.copy()
-#         xj[~mj_np] = np.nan
-#     else:
-#         xi, xj = xi_np, xj_np
-#
-#     # 2. Squeeze to 1D if univariate
-#     if F == 1:
-#         xi = xi.squeeze(-1)
-#         xj = xj.squeeze(-1)
-#
-#     # 3. Compute DTW
-#     cost = dtw_m.warping_paths(
-#         s1=xi,
-#         s2=xj,
-#         window=window_len,
-#         missing_value_restrictions=restrictions,
-#         missing_value_adjustment=adjustment,
-#         use_c=use_c,
-#     )[0]
-#
-#     return i, j, cost
-
-
 def _compute_dtw_row(args: Tuple) -> Tuple[int, List[Tuple[int, float]]]:
-    """
-    Computes DTW for a single row i against all j > i.
-    """
     i, N, F, window_len, restrictions, adjustment, use_c = args
 
-    # Access the globally initialized arrays (No IPC overhead here!)
     xi_np = _X_WORKER[:, i, :]
     mi_np = _MASK_WORKER[:, i, :] if _MASK_WORKER is not None else None
 
-    # Pre-compute xi (with NaNs injected) ONCE per row
+    xi = xi_np.copy() if mi_np is not None else xi_np
     if mi_np is not None:
-        xi = xi_np.copy()
         xi[~mi_np] = np.nan
-    else:
-        xi = xi_np
 
     if F == 1:
         xi = xi.squeeze(-1)
@@ -83,17 +45,13 @@ def _compute_dtw_row(args: Tuple) -> Tuple[int, List[Tuple[int, float]]]:
         xj_np = _X_WORKER[:, j, :]
         mj_np = _MASK_WORKER[:, j, :] if _MASK_WORKER is not None else None
 
-        # 1. Inject NaNs for xj
+        xj = xj_np.copy() if mj_np is not None else xj_np
         if mj_np is not None:
-            xj = xj_np.copy()
             xj[~mj_np] = np.nan
-        else:
-            xj = xj_np
 
         if F == 1:
             xj = xj.squeeze(-1)
 
-        # 2. Compute DTW
         cost = dtw_m.warping_paths(
             s1=xi,
             s2=xj,
@@ -264,13 +222,42 @@ class DTW(DistanceFunction):
 
         D = torch.full((N, N), float("inf"))
 
+        # ====================================================
+        # Progress tracking
+        # ====================================================
+        start_time = time.perf_counter()
+        last_print = start_time
+        completed_rows = 0
+        total_rows = N
+        total_pairs = N * (N - 1) // 2
+        completed_pairs = 0
+
         # The initializer passes the heavy arrays to each worker process exactly ONCE.
         with ProcessPoolExecutor(max_workers=self.n_jobs, initializer=init_worker, initargs=(X_np, mask_np)) as executor:
-            # executor.map sends only the tiny 'tasks' tuples (just integers/strings)
             for i, row_results in executor.map(_compute_dtw_row, tasks):
                 for j, cost in row_results:
                     D[i, j] = cost
                     D[j, i] = cost
+                    completed_pairs += 1
+
+                completed_rows += 1
+
+                now = time.perf_counter()
+                if now - last_print >= 20:  # every 20s
+                    elapsed = now - start_time
+                    pair_rate = completed_pairs / elapsed if elapsed > 0 else 0
+                    eta = (total_pairs - completed_pairs) / pair_rate if pair_rate > 0 else float("inf")
+
+                    print(
+                        f"[DTW] rows {completed_rows}/{total_rows} "
+                        f"({completed_rows / total_rows:.1%}) | "
+                        f"pairs {completed_pairs:,}/{total_pairs:,} "
+                        f"({completed_pairs / total_pairs:.1%}) | "
+                        f"{pair_rate:.1f} pairs/s | "
+                        f"ETA {eta / 60:.1f} min"
+                    )
+
+                    last_print = now
         D.fill_diagonal_(0.0)
 
         if use_cache:
