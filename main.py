@@ -242,7 +242,7 @@ def run(cfg: DictConfig) -> None:
     if cfg.use_spatial:
         if cfg.dataset.get("missingness", {}).get("enabled", False):
             scenario_key = dataset._scenario.config.get_cache_key()
-            OmegaConf.update(cfg, "graph.distance.scenario_key", scenario_key)
+            OmegaConf.update(cfg, "graph.distance.scenario_key", scenario_key, force_add=True)
         spatial_adj_matrix, spatial_graph_time = get_spatial_graph(dataset, cfg)
     else:
         spatial_adj_matrix = torch.tensor([[]])
