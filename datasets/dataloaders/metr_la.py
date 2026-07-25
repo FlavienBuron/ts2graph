@@ -73,19 +73,19 @@ class MetrLALoader(GraphLoader):
             scenario=self._scenario,
         )
 
-        def load_raw(self) -> Tuple[pd.DataFrame, np.ndarray, Optional[pd.DataFrame]]:
-            path = os.path.join(self.dataset_path, "metr_la.h5")
-            df = pd.read_hdf(path)
+    def load_raw(self) -> Tuple[pd.DataFrame, np.ndarray, Optional[pd.DataFrame]]:
+        path = os.path.join(self.dataset_path, "metr_la.h5")
+        df = pd.read_hdf(path)
 
-            datetime_idx = sorted(df.index)
-            date_range = pd.date_range(datetime_idx[0], datetime_idx[-1], freq="5T")
-            df = df.reindex(index=date_range)
+        datetime_idx = sorted(df.index)
+        date_range = pd.date_range(datetime_idx[0], datetime_idx[-1], freq="5T")
+        df = df.reindex(index=date_range)
 
-            distances = self._load_distance_matrix()
+        distances = self._load_distance_matrix()
 
-            eval_mask = None
+        eval_mask = None
 
-            return df, distances, eval_mask
+        return df, distances, eval_mask
 
     def _load_distance_matrix(self) -> np.ndarray:
         path = os.path.join(self.dataset_path, "metr_la_dist.npy")
