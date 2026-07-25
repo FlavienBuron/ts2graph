@@ -1,7 +1,7 @@
 # @package dataset
 name: metr_la
 
-dataset_path: ./datasets/data/air_quality/
+dataset_path: ./datasets/data/metr_la/
 small: false
 variant: full
 freq: 5min
