@@ -1,0 +1,25 @@
+# @package dataset
+name: airq
+
+dataset_path: ./datasets/data/air_quality/
+small: false
+variant: full
+freq: 5min
+masked_sensors: []
+scaling_type: std
+in_sample: true
+window: 12
+impute_zer0s: true
+
+missingness:
+  enabled: false
+  pattern: mcar_blocks
+  block_size: 10
+  target_rate: [0.1244, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
+  sensor_coverage_levels: [0.10, 0.20, 0.30]
+  cumulative: true
+  eval_mask_mode: fixed
+  cache_dir: ./datasets/missingness_scenarios/cache/${dataset.name}_${dataset.variant}
+  force_regenerate: false
+  seed: ${seed}
+  first_rate: 0.1244
