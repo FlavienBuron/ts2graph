@@ -1,5 +1,5 @@
 # @package dataset
-name: metr-la
+name: metr_la
 
 dataset_path: ./datasets/data/air_quality/
 small: false
