@@ -10,6 +10,7 @@ scaling_type: std
 in_sample: true
 window: 12
 impute_zeros: true
+test_months: []
 
 missingness:
   enabled: false

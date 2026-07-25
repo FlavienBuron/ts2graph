@@ -246,11 +246,15 @@ def _compute_aligned_placement(
     placement: str,
     test_months: List[int],
     rng: np.random.Generator,
+    test_prob: float = 0.2,
+    val_prob: float = 0.1,
 ) -> Tuple[int, int]:
     """Compute aligned block start/end respecting placement strategy."""
     T = len(data_index)
     if block_size >= T:
         return 0, T
+
+    use_chronological_split = not test_months
 
     def find_quarter(test_month: int) -> Optional[Tuple[int, int, int]]:
         month_mask = data_index.to_series().dt.month == test_month
@@ -263,12 +267,21 @@ def _compute_aligned_placement(
         q_start = np.where(prev_mask)[0].min() if prev_mask.any() else 0
         return int(q_start), int(test_start), int(test_end)
 
-    valid_quarters = [q for tm in test_months if (q := find_quarter(tm)) is not None]
-    if not valid_quarters:
-        quarter_start, test_start, test_end = 0, 0, T
+    if use_chronological_split:
+        test_len = int(test_prob * T)
+        val_len = int(val_prob * (T - test_len))
+
+        test_start = T - test_len
+        test_end = T
+        quarter_start = max(0, test_start - val_len)
+
     else:
-        quarter_start, test_start, test_end = rng.choice(valid_quarters)
-        quarter_start, test_start, test_end = int(quarter_start), int(test_start), int(test_end)
+        valid_quarters = [q for tm in test_months if (q := find_quarter(tm)) is not None]
+        if not valid_quarters:
+            quarter_start, test_start, test_end = 0, 0, T
+        else:
+            quarter_start, test_start, test_end = rng.choice(valid_quarters)
+            quarter_start, test_start, test_end = int(quarter_start), int(test_start), int(test_end)
 
     # 🔒 Helper: clamp start to [0, T - block_size] to preserve exact length
     def clamp_start(start: int) -> Tuple[int, int]:
