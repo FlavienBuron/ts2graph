@@ -145,7 +145,13 @@ class MetrLALoader(GraphLoader):
             )
         else:
             eval_mask = loaded_eval_mask
-        eval_mask = eval_mask.values.astype(bool)
+        # --- SAFE CONVERSION ---
+        # Handles both Pandas DataFrames (from AirQ/custom loads) and numpy arrays (from sample_mask)
+        if hasattr(eval_mask, "values"):
+            eval_mask = eval_mask.values.astype(bool)
+        else:
+            eval_mask = np.asarray(eval_mask).astype(bool)
+        # -------------------------
 
         if masked_sensors is not None and len(masked_sensors) > 0:
             eval_mask[:, masked_sensors] = np.where(missing_mask[:, masked_sensors], True, False)
