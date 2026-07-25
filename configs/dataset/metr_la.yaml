@@ -2,7 +2,7 @@
 name: metr_la
 
 dataset_path: ./datasets/data/metr_la/
-# small: false
+small: false
 variant: full
 freq: 5min
 masked_sensors: []
