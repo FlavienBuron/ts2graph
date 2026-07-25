@@ -73,7 +73,9 @@ class MetrLALoader(GraphLoader):
             scenario=self._scenario,
         )
 
-    def load_raw(self) -> Tuple[pd.DataFrame, np.ndarray, Optional[pd.DataFrame]]:
+    def load_raw(self, small: bool = False) -> Tuple[pd.DataFrame, np.ndarray, Optional[pd.DataFrame]]:
+        if small:
+            print("[WARN] Small dataset for Metr-LA isn't implemented, continuing with full size")
         path = os.path.join(self.dataset_path, "metr_la.h5")
         df = pd.read_hdf(path)
 
