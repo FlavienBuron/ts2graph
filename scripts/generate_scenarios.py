@@ -136,6 +136,8 @@ def main(cfg: DictConfig):
 
     # Extract data_index safely for aligned patterns
     data_index = pd.DatetimeIndex(data.index) if is_aligned else None
+    test_months = list(cfg.missingness.aligned.test_months) if "airq" in cfg.dataset.name else []
+    print(f"{test_months=}")
 
     # Generate scenarios
     # if cfg.missingness.cumulative and len(target_rates) > 1:
@@ -153,7 +155,7 @@ def main(cfg: DictConfig):
         data_index=data_index,
         sensor_pattern=cfg.missingness.aligned.sensor_pattern,
         placement=cfg.missingness.aligned.placement,
-        test_months=list(cfg.missingness.aligned.test_months),
+        test_months=test_months,
     )
     # else:
     #     scenarios = mgr.get_scenario_batch(
