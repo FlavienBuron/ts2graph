@@ -260,6 +260,7 @@ class ScenarioManager:
                     data_index=data_index,
                     seed=seed,
                 )
+                print(f"[DEBUG] {test_months=}")
                 for i, frac in enumerate(target_rates):
                     config = ScenarioConfig(
                         seed=seed,
