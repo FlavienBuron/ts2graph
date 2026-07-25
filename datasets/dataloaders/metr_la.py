@@ -199,7 +199,7 @@ class MetrLALoader(GraphLoader):
             aligned_kwargs["sensor_fraction"] = float(target_rate)
             aligned_kwargs["sensor_pattern"] = self.missingness_config.get("sensor_pattern", "random")
             aligned_kwargs["placement"] = self.missingness_config.get("placement", "span_all")
-            aligned_kwargs["test_months"] = self.missingness_config.get("test_months", [6])
+            aligned_kwargs["test_months"] = []
 
         # Initialize injection manager
         scenario_manager = ScenarioManager(cache_dir=self.missingness_config.get("cache_dir", "./datasets/missingness_scenarios/cache"))
