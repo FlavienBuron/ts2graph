@@ -254,36 +254,36 @@ class MetrLALoader(GraphLoader):
     def grin_split(
         self,
         val_len: float = 0.1,
-        in_sample: bool = False,
+        test_len: float = 0.2,
+        in_sample: bool = True,
         window: int = 12,
     ):
         """
-        Train/val/test split for Metr-LA.
-
-        Uses month-based split similar to AirQ:
-        - Test: June (month 6)
-        - Val: May (month 5) or sampled from non-test months
-        - Train: March, April (and May if not used for val)
+        Standard chronological percentage-based split for traffic datasets (Metr-LA/PEMS-BAY).
+        Replaces the month-based split used in AirQ.
         """
-        nontest_idxs, test_idxs = self._disjoint_months(months=self.test_months, sync_mode="horizon")
+        idx = np.arange(len(self))
 
-        if in_sample:
-            train_idxs = np.arange(len(self))
-            val_months = [(m - 1) % 12 for m in self.test_months]
-            _, val_idxs = self._disjoint_months(months=val_months, sync_mode="horizon")
+        # Calculate absolute lengths based on percentages
+        if test_len < 1:
+            test_len_abs = int(test_len * len(idx))
         else:
-            val_len = (int(val_len * len(nontest_idxs)) if val_len < 1 else val_len) // len(self.test_months)
-            # Get indices of first day of each testing month
-            delta_idxs = np.diff(test_idxs)
-            end_month_idxs = test_idxs[1:][np.flatnonzero(delta_idxs > delta_idxs.min())]
-            if len(end_month_idxs) < len(self.test_months):
-                end_month_idxs = np.insert(end_month_idxs, 0, test_idxs[0])
-            # Expand month indices
-            month_val_idxs = [np.arange(v_idx - val_len, v_idx) - window for v_idx in end_month_idxs]
-            val_idxs = np.concatenate(month_val_idxs) % len(self)
-            # Remove overlapping indices from training set
-            ovl_idxs, _ = self.overlapping_indices(nontest_idxs, val_idxs, sync_mode="horizon", as_mask=True)
-            train_idxs = nontest_idxs[~ovl_idxs]
+            test_len_abs = int(test_len)
+
+        if val_len < 1:
+            val_len_abs = int(val_len * (len(idx) - test_len_abs))
+        else:
+            val_len_abs = int(val_len)
+
+        test_start = len(idx) - test_len_abs
+        val_start = test_start - val_len_abs
+
+        # No `- window` subtraction needed here because len(self) already
+        # returns the number of valid sliding window samples, not raw timestamps.
+
+        train_idxs = idx[:val_start]
+        val_idxs = idx[val_start:test_start]
+        test_idxs = idx[test_start:]
 
         return train_idxs, val_idxs, test_idxs
 
