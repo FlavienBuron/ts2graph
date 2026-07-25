@@ -20,6 +20,6 @@ missingness:
   cumulative: true
   eval_mask_mode: fixed
   cache_dir: ./datasets/missingness_scenarios/cache/${dataset.name}_${dataset.variant}
-  force_generate: false
+  force_regenerate: false
   seed: ${seed}
   first_rate: 0.3
