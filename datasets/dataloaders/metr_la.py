@@ -57,7 +57,6 @@ class MetrLALoader(GraphLoader):
                 distances=distances,
                 loaded_eval_mask=eval_mask_loaded,
                 impute_nans=impute_nans,
-                impute_zeros=impute_zeros,
                 masked_sensors=masked_sensors,
                 p_fault=p_fault,
                 p_noise=p_noise,
