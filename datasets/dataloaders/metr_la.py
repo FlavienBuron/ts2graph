@@ -20,7 +20,7 @@ class MetrLALoader(GraphLoader):
         impute_zeros: bool = True,
         impute_nans: bool = True,
         nan_method: str = "mean",
-        freq: str = "5T",
+        freq: str = "5min",
         masked_sensors: list | None = None,
         window: int = 12,
         missingness: Optional[Dict] = None,
@@ -78,7 +78,7 @@ class MetrLALoader(GraphLoader):
         df = pd.read_hdf(path)
 
         datetime_idx = sorted(df.index)
-        date_range = pd.date_range(datetime_idx[0], datetime_idx[-1], freq="5T")
+        date_range = pd.date_range(datetime_idx[0], datetime_idx[-1], freq="5min")
         df = df.reindex(index=date_range)
 
         distances = self._load_distance_matrix()
