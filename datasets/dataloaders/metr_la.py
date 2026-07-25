@@ -61,7 +61,6 @@ class MetrLALoader(GraphLoader):
                 masked_sensors=masked_sensors,
                 p_fault=p_fault,
                 p_noise=p_noise,
-                eval_seed=eval_seed,
             )
             eval_mask = self.eval_mask
 
