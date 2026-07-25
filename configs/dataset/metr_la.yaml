@@ -9,7 +9,7 @@ masked_sensors: []
 scaling_type: std
 in_sample: true
 window: 12
-impute_zer0s: true
+impute_zeros: true
 
 missingness:
   enabled: false
