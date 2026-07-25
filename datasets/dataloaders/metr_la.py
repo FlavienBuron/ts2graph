@@ -32,7 +32,7 @@ class MetrLALoader(GraphLoader):
 
         # Metr-LA covers March-June 2012 (~4 months)
         # Standard split: June for test, May for validation
-        self.test_months = [6]  # June
+        self.test_months = None
         self.infer_eval_from = "next"
 
         self.missingness_config = missingness or {}
@@ -50,6 +50,8 @@ class MetrLALoader(GraphLoader):
             )
         else:
             # BASELINE MODE
+            p_fault = 0.0
+            p_noise = 0.25
             data, missing_mask, distances = self._default_load(
                 data_raw=data_raw,
                 distances=distances,
@@ -57,6 +59,9 @@ class MetrLALoader(GraphLoader):
                 impute_nans=impute_nans,
                 impute_zeros=impute_zeros,
                 masked_sensors=masked_sensors,
+                p_fault=p_fault,
+                p_noise=p_noise,
+                eval_seed=eval_seed,
             )
             eval_mask = self.eval_mask
 
@@ -82,6 +87,9 @@ class MetrLALoader(GraphLoader):
         datetime_idx = sorted(df.index)
         date_range = pd.date_range(datetime_idx[0], datetime_idx[-1], freq="5min")
         df = df.reindex(index=date_range)
+
+        if self.impute_zeros:
+            df = df.replace(0.0, np.nan)
 
         distances = self._load_distance_matrix()
 
@@ -119,17 +127,24 @@ class MetrLALoader(GraphLoader):
         distances: np.ndarray,
         loaded_eval_mask: Optional[pd.DataFrame],
         impute_nans: bool = True,
-        impute_zeros: bool = True,
         masked_sensors: Optional[List[int]] = None,
+        p_fault: float = 0.0,
+        p_noise: float = 0.0,
+        eval_seed: int = 9101112,
     ):
-        mask = ~np.isnan(data_raw.values)
-        if impute_zeros:
-            mask = mask & (data_raw.values != 0.0)
-        missing_mask = mask.astype(bool)
+        missing_mask = ~np.isnan(data_raw.values).astype(bool)
 
         if loaded_eval_mask is None:
             print("Inferring eval mask")
-            eval_mask = self._infer_mask(data_raw)
+            rng = np.random.default_rng()
+            eval_mask = self._sample_mask(
+                shape=data_raw.shape,
+                p=p_fault,
+                p_noise=p_noise,
+                min_seq=12,  # 1 hour (12 * 5min)
+                max_seq=12 * 4,  # 4 hours
+                rng=rng,
+            )
         else:
             eval_mask = loaded_eval_mask
         eval_mask = eval_mask.values.astype(bool)
@@ -139,8 +154,6 @@ class MetrLALoader(GraphLoader):
         self.eval_mask = eval_mask
 
         data = data_raw.copy()
-        if impute_zeros:
-            data = data.replace(0.0, np.nan)
         if impute_nans:
             data = data.fillna(self._compute_mean(data))
 
@@ -157,8 +170,6 @@ class MetrLALoader(GraphLoader):
         """Load with synthetic missingness injection via ScenarioManager."""
         # Build baseline mask
         baseline_mask = ~np.isnan(data_raw.values)
-        if impute_zeros:
-            baseline_mask = baseline_mask & (data_raw.values != 0.0)
         baseline_missing_rate = 1.0 - baseline_mask.mean()
 
         pattern = self.missingness_config.get("pattern", "mcar_blocks")
@@ -237,8 +248,6 @@ class MetrLALoader(GraphLoader):
 
         # Impute original NaNs for model input
         data_imputed = data_raw.copy()
-        if impute_zeros:
-            data_imputed = data_imputed.replace(0.0, np.nan)
         if impute_nans:
             data_imputed = data_imputed.fillna(self._compute_mean(data_imputed))
 
@@ -290,8 +299,6 @@ class MetrLALoader(GraphLoader):
     def _infer_mask(self, data: pd.DataFrame) -> pd.DataFrame:
         """Infer evaluation mask from data pattern (same logic as AirQ)."""
         observed_mask = data.isna().astype("bool")
-        if self.impute_zeros:
-            observed_mask = observed_mask | (data == 0.0)
 
         eval_mask = pd.DataFrame(index=data.index, columns=data.columns, data=0).astype("bool")
 
@@ -318,6 +325,38 @@ class MetrLALoader(GraphLoader):
             eval_mask.loc[mask_i.index] = (~mask_i.loc[mask_i.index].astype(bool) & data.loc[mask_i.index].astype(bool)).astype(eval_mask.dtypes.iloc[0])
 
         return eval_mask
+
+    def _sample_mask(self, shape, p=0.002, p_noise=0.0, max_seq=1, min_seq=1, rng=None):
+        """
+        Generate evaluation mask simulating sensor faults and noise (GRIN style).
+        - p: Probability of a fault (block) starting at any given timestep.
+        - p_noise: Probability of independent point-wise noise.
+        - min_seq/max_seq: Length of the contiguous missing block once a fault triggers.
+        """
+        if rng is None:
+            rand = np.random.random
+            randint = np.random.randint
+        else:
+            rand = rng.random
+            randint = rng.integers
+
+        # 1. Trigger fault starts
+        mask = rand(shape) < p
+        for col in range(mask.shape[1]):
+            idxs = np.flatnonzero(mask[:, col])
+            if not len(idxs):
+                continue
+            fault_len = min_seq
+            if max_seq > min_seq:
+                fault_len = fault_len + int(randint(max_seq - min_seq))
+            idxs_ext = np.concatenate([np.arange(i, i + fault_len) for i in idxs])
+            idxs = np.unique(idxs_ext)
+            idxs = np.clip(idxs, 0, shape[0] - 1)
+            mask[idxs, col] = True
+
+        # 2. Add point-wise noise
+        mask = mask | (rand(mask.shape) < p_noise)
+        return mask.astype(bool)
 
     def _compute_mean(self, data: pd.DataFrame) -> pd.DataFrame:
         """
