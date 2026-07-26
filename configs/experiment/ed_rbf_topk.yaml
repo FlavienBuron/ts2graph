@@ -1,11 +1,11 @@
 # @package _global_
 
 defaults:
-  - override /graph: geo_rbf_thresh
+  - override /graph: ed_rbf_topk
   - _self_
 
 graph:
-  name: ${cond:${graph.sparsifier.binary}, 'geo_rbf_thresh_bin', 'geo_rbf_thresh'}
+  name: ${cond:${graph.sparsifier.binary}, 'ed_rbf_topk_bin', 'ed_rbf_topk'}
   sparsifier:
     binary: true
     param:
