@@ -62,4 +62,5 @@ class PearsonSimilarity(DistanceFunction):
 
                 S[i, j] = S[j, i] = sij
 
+        S.fill_diagonal_(0.0)
         return S
