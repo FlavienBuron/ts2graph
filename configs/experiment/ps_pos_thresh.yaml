@@ -1,0 +1,20 @@
+# @package _global_
+
+defaults:
+  - override /graph: geo_rbf_thresh
+  - override /graph/distance: pearson_similarity
+  - override /graph/affinity: positive
+  - _self_
+
+graph:
+  name: ${cond:${graph.sparsifier.binary}, 'ps_pos_thresh_bin', 'ps_pos_thresh'}
+
+  sparsifier:
+    binary: true
+    param:
+      value: 0.0
+
+hydra:
+  sweeper:
+    params:
+      graph.sparsifier.param.value: range(0.0, 1.01, 0.05)

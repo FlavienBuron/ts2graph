@@ -26,7 +26,7 @@ missingness:
   seed: 42
 
   # Eval fraction upper bound (applies to all patterns)
-  eval_fraction: 0.047 # 4.7% of total dataset
+  eval_fraction: 0.0433 # 4.33% of total dataset
 
   # Aligned-specific parameters
   aligned:

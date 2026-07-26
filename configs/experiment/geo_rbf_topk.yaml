@@ -1,0 +1,19 @@
+# @package _global_
+
+defaults:
+  - override /graph: geo_rbf_thresh
+  - override /graph/sparsifier: topk
+  - _self_
+
+graph:
+  name: ${cond:${graph.sparsifier.binary}, 'ed_rbf_topk_bin', 'ed_rbf_topk'}
+  sparsifier:
+    binary: true
+    mode: absolute
+    param:
+      value: 0.0
+
+hydra:
+  sweeper:
+    params:
+      graph.sparsifier.param.value: range(0.0, 1.01, 0.05)

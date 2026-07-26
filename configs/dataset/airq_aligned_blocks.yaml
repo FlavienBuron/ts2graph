@@ -1,0 +1,18 @@
+# @package _global_
+
+defaults:
+  - dataset: airq
+  - _self_
+
+dataset:
+  missingness:
+    enabled: true
+    pattern: aligned_blocks
+    target_rate: 0.1 # Default value (will be overridden sweeper)
+    block_size: 0.25
+    first_rate: 0.1
+
+hydra:
+  sweeper:
+    params:
+      dataset.missingness.target_rate: 0.1, 0.3, 0.6, 0.9

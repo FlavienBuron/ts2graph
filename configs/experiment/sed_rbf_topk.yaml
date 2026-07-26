@@ -1,0 +1,18 @@
+# @package _global_
+
+defaults:
+  - override /graph: ed_rbf_topk
+  - override /graph/distance: sliding_euclidean
+  - _self_
+
+graph:
+  name: ${cond:${graph.sparsifier.binary}, 'sed_rbf_topk_bin', 'sed_rbf_topk'}
+  sparsifier:
+    binary: true
+    param:
+      value: 0.0
+
+hydra:
+  sweeper:
+    params:
+      graph.sparsifier.param.value: range(0.0, 1.01, 0.05)
