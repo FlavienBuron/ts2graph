@@ -1,7 +1,6 @@
 # @package _global_
-
 defaults:
-  - dataset: airq
+  - airq
   - _self_
 
 dataset:
