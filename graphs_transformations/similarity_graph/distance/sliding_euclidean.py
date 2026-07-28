@@ -62,8 +62,8 @@ class SlidingEuclidean(DistanceFunction):
                 cross = self.fft_cross_correlation(xi_m, xj_m)
 
                 # self-energy terms
-                xi_energy = xi2.sum()
-                xj_energy = xj2.sum()
+                xi_energy = (xi2 * mi).sum()
+                xj_energy = (xj2 * mj).sum()
 
                 # overlap per lag (approx via correlation of masks)
                 overlap = self.fft_cross_correlation(mi, mj).clamp(min=1.0)
