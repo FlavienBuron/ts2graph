@@ -16,169 +16,164 @@ class SlidingEuclidean(DistanceFunction):
     supports_mask = True
     bounded = False
 
-    def __init__(self, lag_fraction: int, min_overlap: int = 1, normalize: bool = True, **kwargs) -> None:
+    def __init__(
+        self,
+        lag_fraction: float = 1.0,
+        min_overlap: int = 1,
+        normalize: bool = True,
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
         self.lag_fraction = lag_fraction
         self.min_overlap = min_overlap
         self.normalize = normalize
 
-    def fft_cross_correlation(self, a, b):
-        # full linear cross-correlation via FFT
+    def _max_lag(self, T: int) -> int:
+        """
+        Interpret lag_fraction:
+
+        - None       -> all lags
+        - 0.0        -> only lag 0
+        - 0.2        -> +/- 20% of T-1
+        - 1.0        -> +/- (T-1)
+        - > 1.0      -> treat as absolute number of lags
+        """
+        if self.lag_fraction is None:
+            return T - 1
+
+        lf = float(self.lag_fraction)
+
+        if lf <= 0:
+            return 0
+
+        if lf <= 1.0:
+            return int(round(lf * (T - 1)))
+
+        return int(min(lf, T - 1))
+
+    def fft_cross_correlation(self, a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+        """
+        Full linear cross-correlation for 1D tensors.
+
+        Output lags are ordered:
+
+            [-(n-1), ..., -1, 0, 1, ..., n-1]
+
+        The zero-lag entry is therefore at index n-1.
+        """
+        if a.ndim != 1 or b.ndim != 1:
+            raise ValueError("fft_cross_correlation expects 1D tensors")
+
+        a = a.float()
+        b = b.float()
+
         n = a.shape[0]
-        size = 2 * n
 
-        A = torch.fft.rfft(a, n=size)
-        B = torch.fft.rfft(b, n=size)
+        if n == 1:
+            return (a * b).sum().view(1)
 
-        corr = torch.fft.irfft(A * torch.conj(B), n=size)
+        # Use enough points for linear correlation.
+        # Power-of-two is usually faster.
+        full_len = 2 * n - 1
+        nfft = 1 << (full_len - 1).bit_length()
 
-        # convert to valid lags [-n, n]
+        A = torch.fft.rfft(a, n=nfft)
+        B = torch.fft.rfft(b, n=nfft)
+
+        corr = torch.fft.irfft(A * torch.conj(B), n=nfft)
+
+        # Negative lags are stored at the end.
+        # Nonnegative lags are stored at the beginning.
         return torch.cat([corr[-(n - 1) :], corr[:n]])
 
     def __call__(self, X: torch.Tensor, mask: Optional[torch.Tensor]) -> torch.Tensor:
         T, N, F = X.shape
-        X = X.squeeze(-1) if F == 1 else X
-        mask = mask.squeeze(-1).float() if mask is not None else torch.ones_like(X)
 
-        D = torch.full((N, N), float("inf"), device=X.device)
+        if F != 1:
+            raise ValueError("SlidingEuclidean currently expects univariate series with F=1.")
+
+        X = X.squeeze(-1).float()
+
+        if mask is None:
+            mask = torch.ones_like(X, dtype=X.dtype)
+        else:
+            mask = mask.squeeze(-1).float()
+
+        if X.ndim != 2:
+            raise ValueError(f"Expected X shape (T, N, 1), got {tuple(X.shape)}")
+
+        if mask.ndim != 2:
+            raise ValueError(f"Expected mask shape (T, N, 1), got {tuple(mask.shape)}")
+
+        if X.shape != mask.shape:
+            raise ValueError(f"X and mask must have the same shape after squeezing. Got X={tuple(X.shape)}, mask={tuple(mask.shape)}")
+
+        D = torch.full((N, N), float("inf"), device=X.device, dtype=X.dtype)
+
+        max_lag = self._max_lag(T)
+        center = T - 1
 
         for i in range(N):
             xi = X[:, i]
             mi = mask[:, i]
 
-            xi2 = xi * xi
+            xi_m = xi * mi
+            xi2_m = xi_m * xi_m
 
             for j in range(i + 1, N):
                 xj = X[:, j]
                 mj = mask[:, j]
 
-                xj2 = xj * xj
-
-                # masked signals
-                xi_m = xi * mi
                 xj_m = xj * mj
+                xj2_m = xj_m * xj_m
 
-                # cross term (all lags at once)
+                # Lag-dependent terms.
+                overlap = self.fft_cross_correlation(mi, mj)
                 cross = self.fft_cross_correlation(xi_m, xj_m)
 
-                # self-energy terms
-                xi_energy = (xi2 * mi).sum()
-                xj_energy = (xj2 * mj).sum()
+                # These are the missing lag-dependent squared terms.
+                xi2_overlap = self.fft_cross_correlation(xi2_m, mj)
+                xj2_overlap = self.fft_cross_correlation(mi, xj2_m)
 
-                # overlap per lag (approx via correlation of masks)
-                overlap = self.fft_cross_correlation(mi, mj).clamp(min=1.0)
+                # Restrict to requested lag range.
+                if max_lag < center:
+                    lo = center - max_lag
+                    hi = center + max_lag + 1
 
-                # squared distance for each lag
-                dist2 = xi_energy + xj_energy - 2 * cross
+                    overlap = overlap[lo:hi]
+                    cross = cross[lo:hi]
+                    xi2_overlap = xi2_overlap[lo:hi]
+                    xj2_overlap = xj2_overlap[lo:hi]
 
-                # normalize if needed
-                dist = torch.sqrt(torch.clamp(dist2 / overlap, min=0.0))
+                # Numerical cleanup.
+                # Overlap should be an integer count if masks are binary.
+                overlap = overlap.clamp(min=0.0)
 
-                D[i, j] = D[j, i] = torch.min(dist)
+                # If masks are strictly binary, this can help with FFT noise:
+                # overlap = torch.round(overlap)
+
+                valid = overlap >= self.min_overlap
+
+                if not bool(valid.any()):
+                    # Leave D[i, j] as inf.
+                    continue
+
+                dist2 = xi2_overlap + xj2_overlap - 2.0 * cross
+
+                # FFT roundoff can create tiny negative values.
+                dist2 = dist2.clamp(min=0.0)
+
+                if self.normalize:
+                    # Safe division; invalid lags will be ignored anyway.
+                    dist2 = dist2 / overlap.clamp(min=1.0)
+
+                dist = torch.sqrt(dist2)
+
+                best = dist[valid].min()
+
+                D[i, j] = best
+                D[j, i] = best
 
         D.fill_diagonal_(0.0)
-        return D
 
-    # def __call__(self, X: torch.Tensor, mask: Optional[torch.Tensor]) -> torch.Tensor:
-    #     print(f"Distance: {self.name}")
-    #     if mask is None:
-    #         raise ValueError("Masked Euclidean Distance requires a mask")
-    #
-    #     T, N, Fdim = X.shape
-    #     device = X.device
-    #     dtype = X.dtype
-    #
-    #     max_lag = int(round(self.lag_fraction * T))
-    #     lags = torch.arange(-max_lag, max_lag + 1, device=device)
-    #
-    #     X = X.squeeze(-1) if Fdim == 1 else X
-    #     mask = mask.squeeze(-1).bool()
-    #
-    #     D = torch.full((N, N), float("inf"), device=device, dtype=dtype)
-    #
-    #     min_overlap = self.min_overlap
-    #     normalize = self.normalize
-    #
-    #     for i in range(N):
-    #         Xi = X[:, i]
-    #         Mi = mask[:, i]
-    #
-    #         # ---------------------------------------------------------
-    #         # precompute all shifted Xi, Mi ONCE per i (vectorized)
-    #         # ---------------------------------------------------------
-    #         Xi_shift = []
-    #         Mi_shift = []
-    #
-    #         for tau in lags:
-    #             if tau >= 0:
-    #                 x = Xi[: T - tau]
-    #                 m = Mi[: T - tau]
-    #             else:
-    #                 lag = -tau
-    #                 x = Xi[lag:]
-    #                 m = Mi[lag:]
-    #
-    #             Xi_shift.append(x)
-    #             Mi_shift.append(m)
-    #
-    #         max_len = max(x.shape[0] for x in Xi_shift)
-    #
-    #         def pad(x, val=0.0):
-    #             if x.shape[0] == max_len:
-    #                 return x
-    #             return F.pad(x, (0, max_len - x.shape[0]), value=val)
-    #
-    #         Xi_shift = torch.stack([pad(x) for x in Xi_shift])  # [L, T]
-    #         Mi_shift = torch.stack([pad(x.float()) for x in Mi_shift]).bool()
-    #
-    #         for j in range(i + 1, N):
-    #             Xj = X[:, j]
-    #             Mj = mask[:, j]
-    #
-    #             # ---------------------------------------------------------
-    #             # vectorized shifts for j (NO tau loop per pair)
-    #             # ---------------------------------------------------------
-    #             Xj_shift = []
-    #             Mj_shift = []
-    #
-    #             for tau in lags:
-    #                 if tau >= 0:
-    #                     x = Xj[: T - tau]
-    #                     m = Mj[: T - tau]
-    #                 else:
-    #                     lag = -tau
-    #                     x = Xj[lag:]
-    #                     m = Mj[lag:]
-    #
-    #                 Xj_shift.append(x)
-    #                 Mj_shift.append(m)
-    #
-    #             Xj_shift = torch.stack([pad(x) for x in Xj_shift])
-    #             Mj_shift = torch.stack([pad(x.float()) for x in Mj_shift]).bool()
-    #
-    #             # ---------------------------------------------------------
-    #             # fully vectorized over τ
-    #             # ---------------------------------------------------------
-    #             Mij = Mi_shift & Mj_shift
-    #
-    #             diff = Xi_shift - Xj_shift
-    #             diff = diff * Mij
-    #
-    #             square = (diff * diff).sum(dim=1)  # [L]
-    #             K = Mij.sum(dim=1).clamp(min=1)
-    #
-    #             valid = K >= min_overlap
-    #
-    #             if normalize:
-    #                 D_tau = (square / K).sqrt()
-    #             else:
-    #                 D_tau = (square).sqrt()
-    #
-    #             D_tau = torch.where(valid, D_tau, torch.tensor(float("inf"), device=device, dtype=dtype))
-    #
-    #             best = torch.min(D_tau)
-    #
-    #             D[i, j] = D[j, i] = best
-    #
-    #     D.fill_diagonal_(0.0)
-    #     return D
+        return D
