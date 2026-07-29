@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 import torch
 
@@ -15,9 +15,18 @@ class PearsonSimilarity(DistanceFunction):
     supports_mask = True
     bounded = True
 
-    def __init__(self, min_overlap: int = 2, eps: float = 1e-6, **kwargs) -> None:
+    def __init__(
+        self,
+        min_overlap: int = 2,
+        as_a: Literal["distance", "similarity"] = "distance",
+        keep: Literal["raw", "positive", "absolute"] = "positive",
+        eps: float = 1e-6,
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
         self.min_overlap = min_overlap
+        self.as_a = as_a
+        self.keep = keep
         self.eps = eps
 
     def __call__(self, X: torch.Tensor, mask: Optional[torch.Tensor]) -> torch.Tensor:
@@ -61,6 +70,20 @@ class PearsonSimilarity(DistanceFunction):
                     sij = numerator / (denominator + self.eps)
 
                 S[i, j] = S[j, i] = sij
+
+        # clamp for stability issues
+        S.clamp_(-1.0, 1.0)
+
+        if self.keep == "positive":
+            S.clamp_(min=0.0)
+        elif self.keep == "absolute":
+            S.abs_()
+        else:
+            # Keep S raw
+            pass
+
+        if self.as_a == "distance":
+            S = 1 - S
 
         S.fill_diagonal_(0.0)
         return S

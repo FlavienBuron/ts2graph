@@ -1,3 +1,5 @@
 name: pearson_similarity
 input_kind: series
+as: "distance"
+keep: "positive"
 normalize: false
