@@ -11,7 +11,7 @@ class PearsonSimilarity(DistanceFunction):
     name = "pearson similarity"
     input_kind = "series"
     symmetric = True
-    non_negative = False
+    non_negative = True  # set to true due to change in the process, with PearsonSimilarity allowed to be positive only
     supports_mask = True
     bounded = True
 
