@@ -76,8 +76,10 @@ class PearsonSimilarity(DistanceFunction):
 
         if self.keep == "positive":
             S.clamp_(min=0.0)
+            self.non_negative = True
         elif self.keep == "absolute":
             S.abs_()
+            self.non_negative = True
         else:
             # Keep S raw
             pass
