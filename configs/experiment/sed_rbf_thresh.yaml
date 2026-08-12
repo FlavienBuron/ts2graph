@@ -2,7 +2,7 @@
 
 defaults:
   - override /graph: geo_rbf_thresh
-  - override /graph/distance: masked_euclidean
+  - override /graph/distance: sliding_euclidean
   - _self_
 
 graph:
