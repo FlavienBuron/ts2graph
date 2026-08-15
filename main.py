@@ -265,13 +265,14 @@ def run(cfg: DictConfig) -> None:
     metrics_data.update({"spatial_graph_time": spatial_graph_time})
 
     if cfg.graph_stats:
-        save_stats_path = cfg.save_path
+        save_stats_path = save_path_dir
+        is_binary = cfg.graph.sparsifier.binary
         if cfg.use_spatial:
             save_path = os.path.join(
                 save_stats_path,
-                f"{cfg.dataset.name}_{cfg.graph.name}_{cfg.graph.label}",
+                f"{cfg.dataset.name}_{cfg.graph.name}_{cfg.graph.label}_stats",
             )
-            save_graph_characteristics(spatial_adj_matrix, save_path)
+            save_graph_characteristics(spatial_adj_matrix, is_binary, save_path)
 
     # if args.downstream_task:
     gnn_model = None

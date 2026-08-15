@@ -1,4 +1,5 @@
 import json
+import math
 
 import networkx as nx
 import numpy as np
@@ -21,9 +22,7 @@ def get_percentile_radius(
     if cosine:
         data = normalize(data, p=2, dim=1)
 
-    dists = (
-        torch.cdist(data, data, p=2) if not cosine else 1 - torch.matmul(data, data.T)
-    )
+    dists = torch.cdist(data, data, p=2) if not cosine else 1 - torch.matmul(data, data.T)
     mask_self = ~torch.eye(data.shape[1], dtype=torch.bool)
     dists = dists[mask_self]  # remove self-distances
 
@@ -49,9 +48,7 @@ def get_percentile_k(data: torch.Tensor, percentile: float, loop: bool = False) 
 def embed_time_series(x: torch.Tensor, dim: int, time_delay: int) -> torch.Tensor:
     N = x.size(0) - (dim - 1) * time_delay
     N = int(N)
-    return torch.stack(
-        ([x[i : i + N] for i in range(0, dim * time_delay, time_delay)]), dim=1
-    )
+    return torch.stack(([x[i : i + N] for i in range(0, dim * time_delay, time_delay)]), dim=1)
 
 
 def get_radius_for_rec(
@@ -75,16 +72,10 @@ def get_radius_for_rec(
     return r.item()
 
 
-def compute_laplacian_smoothness(
-    x, edge_index, edge_weight=None, mask=None, normalize=True, debug=False
-):
+def compute_laplacian_smoothness(x, edge_index, edge_weight=None, mask=None, normalize=True, debug=False):
     batch_size, nodes, features = x.shape
-    lap_edge_index, lap_edge_weight = get_laplacian(
-        edge_index, edge_weight, normalization="sym"
-    )
-    laplacian = to_dense_adj(
-        lap_edge_index, edge_attr=lap_edge_weight, max_num_nodes=nodes
-    ).squeeze(0)
+    lap_edge_index, lap_edge_weight = get_laplacian(edge_index, edge_weight, normalization="sym")
+    laplacian = to_dense_adj(lap_edge_index, edge_attr=lap_edge_weight, max_num_nodes=nodes).squeeze(0)
 
     # FIX: Force symmetry and positive semi-definiteness
     laplacian = 0.5 * (laplacian + laplacian.t())  # Ensure symmetry
@@ -113,15 +104,9 @@ def compute_laplacian_smoothness(
 
     # x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
 
-    x_flat = (
-        x.permute(0, 2, 1).reshape(batch_size * features, nodes).unsqueeze(1)
-    )  # [B*F, 1, N]
-    laplacian_expanded = laplacian.unsqueeze(0).expand(
-        batch_size * features, -1, -1
-    )  # [B*F, N, N]
-    smoothness = torch.bmm(
-        torch.bmm(x_flat, laplacian_expanded), x_flat.transpose(1, 2)
-    ).squeeze()
+    x_flat = x.permute(0, 2, 1).reshape(batch_size * features, nodes).unsqueeze(1)  # [B*F, 1, N]
+    laplacian_expanded = laplacian.unsqueeze(0).expand(batch_size * features, -1, -1)  # [B*F, N, N]
+    smoothness = torch.bmm(torch.bmm(x_flat, laplacian_expanded), x_flat.transpose(1, 2)).squeeze()
 
     smoothness_total = smoothness.sum()
 
@@ -132,9 +117,7 @@ def compute_laplacian_smoothness(
         return smoothness_total.item()
 
 
-def compute_edge_difference_smoothness(
-    x, edge_index, edge_weight=None, mask=None, normalize=True
-):
+def compute_edge_difference_smoothness(x, edge_index, edge_weight=None, mask=None, normalize=True):
     B, N, F = x.shape
     row, col = edge_index  # [E]
 
@@ -161,10 +144,10 @@ def compute_edge_difference_smoothness(
     return smoothness.item()
 
 
-def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -> None:
+def save_graph_characteristics(adjacency_matrix: torch.Tensor, binary_graph: bool, save_path: str) -> None:
     adj = adjacency_matrix.detach().cpu().numpy()
 
-    is_weighted = not np.array_equal(adj, adj.astype(bool).astype(float))
+    is_weighted = not binary_graph
 
     G = nx.from_numpy_array(adj)
     n_nodes = G.number_of_nodes()
@@ -198,20 +181,12 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
 
     # Density and Clustering
     density = nx.density(G)
-    clustering_coeff = (
-        nx.average_clustering(G, weight="weight" if is_weighted else None)
-        if G.number_of_edges() != 0
-        else 0
-    )
-    binary_clustering_coeff = (
-        nx.average_clustering(G, weight=None) if G.number_of_edges() != 0 else 0
-    )
+    clustering_coeff = nx.average_clustering(G, weight="weight" if is_weighted else None) if G.number_of_edges() != 0 else 0
+    binary_clustering_coeff = nx.average_clustering(G, weight=None) if G.number_of_edges() != 0 else 0
 
     # Triangle counts
     try:
-        triangles = (
-            sum(nx.triangles(G).values()) / 3
-        )  # divide by 3 as each triangle is counted 3 times (each node)
+        triangles = sum(nx.triangles(G).values()) / 3  # divide by 3 as each triangle is counted 3 times (each node)
     except:
         triangles = 0.0
 
@@ -222,6 +197,16 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
 
     components_sorted = sorted(components, key=len, reverse=True)
 
+    avg_path_length = float("inf")
+    avg_diameter = float("inf")
+    avg_radius = float("inf")
+    avg_eccentricity = float("inf")
+
+    binary_avg_path_length = float("inf")
+    binary_avg_diameter = float("inf")
+    binary_avg_radius = float("inf")
+    binary_avg_eccentricity = float("inf")
+
     if n_components > 1:
         component_size_mean = np.mean(component_sizes)
         component_size_std = np.std(component_sizes)
@@ -229,11 +214,9 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
         component_size_max = np.max(component_sizes)
         component_size_median = np.median(component_sizes)
     else:
-        component_size_mean = component_size_std = component_size_min = (
-            component_size_max
-        ) = component_size_median = n_nodes
+        component_size_mean = component_size_std = component_size_min = component_size_max = component_size_median = n_nodes
 
-        # Distance metrics within components
+    # Distance metrics within components
     avg_path_lengths = []
     diameters = []
     radiuses = []
@@ -245,6 +228,17 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
         comp_size = len(component)
 
         if comp_size <= 1:
+            component_metrics.append(
+                {
+                    "component_id": i,
+                    "size": comp_size,
+                    "size_ratio": comp_size / n_nodes if n_nodes > 0 else 0.0,
+                    "edge_count": 0,
+                    "density": 0.0,
+                    "binary_clustering_coeff": 0.0,
+                    "clustering_coeff": 0.0,
+                }
+            )
             continue
 
         subgraph = G.subgraph(component).copy()
@@ -258,22 +252,16 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
             "density": nx.density(subgraph),
         }
 
-        comp_metrics["binary_clustering_coeff"] = nx.average_clustering(
-            subgraph, weight=None
-        )
+        comp_metrics["binary_clustering_coeff"] = nx.average_clustering(subgraph, weight=None)
 
         if is_weighted:
-            comp_metrics["clustering_coeff"] = nx.average_clustering(
-                subgraph, weight="weight"
-            )
+            comp_metrics["clustering_coeff"] = nx.average_clustering(subgraph, weight="weight")
         else:
             comp_metrics["clustering_coeff"] = comp_metrics["binary_clustering_coeff"]
 
         # Try to compute path-based metrics
         try:
-            comp_metrics["binary_avg_path_length"] = nx.average_shortest_path_length(
-                subgraph
-            )
+            comp_metrics["binary_avg_path_length"] = nx.average_shortest_path_length(subgraph)
             comp_metrics["binary_diameter"] = nx.diameter(subgraph)
             comp_metrics["binary_radius"] = nx.radius(subgraph)
             binary_eccentricities = list(nx.eccentricity(subgraph).values())
@@ -294,16 +282,10 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
                         inv_weight = float("inf")
                     inv_weight_graph.add_edge(u, v, weight=inv_weight)
 
-                comp_metrics["avg_path_length"] = nx.average_shortest_path_length(
-                    inv_weight_graph, weight="weight"
-                )
-                comp_metrics["diameter"] = nx.diameter(
-                    inv_weight_graph, weight="weight"
-                )
+                comp_metrics["avg_path_length"] = nx.average_shortest_path_length(inv_weight_graph, weight="weight")
+                comp_metrics["diameter"] = nx.diameter(inv_weight_graph, weight="weight")
                 comp_metrics["radius"] = nx.radius(inv_weight_graph, weight="weight")
-                weighted_eccentricities = list(
-                    nx.eccentricity(inv_weight_graph, weight="weight").values()
-                )
+                weighted_eccentricities = list(nx.eccentricity(inv_weight_graph, weight="weight").values())
                 comp_metrics["avg_eccentricity"] = np.mean(weighted_eccentricities)
 
                 # Use weighted metrics for global stats
@@ -316,66 +298,45 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
                 comp_metrics["avg_path_length"] = comp_metrics["binary_avg_path_length"]
                 comp_metrics["diameter"] = comp_metrics["binary_diameter"]
                 comp_metrics["radius"] = comp_metrics["binary_radius"]
-                comp_metrics["avg_eccentricity"] = comp_metrics[
-                    "binary_avg_eccentricity"
-                ]
+                comp_metrics["avg_eccentricity"] = comp_metrics["binary_avg_eccentricity"]
 
-                # Use unweighted metrics for global stats
-                avg_path_lengths.append(comp_metrics["binary_avg_path_length"])
-                diameters.append(comp_metrics["binary_diameter"])
-                radiuses.append(comp_metrics["binary_radius"])
-                eccentricities.extend(binary_eccentricities)
+            # Capture Largest Connected Component (LCC) metrics for global stats.
+            # Because components_sorted is ordered by size, i=0 is the LCC.
+            if i == 0:
+                avg_path_length = comp_metrics["avg_path_length"]
+                avg_diameter = comp_metrics["diameter"]
+                avg_radius = comp_metrics["radius"]
+                avg_eccentricity = comp_metrics["avg_eccentricity"]
+
+                binary_avg_path_length = comp_metrics["binary_avg_path_length"]
+                binary_avg_diameter = comp_metrics["binary_diameter"]
+                binary_avg_radius = comp_metrics["binary_radius"]
+                binary_avg_eccentricity = comp_metrics["binary_avg_eccentricity"]
 
             try:
                 # Always calc. unweighted Centrality measures
-                comp_metrics["binary_degree_centrality"] = np.mean(
-                    list(nx.degree_centrality(subgraph).values())
-                )
-                comp_metrics["binary_closeness_centrality"] = np.mean(
-                    list(nx.closeness_centrality(subgraph).values())
-                )
+                comp_metrics["binary_degree_centrality"] = np.mean(list(nx.degree_centrality(subgraph).values()))
+                comp_metrics["binary_closeness_centrality"] = np.mean(list(nx.closeness_centrality(subgraph).values()))
 
                 # Only compute Betweeness for reasonably sized components
                 if comp_size <= 1000:
-                    comp_metrics["binary_betweeness_centrality"] = np.mean(
-                        list(nx.betweenness_centrality(subgraph, weight=None).values())
-                    )
+                    comp_metrics["binary_betweeness_centrality"] = np.mean(list(nx.betweenness_centrality(subgraph, weight=None).values()))
                 else:
                     comp_metrics["binary_betweeness_centrality"] = float("nan")
 
                 if is_weighted:
-                    comp_metrics["degree_centrality"] = comp_metrics[
-                        "binary_degree_centrality"
-                    ]  # Degree centrality ignore weights
-                    comp_metrics["closeness_centrality"] = np.mean(
-                        list(
-                            nx.closeness_centrality(
-                                inv_weight_graph, distance="weight"
-                            ).values()
-                        )
-                    )
+                    comp_metrics["degree_centrality"] = comp_metrics["binary_degree_centrality"]  # Degree centrality ignore weights
+                    comp_metrics["closeness_centrality"] = np.mean(list(nx.closeness_centrality(inv_weight_graph, distance="weight").values()))
 
                     # Only compute Betweeness for reasonably sized components
                     if comp_size <= 1000:
-                        comp_metrics["betweeness_centrality"] = np.mean(
-                            list(
-                                nx.betweenness_centrality(
-                                    inv_weight_graph, weight="weight"
-                                ).values()
-                            )
-                        )
+                        comp_metrics["betweeness_centrality"] = np.mean(list(nx.betweenness_centrality(inv_weight_graph, weight="weight").values()))
                     else:
                         comp_metrics["betweeness_centrality"] = float("nan")
                 else:
-                    comp_metrics["degree_centrality"] = comp_metrics[
-                        "binary_degree_centrality"
-                    ]
-                    comp_metrics["closeness_centrality"] = comp_metrics[
-                        "binary_closeness_centrality"
-                    ]
-                    comp_metrics["betweeness_centrality"] = comp_metrics[
-                        "binary_betweeness_centrality"
-                    ]
+                    comp_metrics["degree_centrality"] = comp_metrics["binary_degree_centrality"]
+                    comp_metrics["closeness_centrality"] = comp_metrics["binary_closeness_centrality"]
+                    comp_metrics["betweeness_centrality"] = comp_metrics["binary_betweeness_centrality"]
             except:
                 comp_metrics["binary_degree_centrality"] = float("nan")
                 comp_metrics["binary_closeness_centrality"] = float("nan")
@@ -386,30 +347,16 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
 
             # Community detection
             try:
-                binary_partition = community_louvain.best_partition(
-                    subgraph, weight=None
-                )
-                comp_metrics["binary_num_communities"] = len(
-                    set(binary_partition.values())
-                )
-                comp_metrics["binary_modularity"] = community_louvain.modularity(
-                    binary_partition, subgraph, weight=None
-                )
+                binary_partition = community_louvain.best_partition(subgraph, weight=None)
+                comp_metrics["binary_num_communities"] = len(set(binary_partition.values()))
+                comp_metrics["binary_modularity"] = community_louvain.modularity(binary_partition, subgraph, weight=None)
 
                 if is_weighted:
-                    weighted_partition = community_louvain.best_partition(
-                        subgraph, weight="weight"
-                    )
-                    comp_metrics["num_communities"] = len(
-                        set(weighted_partition.values())
-                    )
-                    comp_metrics["modularity"] = community_louvain.modularity(
-                        weighted_partition, subgraph, weight="weight"
-                    )
+                    weighted_partition = community_louvain.best_partition(subgraph, weight="weight")
+                    comp_metrics["num_communities"] = len(set(weighted_partition.values()))
+                    comp_metrics["modularity"] = community_louvain.modularity(weighted_partition, subgraph, weight="weight")
                 else:
-                    comp_metrics["num_communities"] = comp_metrics[
-                        "binary_num_communities"
-                    ]
+                    comp_metrics["num_communities"] = comp_metrics["binary_num_communities"]
                     comp_metrics["modularity"] = comp_metrics["binary_modularity"]
             except:
                 comp_metrics["binary_num_communities"] = float("nan")
@@ -423,62 +370,36 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
                 if len(degrees) < 2 or np.std(degrees) == 0:
                     raise ValueError("Degenerate degree distribution")
 
-                comp_metrics["binary_degree_assortativity"] = (
-                    nx.degree_assortativity_coefficient(subgraph, weight=None)
-                )
+                comp_metrics["binary_degree_assortativity"] = nx.degree_assortativity_coefficient(subgraph, weight=None)
 
                 if is_weighted:
-                    comp_metrics["degree_assortativity"] = (
-                        nx.degree_assortativity_coefficient(subgraph, weight="weight")
-                    )
+                    comp_metrics["degree_assortativity"] = nx.degree_assortativity_coefficient(subgraph, weight="weight")
                 else:
-                    comp_metrics["degree_assortativity"] = comp_metrics[
-                        "binary_degree_assortativity"
-                    ]
+                    comp_metrics["degree_assortativity"] = comp_metrics["binary_degree_assortativity"]
             except:
                 comp_metrics["binary_degree_assortativity"] = float("nan")
                 comp_metrics["degree_assortativity"] = float("nan")
 
             # Spectral properties
             try:
-                binary_laplacian = nx.normalized_laplacian_matrix(
-                    subgraph, weight=None
-                ).todense()
+                binary_laplacian = nx.normalized_laplacian_matrix(subgraph, weight=None).todense()
                 binary_eigenvalues = np.linalg.eigvalsh(binary_laplacian)
-                comp_metrics["binary_spectral_gap"] = (
-                    binary_eigenvalues[1] if len(binary_eigenvalues) > 1 else 0
-                )
-                comp_metrics["binary_algebraic_connectivity"] = comp_metrics[
-                    "binary_spectral_gap"
-                ]
-                comp_metrics["binary_largest_eigenvalue"] = (
-                    binary_eigenvalues[-1] if len(binary_eigenvalues) > 0 else 0
-                )
+                comp_metrics["binary_spectral_gap"] = binary_eigenvalues[1] if len(binary_eigenvalues) > 1 else 0
+                comp_metrics["binary_algebraic_connectivity"] = comp_metrics["binary_spectral_gap"]
+                comp_metrics["binary_largest_eigenvalue"] = binary_eigenvalues[-1] if len(binary_eigenvalues) > 0 else 0
                 comp_metrics["binary_graph_energy"] = np.sum(np.abs(binary_eigenvalues))
 
                 if is_weighted:
-                    weighted_laplacian = nx.normalized_laplacian_matrix(
-                        subgraph, weight="weight"
-                    ).todense()
+                    weighted_laplacian = nx.normalized_laplacian_matrix(subgraph, weight="weight").todense()
                     weighted_eigenvalues = np.linalg.eigvalsh(weighted_laplacian)
-                    comp_metrics["spectral_gap"] = (
-                        weighted_eigenvalues[1] if len(weighted_eigenvalues) > 1 else 0
-                    )
-                    comp_metrics["algebraic_connectivity"] = comp_metrics[
-                        "spectral_gap"
-                    ]
-                    comp_metrics["largest_eigenvalue"] = (
-                        weighted_eigenvalues[-1] if len(weighted_eigenvalues) > 0 else 0
-                    )
+                    comp_metrics["spectral_gap"] = weighted_eigenvalues[1] if len(weighted_eigenvalues) > 1 else 0
+                    comp_metrics["algebraic_connectivity"] = comp_metrics["spectral_gap"]
+                    comp_metrics["largest_eigenvalue"] = weighted_eigenvalues[-1] if len(weighted_eigenvalues) > 0 else 0
                     comp_metrics["graph_energy"] = np.sum(np.abs(weighted_eigenvalues))
                 else:
                     comp_metrics["spectral_gap"] = comp_metrics["binary_spectral_gap"]
-                    comp_metrics["algebraic_connectivity"] = comp_metrics[
-                        "binary_algebraic_connectivity"
-                    ]
-                    comp_metrics["largest_eigenvalue"] = comp_metrics[
-                        "binary_largest_eigenvalue"
-                    ]
+                    comp_metrics["algebraic_connectivity"] = comp_metrics["binary_algebraic_connectivity"]
+                    comp_metrics["largest_eigenvalue"] = comp_metrics["binary_largest_eigenvalue"]
                     comp_metrics["graph_energy"] = comp_metrics["binary_graph_energy"]
             except:
                 comp_metrics["binary_spectral_gap"] = float("nan")
@@ -494,50 +415,28 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
             try:
                 if comp_size > 10:
                     # Generate random graph with same number of nodes and edges
-                    random_graph = nx.gnm_random_graph(
-                        comp_size, subgraph.number_of_edges()
-                    )
+                    random_graph = nx.gnm_random_graph(comp_size, subgraph.number_of_edges())
 
                     random_clustering = nx.average_clustering(random_graph)
 
                     if nx.is_connected(random_graph):
-                        random_path_length = nx.average_shortest_path_length(
-                            random_graph
-                        )
+                        random_path_length = nx.average_shortest_path_length(random_graph)
 
                         # Calculate binary small-world coefficient
                         if random_clustering > 0 and random_path_length > 0:
-                            binary_small_world_coef = (
-                                comp_metrics["binary_clustering_coeff"]
-                                / random_clustering
-                            ) / (
-                                comp_metrics["binary_avg_path_length"]
-                                / random_path_length
-                            )
-                            comp_metrics["binary_small_world_coefficient"] = (
-                                binary_small_world_coef
-                            )
+                            binary_small_world_coef = (comp_metrics["binary_clustering_coeff"] / random_clustering) / (comp_metrics["binary_avg_path_length"] / random_path_length)
+                            comp_metrics["binary_small_world_coefficient"] = binary_small_world_coef
                         else:
-                            comp_metrics["binary_small_world_coefficient"] = float(
-                                "nan"
-                            )
+                            comp_metrics["binary_small_world_coefficient"] = float("nan")
 
                         if is_weighted:
                             if random_clustering > 0 and random_path_length > 0:
-                                small_world_coef = (
-                                    comp_metrics["clustering_coeff"] / random_clustering
-                                ) / (
-                                    comp_metrics["avg_path_length"] / random_path_length
-                                )
-                                comp_metrics["small_world_coefficient"] = (
-                                    small_world_coef
-                                )
+                                small_world_coef = (comp_metrics["clustering_coeff"] / random_clustering) / (comp_metrics["avg_path_length"] / random_path_length)
+                                comp_metrics["small_world_coefficient"] = small_world_coef
                             else:
                                 comp_metrics["small_world_coefficient"] = float("nan")
                         else:
-                            comp_metrics["small_world_coefficient"] = comp_metrics[
-                                "binary_small_world_coefficient"
-                            ]
+                            comp_metrics["small_world_coefficient"] = comp_metrics["binary_small_world_coefficient"]
                     else:
                         comp_metrics["binary_small_world_coefficient"] = float("nan")
                         comp_metrics["small_world_coefficient"] = float("nan")
@@ -552,24 +451,16 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
             if comp_size >= 100:
                 # Edge weight stats if weighted
                 if is_weighted:
-                    edge_weights = [
-                        d["weight"] for _, _, d in subgraph.edges(data=True)
-                    ]
+                    edge_weights = [d["weight"] for _, _, d in subgraph.edges(data=True)]
                     comp_metrics["avg_edge_weight"] = np.mean(edge_weights)
                     comp_metrics["median_edge_weight"] = np.median(edge_weights)
                     comp_metrics["min_edge_weight"] = np.min(edge_weights)
                     comp_metrics["max_edge_weight"] = np.max(edge_weights)
-                    comp_metrics["median_edge_weight"] = np.std(edge_weights)
+                    comp_metrics["edge_weight_std"] = np.std(edge_weights)
 
                 # Try to compute eigenvector centrality
                 try:
-                    comp_metrics["eigenvector_centrality"] = np.mean(
-                        list(
-                            nx.eigenvector_centrality(
-                                subgraph, weight="weight" if is_weighted else None
-                            ).values()
-                        )
-                    )
+                    comp_metrics["eigenvector_centrality"] = np.mean(list(nx.eigenvector_centrality(subgraph, weight="weight" if is_weighted else None).values()))
                 except:
                     comp_metrics["eigenvector_centrality"] = float("nan")
         except nx.NetworkXError:
@@ -579,13 +470,15 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
             comp_metrics["radius"] = float("inf")
             comp_metrics["avg_eccentricity"] = float("inf")
 
-    avg_path_length = np.mean(avg_path_lengths) if avg_path_lengths else float("inf")
-    avg_diameter = np.mean(diameters) if diameters else float("inf")
-    avg_radius = np.mean(radiuses) if radiuses else float("inf")
-    avg_eccentricity = np.mean(eccentricities) if eccentricities else float("inf")
+        component_metrics.append(comp_metrics)
+
+    # avg_path_length = np.mean(avg_path_lengths) if avg_path_lengths else float("inf")
+    # avg_diameter = np.mean(diameters) if diameters else float("inf")
+    # avg_radius = np.mean(radiuses) if radiuses else float("inf")
+    # avg_eccentricity = np.mean(eccentricities) if eccentricities else float("inf")
 
     # Largest component metrics
-    largest_component_size = component_sizes[0] if component_sizes else 0
+    largest_component_size = max(component_sizes, default=0)
     connectivity_ratio = largest_component_size / n_nodes if n_nodes > 0 else 0
 
     if is_weighted:
@@ -603,55 +496,51 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
         max_strength = np.max(strengths)
         strength_std = np.std(strengths)
     else:
-        avg_edge_weight = median_edge_weight = min_edge_weight = max_edge_weight = (
-            edge_weight_std
-        ) = float("nan")
-        avg_strength = median_strength = min_strength = max_strength = strength_std = (
-            float("nan")
-        )
+        avg_edge_weight = median_edge_weight = min_edge_weight = max_edge_weight = edge_weight_std = float("nan")
+        avg_strength = median_strength = min_strength = max_strength = strength_std = float("nan")
 
-    # Glabal binary path metrics
-    if is_weighted:
-        binary_avg_path_lengths = []
-        binary_diameters = []
-        binary_radiuses = []
-        binary_eccentricities = []
-
-        for component in components:
-            if len(component) > 1:
-                subgraph = G.subgraph(component).copy()
-                try:
-                    binary_avg_path_lengths.append(
-                        nx.average_shortest_path_length(subgraph)
-                    )
-                    binary_diameters.append(nx.diameter(subgraph))
-                    binary_radiuses.append(nx.radius(subgraph))
-                    binary_eccentricities.extend(
-                        list(nx.eccentricity(subgraph).values())
-                    )
-                except nx.NetworkXError:
-                    pass
-
-        binary_avg_path_length = (
-            np.mean(binary_avg_path_lengths)
-            if binary_avg_path_lengths
-            else float("inf")
-        )
-        binary_avg_diameter = (
-            np.mean(binary_diameters) if binary_diameters else float("inf")
-        )
-        binary_avg_radius = (
-            np.mean(binary_radiuses) if binary_radiuses else float("inf")
-        )
-        binary_avg_eccentricity = (
-            np.mean(binary_eccentricities) if binary_eccentricities else float("inf")
-        )
-    else:
-        # For unweighted graphs, binary metrics are the same as normal metrics
-        binary_avg_path_length = avg_path_length
-        binary_avg_diameter = avg_diameter
-        binary_avg_radius = avg_radius
-        binary_avg_eccentricity = avg_eccentricity
+    # # Glabal binary path metrics
+    # if is_weighted:
+    #     binary_avg_path_lengths = []
+    #     binary_diameters = []
+    #     binary_radiuses = []
+    #     binary_eccentricities = []
+    #
+    #     for component in components:
+    #         if len(component) > 1:
+    #             subgraph = G.subgraph(component).copy()
+    #             try:
+    #                 binary_avg_path_lengths.append(
+    #                     nx.average_shortest_path_length(subgraph)
+    #                 )
+    #                 binary_diameters.append(nx.diameter(subgraph))
+    #                 binary_radiuses.append(nx.radius(subgraph))
+    #                 binary_eccentricities.extend(
+    #                     list(nx.eccentricity(subgraph).values())
+    #                 )
+    #             except nx.NetworkXError:
+    #                 pass
+    #
+    #     binary_avg_path_length = (
+    #         np.mean(binary_avg_path_lengths)
+    #         if binary_avg_path_lengths
+    #         else float("inf")
+    #     )
+    #     binary_avg_diameter = (
+    #         np.mean(binary_diameters) if binary_diameters else float("inf")
+    #     )
+    #     binary_avg_radius = (
+    #         np.mean(binary_radiuses) if binary_radiuses else float("inf")
+    #     )
+    #     binary_avg_eccentricity = (
+    #         np.mean(binary_eccentricities) if binary_eccentricities else float("inf")
+    #     )
+    # else:
+    #     # For unweighted graphs, binary metrics are the same as normal metrics
+    #     binary_avg_path_length = avg_path_length
+    #     binary_avg_diameter = avg_diameter
+    #     binary_avg_radius = avg_radius
+    #     binary_avg_eccentricity = avg_eccentricity
 
     # Create results dictionary
     results = {
@@ -716,6 +605,33 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, save_path: str) -
     print(f"Metrics saved to {save_path}.json")
 
 
+def _sanitize_for_json(obj):
+    if isinstance(obj, dict):
+        return {str(k): _sanitize_for_json(v) for k, v in obj.items()}
+
+    if isinstance(obj, (list, tuple, set)):
+        return [_sanitize_for_json(v) for v in obj]
+
+    if isinstance(obj, np.ndarray):
+        return _sanitize_for_json(obj.tolist())
+
+    if isinstance(obj, np.integer):
+        return int(obj)
+
+    if isinstance(obj, np.floating):
+        obj = float(obj)
+
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+
+    if isinstance(obj, (int, str, bool)) or obj is None:
+        return obj
+
+    return str(obj)
+
+
 def debug_graph_characteristics(adjacency_matrix: torch.Tensor) -> None:
     adj = adjacency_matrix.detach().cpu().numpy()
 
@@ -752,6 +668,4 @@ def debug_graph_characteristics(adjacency_matrix: torch.Tensor) -> None:
         degree_std = binary_degree_std
 
     print("DEBUG Graph characteristics:")
-    print(
-        f"Number of nodes: {n_nodes}; number of edges: {n_edges}\nAverage degree: {avg_degree}, min deg {min_degree}, max deg {max_degree}"
-    )
+    print(f"Number of nodes: {n_nodes}; number of edges: {n_edges}\nAverage degree: {avg_degree}, min deg {min_degree}, max deg {max_degree}")
