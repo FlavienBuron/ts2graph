@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 graph:
-  name: ${cond:${graph.sparsifier.binary}, 'ed_rbf_topk_bin', 'ed_rbf_topk'}
+  name: ${cond:${graph.sparsifier.binary}, 'geo_rbf_topk_bin', 'geo_rbf_topk'}
   sparsifier:
     binary: true
     mode: absolute

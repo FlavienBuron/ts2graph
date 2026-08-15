@@ -2,11 +2,11 @@
 
 defaults:
   - override /graph: geo_rbf_thresh
-  - override /graph/distance: sliding_euclidean
+  - override /graph/distance: masked_euclidean
   - _self_
 
 graph:
-  name: ${cond:${graph.sparsifier.binary}, 'sed_rbf_thresh_bin', 'sed_rbf_thresh'}
+  name: ${cond:${graph.sparsifier.binary}, 'ed_rbf_thresh_bin', 'ed_rbf_thresh'}
   sparsifier:
     binary: true
     param:
