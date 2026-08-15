@@ -274,6 +274,8 @@ def run(cfg: DictConfig) -> None:
                 f"{cfg.dataset.name}_{cfg.graph.name}_{cfg.graph.label}_stats",
             )
             save_graph_characteristics(spatial_adj_matrix, is_binary, save_path)
+        if not cfg.task:
+            return
 
     # if args.downstream_task:
     gnn_model = None

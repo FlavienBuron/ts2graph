@@ -1,5 +1,6 @@
 import json
 import math
+from typing import Any
 
 import networkx as nx
 import numpy as np
@@ -630,9 +631,36 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, binary_graph: boo
         "component_metrics": component_metrics,
     }
 
+    # Save exact adjacency matrix
+    np.save(
+        f"{save_path}_adjacency.npy",
+        adj,
+    )
+
+    # Save explicit edge identities
+    edges = []
+
+    for u, v, data in G.edges(data=True):
+        edge: dict[str, Any] = {
+            "source": int(u),
+            "target": int(v),
+        }
+
+        if is_weighted:
+            edge["weight"] = float(data["weight"])
+
+        edges.append(edge)
+
+    with open(f"{save_path}_edges.json", "w") as f:
+        json.dump(edges, f, indent=4)
+
+    # Save statistics
     with open(f"{save_path}.json", "w") as f:
-        json.dump(_sanitize_for_json(results), f, indent=4, default=str)
+        json.dump(_sanitize_for_json(results), f, indent=4)
+
     print(f"Metrics saved to {save_path}.json")
+    print(f"Adjacency saved to {save_path}_adjacency.npy")
+    print(f"Edges saved to {save_path}_edges.json")
 
 
 def _small_world_metrics_gnm(
@@ -659,13 +687,13 @@ def _small_world_metrics_gnm(
             path_values.append(nx.average_shortest_path_length(random_graph))
 
     if not clustering_values or not path_values:
-        return np.nan, np.nan, np.nan, np.nan
+        return float(np.nan), float(np.nan), float(np.nan), float(np.nan)
 
     return (
-        np.mean(clustering_values),
-        np.std(clustering_values),
-        np.mean(path_values),
-        np.std(path_values),
+        float(np.mean(clustering_values)),
+        float(np.std(clustering_values)),
+        float(np.mean(path_values)),
+        float(np.std(path_values)),
     )
 
 
