@@ -207,14 +207,11 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, binary_graph: boo
     binary_avg_radius = float("inf")
     binary_avg_eccentricity = float("inf")
 
-    if n_components > 1:
-        component_size_mean = np.mean(component_sizes)
-        component_size_std = np.std(component_sizes)
-        component_size_min = np.min(component_sizes)
-        component_size_max = np.max(component_sizes)
-        component_size_median = np.median(component_sizes)
-    else:
-        component_size_mean = component_size_std = component_size_min = component_size_max = component_size_median = n_nodes
+    component_size_mean = np.mean(component_sizes)
+    component_size_std = np.std(component_sizes)
+    component_size_min = np.min(component_sizes)
+    component_size_max = np.max(component_sizes)
+    component_size_median = np.median(component_sizes)
 
     # Distance metrics within components
     avg_path_lengths = []
@@ -413,40 +410,73 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, binary_graph: boo
 
             # Small-world properties
             try:
-                if comp_size > 10:
-                    # Generate random graph with same number of nodes and edges
-                    random_graph = nx.gnm_random_graph(comp_size, subgraph.number_of_edges())
+                if comp_size > 10 and subgraph.number_of_edges() > 0:
+                    # --------------------------------------------------------
+                    # Null model 1: G(n,m)
+                    # --------------------------------------------------------
 
-                    random_clustering = nx.average_clustering(random_graph)
+                    (
+                        gnm_clustering_mean,
+                        gnm_clustering_std,
+                        gnm_path_mean,
+                        gnm_path_std,
+                    ) = _small_world_metrics_gnm(
+                        subgraph,
+                        n_randomizations=20,
+                    )
 
-                    if nx.is_connected(random_graph):
-                        random_path_length = nx.average_shortest_path_length(random_graph)
-
-                        # Calculate binary small-world coefficient
-                        if random_clustering > 0 and random_path_length > 0:
-                            binary_small_world_coef = (comp_metrics["binary_clustering_coeff"] / random_clustering) / (comp_metrics["binary_avg_path_length"] / random_path_length)
-                            comp_metrics["binary_small_world_coefficient"] = binary_small_world_coef
-                        else:
-                            comp_metrics["binary_small_world_coefficient"] = float("nan")
-
-                        if is_weighted:
-                            if random_clustering > 0 and random_path_length > 0:
-                                small_world_coef = (comp_metrics["clustering_coeff"] / random_clustering) / (comp_metrics["avg_path_length"] / random_path_length)
-                                comp_metrics["small_world_coefficient"] = small_world_coef
-                            else:
-                                comp_metrics["small_world_coefficient"] = float("nan")
-                        else:
-                            comp_metrics["small_world_coefficient"] = comp_metrics["binary_small_world_coefficient"]
+                    if np.isfinite(gnm_clustering_mean) and gnm_clustering_mean > 0 and np.isfinite(gnm_path_mean) and gnm_path_mean > 0:
+                        binary_small_world_gnm = (comp_metrics["binary_clustering_coeff"] / gnm_clustering_mean) / (comp_metrics["binary_avg_path_length"] / gnm_path_mean)
                     else:
-                        comp_metrics["binary_small_world_coefficient"] = float("nan")
-                        comp_metrics["small_world_coefficient"] = float("nan")
-                else:
-                    comp_metrics["binary_small_world_coefficient"] = float("nan")
-                    comp_metrics["small_world_coefficient"] = float("nan")
-            except:
-                comp_metrics["binary_small_world_coefficient"] = float("nan")
-                comp_metrics["small_world_coefficient"] = float("nan")
+                        binary_small_world_gnm = np.nan
 
+                    # --------------------------------------------------------
+                    # Null model 2: degree-preserving
+                    # --------------------------------------------------------
+
+                    (
+                        degree_clustering_mean,
+                        degree_clustering_std,
+                        degree_path_mean,
+                        degree_path_std,
+                    ) = _small_world_metrics_degree_preserving(
+                        subgraph,
+                        n_randomizations=20,
+                    )
+
+                    if np.isfinite(degree_clustering_mean) and degree_clustering_mean > 0 and np.isfinite(degree_path_mean) and degree_path_mean > 0:
+                        binary_small_world_degree = (comp_metrics["binary_clustering_coeff"] / degree_clustering_mean) / (comp_metrics["binary_avg_path_length"] / degree_path_mean)
+                    else:
+                        binary_small_world_degree = np.nan
+
+                    # --------------------------------------------------------
+                    # Save binary small-world metrics
+                    # --------------------------------------------------------
+
+                    comp_metrics["small_world_gnm"] = binary_small_world_gnm
+                    comp_metrics["small_world_degree_preserving"] = binary_small_world_degree
+
+                    # G(n,m) reference
+                    comp_metrics["gnm_clustering_mean"] = gnm_clustering_mean
+                    comp_metrics["gnm_clustering_std"] = gnm_clustering_std
+                    comp_metrics["gnm_path_length_mean"] = gnm_path_mean
+                    comp_metrics["gnm_path_length_std"] = gnm_path_std
+
+                    # Degree-preserving reference
+                    comp_metrics["degree_preserving_clustering_mean"] = degree_clustering_mean
+                    comp_metrics["degree_preserving_clustering_std"] = degree_clustering_std
+                    comp_metrics["degree_preserving_path_length_mean"] = degree_path_mean
+                    comp_metrics["degree_preserving_path_length_std"] = degree_path_std
+
+                else:
+                    comp_metrics["small_world_gnm"] = np.nan
+                    comp_metrics["small_world_degree_preserving"] = np.nan
+
+            except Exception as e:
+                print(f"[WARNING] Small-world metrics failed for component {i}: {type(e).__name__}: {e}")
+
+                comp_metrics["small_world_gnm"] = np.nan
+                comp_metrics["small_world_degree_preserving"] = np.nan
             # For larger components, compute some additional metrics
             if comp_size >= 100:
                 # Edge weight stats if weighted
@@ -463,8 +493,8 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, binary_graph: boo
                     comp_metrics["eigenvector_centrality"] = np.mean(list(nx.eigenvector_centrality(subgraph, weight="weight" if is_weighted else None).values()))
                 except:
                     comp_metrics["eigenvector_centrality"] = float("nan")
-        except nx.NetworkXError:
-            # If metrics can't be computed, mark as NaN
+        except Exception as e:
+            print(f"[WARNING] Path metrics failed for component {i} (size={comp_size}): {type(e).__name__}: {e}")
             comp_metrics["avg_path_length"] = float("inf")
             comp_metrics["diameter"] = float("inf")
             comp_metrics["radius"] = float("inf")
@@ -601,8 +631,90 @@ def save_graph_characteristics(adjacency_matrix: torch.Tensor, binary_graph: boo
     }
 
     with open(f"{save_path}.json", "w") as f:
-        json.dump(results, f, indent=4, default=str)
+        json.dump(_sanitize_for_json(results), f, indent=4, default=str)
     print(f"Metrics saved to {save_path}.json")
+
+
+def _small_world_metrics_gnm(
+    graph: nx.Graph,
+    n_randomizations: int = 20,
+) -> tuple[float, float, float, float]:
+    """Small-world reference using G(n,m) random graphs."""
+
+    n = graph.number_of_nodes()
+    m = graph.number_of_edges()
+
+    if n <= 10 or m == 0:
+        return np.nan, np.nan, np.nan, np.nan
+
+    clustering_values = []
+    path_values = []
+
+    for _ in range(n_randomizations):
+        random_graph = nx.gnm_random_graph(n, m)
+
+        clustering_values.append(nx.average_clustering(random_graph))
+
+        if nx.is_connected(random_graph):
+            path_values.append(nx.average_shortest_path_length(random_graph))
+
+    if not clustering_values or not path_values:
+        return np.nan, np.nan, np.nan, np.nan
+
+    return (
+        np.mean(clustering_values),
+        np.std(clustering_values),
+        np.mean(path_values),
+        np.std(path_values),
+    )
+
+
+def _small_world_metrics_degree_preserving(
+    graph: nx.Graph,
+    n_randomizations: int = 20,
+    swap_factor: int = 10,
+    max_tries_factor: int = 100,
+) -> tuple[float, float, float, float]:
+    """Small-world reference using degree-preserving randomization."""
+
+    n = graph.number_of_nodes()
+    m = graph.number_of_edges()
+
+    if n <= 10 or m == 0:
+        return np.nan, np.nan, np.nan, np.nan
+
+    clustering_values = []
+    path_values = []
+
+    nswap = swap_factor * m
+    max_tries = max_tries_factor * m
+
+    for _ in range(n_randomizations):
+        random_graph = graph.copy()
+
+        try:
+            nx.double_edge_swap(
+                random_graph,
+                nswap=nswap,
+                max_tries=max_tries,
+            )
+        except nx.NetworkXAlgorithmError:
+            continue
+
+        clustering_values.append(nx.average_clustering(random_graph))
+
+        if nx.is_connected(random_graph):
+            path_values.append(nx.average_shortest_path_length(random_graph))
+
+    if not clustering_values or not path_values:
+        return np.nan, np.nan, np.nan, np.nan
+
+    return (
+        np.mean(clustering_values),
+        np.std(clustering_values),
+        np.mean(path_values),
+        np.std(path_values),
+    )
 
 
 def _sanitize_for_json(obj):
