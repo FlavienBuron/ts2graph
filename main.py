@@ -265,15 +265,10 @@ def run(cfg: DictConfig) -> None:
     metrics_data.update({"spatial_graph_time": spatial_graph_time})
 
     if cfg.graph_stats:
-        save_stats_path = save_path_dir
-        print(f"[INFO] Stats save path: {save_stats_path}")
+        stats_file_path = os.path.join(save_file_path.split(".json"), "_stats")
         is_binary = cfg.graph.sparsifier.binary
         if cfg.use_spatial:
-            save_path = os.path.join(
-                save_stats_path,
-                f"{cfg.dataset.name}_{cfg.graph.name}_{cfg.graph.label}_stats",
-            )
-            save_graph_characteristics(spatial_adj_matrix, is_binary, save_path)
+            save_graph_characteristics(spatial_adj_matrix, is_binary, stats_file_path)
         if not cfg.task:
             return
 
