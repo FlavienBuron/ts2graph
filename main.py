@@ -266,7 +266,7 @@ def run(cfg: DictConfig) -> None:
 
     if cfg.graph_stats:
         print("[INFO] Saving graph stats")
-        stats_file_path = os.path.join(save_file_path.split(".json"), "_stats")
+        stats_file_path = save_file_path.removesuffix(".json") + "_stats"
         is_binary = cfg.graph.sparsifier.binary
         if cfg.use_spatial:
             print("[INFO] Saving spatial graph stats")
