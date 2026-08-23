@@ -88,7 +88,7 @@ class AirQualityLoader(GraphLoader):
         impute_nans: bool = True,
         small: bool = False,
         masked_sensors: list | None = None,
-    ) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         data, stations, eval_mask = self.load_raw(small=small)
         missing_mask = (~np.isnan(data_raw.values)).astype("bool")  # 0=missing, 1=observed
         if loaded_eval_mask is None:
@@ -115,7 +115,7 @@ class AirQualityLoader(GraphLoader):
         stations: pd.DataFrame,
         impute_nans: bool,
         masked_sensors: Optional[List[int]],
-    ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
         baseline_mask = ~np.isnan(data_raw.values)
         baseline_missing_rate = 1.0 - baseline_mask.mean()
 
@@ -247,7 +247,7 @@ class AirQualityLoader(GraphLoader):
             train_idxs = nontest_idxs[~ovl_idxs]
         return train_idxs, val_idxs, test_idxs
 
-    def _geographical_distance(self, coords: pd.DataFrame, to_rad: bool = True) -> pd.DataFrame:
+    def _geographical_distance(self, coords: pd.DataFrame, to_rad: bool = True) -> np.ndarray:
         """
         Compute the geographical distance between coordinates points
         """
@@ -258,8 +258,8 @@ class AirQualityLoader(GraphLoader):
         if to_rad:
             coords_pairs = np.vectorize(np.radians)(coords_pairs)
         dist = haversine_distances(coords_pairs) * _AVG_EARTH_RADIUS_KM
-        dist_df = pd.DataFrame(dist, coords.index, coords.index)
-        return dist_df
+        # dist_df = pd.DataFrame(dist, coords.index, coords.index)
+        return dist
 
     def _infer_mask(self, data: pd.DataFrame) -> pd.DataFrame:
         observed_mask = data.isna().astype("bool")

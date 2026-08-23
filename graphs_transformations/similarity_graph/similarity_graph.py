@@ -30,15 +30,13 @@ class SimilarityGraph:
 
     def _validate(self):
         if self.affinity.requires_non_negative and not self.distance.non_negative:
-            raise ValueError(
-                f"{self.affinity.name} incompatiable with {self.distance.name}"
-            )
+            raise ValueError(f"{self.affinity.name} incompatiable with {self.distance.name}")
 
     def __call__(self, dataset: GraphLoader) -> torch.Tensor:
         if self.distance.input_kind == "series":
             x, mask = dataset.training_data
         elif self.distance.input_kind == "coordinates":
-            x = dataset.distances.to_numpy()
+            x = dataset.distances
             mask = None
         else:
             raise ValueError("Unknown input kind")
