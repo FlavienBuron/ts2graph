@@ -114,11 +114,9 @@ class MetrLALoader(GraphLoader):
                     continue
                 dist[sensor_id_to_ind[row[0]], sensor_id_to_ind[row[1]]] = row[2]
 
-            print(dist)
-
             np.save(path, dist)
             print(f"Saved distance matrix to {path}")
-
+        print(dist)
         return dist
 
     def _default_load(
