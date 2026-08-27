@@ -116,7 +116,6 @@ class MetrLALoader(GraphLoader):
 
             np.save(path, dist)
             print(f"Saved distance matrix to {path}")
-        print(dist)
         return dist
 
     def _default_load(

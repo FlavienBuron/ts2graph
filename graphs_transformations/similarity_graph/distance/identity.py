@@ -16,10 +16,9 @@ class Identity(DistanceFunction):
         super().__init__(**kwargs)
         self.input_kind = input
 
-    def __call__(
-        self, x: torch.Tensor | np.ndarray, mask: Optional[torch.Tensor]
-    ) -> torch.Tensor:
+    def __call__(self, x: torch.Tensor | np.ndarray, mask: Optional[torch.Tensor]) -> torch.Tensor:
         print(f"Distance: {self.name}")
         if isinstance(x, np.ndarray):
             x = torch.tensor(x)
+            print(f"2. {x[:10, :10]=}")
         return x.detach().clone()
