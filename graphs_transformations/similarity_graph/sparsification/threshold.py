@@ -59,5 +59,5 @@ class Threshold(SparsificationFunction):
         adj.fill_diagonal_(self.self_loop_weight)
         if self.make_symmetric:
             adj = torch.maximum(adj, adj.T)
-
+        print(f"4. {adj[:10, :10]=}")
         return adj
