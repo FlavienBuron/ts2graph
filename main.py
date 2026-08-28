@@ -264,7 +264,6 @@ def run(cfg: DictConfig) -> None:
 
     metrics_data.update({"spatial_graph_time": spatial_graph_time})
 
-    print(f"4. {spatial_adj_matrix[:10, :10]=}")
     if cfg.graph_stats:
         print("[INFO] Saving graph stats")
         stats_file_path = save_file_path.removesuffix(".json") + "_stats"
