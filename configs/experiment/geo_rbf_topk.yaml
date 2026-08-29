@@ -9,7 +9,7 @@ graph:
   name: ${cond:${graph.sparsifier.binary}, 'geo_rbf_topk_bin', 'geo_rbf_topk'}
   sparsifier:
     binary: true
-    mode: absolute
+    mode: fraction
     param:
       value: 0.0
 
