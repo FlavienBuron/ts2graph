@@ -69,5 +69,6 @@ class TopK(SparsificationFunction):
 
         if self.binary:
             A_sparse = (A_sparse > 0).to(A.dtype)
+        print(f"4. {A_sparse[:10, :10]=}")
 
         return A_sparse

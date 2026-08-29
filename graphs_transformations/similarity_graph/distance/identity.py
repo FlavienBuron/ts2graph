@@ -20,4 +20,5 @@ class Identity(DistanceFunction):
         print(f"Distance: {self.name}")
         if isinstance(x, np.ndarray):
             x = torch.tensor(x)
+            print(f"2. {x[:10, :10]=}")
         return x.detach().clone()
