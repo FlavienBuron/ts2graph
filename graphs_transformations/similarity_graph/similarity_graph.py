@@ -37,7 +37,6 @@ class SimilarityGraph:
             x, mask = dataset.training_data
         elif self.distance.input_kind == "coordinates":
             x = dataset.distances
-            print(f"1. {x[:10, :10]=}")
             mask = None
         else:
             raise ValueError("Unknown input kind")

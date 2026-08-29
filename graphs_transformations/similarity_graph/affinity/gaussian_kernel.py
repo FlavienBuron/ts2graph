@@ -23,6 +23,4 @@ class GaussianKernel(AffinityFunction):
 
         A[~valid] = 0.0
 
-        print(f"3. {A[:10, :10]=}")
-
         return A
