@@ -9,8 +9,8 @@ graph:
   name: ${cond:${graph.sparsifier.binary}, 'geo_rbf_topk_bin', 'geo_rbf_topk'}
   sparsifier:
     binary: true
-    mode: fraction
     param:
+      mode: fraction
       value: 0.0
 
 hydra:
