@@ -4,9 +4,9 @@ import json
 import math
 import os
 import random
+from collections.abc import Callable
 from functools import partial
 from time import perf_counter
-from typing import Callable, Dict, Optional
 
 import h5py
 import hydra
@@ -56,10 +56,9 @@ from utils.helpers import (
 
 torch.set_num_threads(16)
 torch.set_num_interop_threads(1)
-#
 
 
-def get_decay_function(name: Optional[str]) -> Optional[Callable[[int, int], float]]:
+def get_decay_function(name: str | None) -> Callable[[int, int], float] | None:
     """
     Returns a decay function given a string identifier.
 
@@ -92,13 +91,13 @@ def get_decay_function(name: Optional[str]) -> Optional[Callable[[int, int], flo
         raise ValueError(f"Unsupported decay function: '{name}'")
 
 
-def get_spatial_graph(dataset: GraphLoader, cfg: DictConfig) -> tuple[torch.Tensor, float]:
+def get_spatial_graph(dataset: GraphLoader, cfg: DictConfig) -> tuple[torch.Tensor, torch.Tensor, float]:
     start = perf_counter()
     graph = similarity_graph.build(cfg)
     end = perf_counter()
     adj_matrix = graph(dataset)
     total_time = end - start
-    return adj_matrix, total_time
+    return adj_matrix, graph.D, total_time
 
 
 def get_temporal_graph_function(technique: str, parameter: list[float]) -> Callable:
@@ -209,7 +208,7 @@ def run(cfg: DictConfig) -> None:
     # dataset = get_dataset(cfg.dataset.name)
 
     dataset_cfg = OmegaConf.to_container(cfg.dataset, resolve=True)
-    if isinstance(dataset_cfg, Dict):
+    if isinstance(dataset_cfg, dict):
         dataset = DatasetRegistry.get(dataset_cfg)
     else:
         raise TypeError("Dataset config should resolve to a Dict, got ", type(dataset_cfg))
@@ -243,7 +242,9 @@ def run(cfg: DictConfig) -> None:
         if cfg.dataset.get("missingness", {}).get("enabled", False):
             scenario_key = dataset._scenario.config.get_cache_key()
             OmegaConf.update(cfg, "graph.distance.scenario_key", scenario_key, force_add=True)
-        spatial_adj_matrix, spatial_graph_time = get_spatial_graph(dataset, cfg)
+        spatial_adj_matrix, distance, spatial_graph_time = get_spatial_graph(dataset, cfg)
+        dist_file_path = save_file_path.removesuffix(".json") + "_dist.npy"
+        np.save(dist_file_path, distance.detach().cpu().numpy())
     else:
         spatial_adj_matrix = torch.tensor([[]])
 
@@ -279,7 +280,7 @@ def run(cfg: DictConfig) -> None:
     print(f"Running using model {cfg.model.name}")
     if model == "stgi":
         model_cfg = OmegaConf.to_container(cfg.model, resolve=True)
-        if not isinstance(model_cfg, Dict):
+        if not isinstance(model_cfg, dict):
             raise TypeError(f"Model config should resolve to Dict, got {type(model_cfg)}")
         model_kwargs = {
             "adj": spatial_adj_matrix,

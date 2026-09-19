@@ -24,6 +24,7 @@ class SimilarityGraph:
         sparsifier: SparsificationFunction,
     ):
         self.distance = distance
+        self.D = None
         self.affinity = affinity
         self.sparsifier = sparsifier
         self._validate()
@@ -40,8 +41,8 @@ class SimilarityGraph:
             mask = None
         else:
             raise ValueError("Unknown input kind")
-        D = self.distance(x, mask=mask)
-        A = self.affinity(D)
+        self.D = self.distance(x, mask=mask)
+        A = self.affinity(self.D)
         A = self.sparsifier(A)
         return A
 
