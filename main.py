@@ -173,9 +173,7 @@ def run(cfg: DictConfig) -> None:
         replace=True,
     )
 
-    if "backbone" in cfg.graph.name:
-        cfg.graph.label = "backbone"
-    else:
+    if "backbone" not in cfg.graph.name:
         sparsifier = cfg.graph.sparsifier
         param_name = next(iter(sparsifier), None)  # first key in sparsifier dict
         print(f"DEBUG: {sparsifier=}")
