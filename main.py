@@ -173,15 +173,17 @@ def run(cfg: DictConfig) -> None:
         replace=True,
     )
 
-    sparsifier = cfg.graph.sparsifier
-
-    param_name = next(iter(sparsifier), None)  # first key in sparsifier dict
-    print(f"DEBUG: {sparsifier=}")
-    param_val = sparsifier["param"]
-    if isinstance(param_val, DictConfig):
-        cfg.graph.label = str(param_val.get("value", "null"))
+    if "backbone" in cfg.graph.name:
+        cfg.graph.label = "backbone"
     else:
-        cfg.graph.label = str(param_val)
+        sparsifier = cfg.graph.sparsifier
+        param_name = next(iter(sparsifier), None)  # first key in sparsifier dict
+        print(f"DEBUG: {sparsifier=}")
+        param_val = sparsifier["param"]
+        if isinstance(param_val, DictConfig):
+            cfg.graph.label = str(param_val.get("value", "null"))
+        else:
+            cfg.graph.label = str(param_val)
 
     res_cfg = OmegaConf.to_container(cfg, resolve=True)
     print(res_cfg)
@@ -189,12 +191,18 @@ def run(cfg: DictConfig) -> None:
     metrics_data = {}
     metrics_data["config"] = res_cfg
     # save_path_dir = cfg.paths.save_path
-    save_path_dir = os.path.join(
-        cfg.paths.save_path,
-        cfg.graph.distance.name,
-        cfg.graph.affinity.name,
-        cfg.graph.sparsifier.name,
-    )
+    if cfg.graph.name == "common_backbone":
+        save_path_dir = os.path.join(
+            cfg.paths.save_path,
+            "backbone",
+        )
+    else:
+        save_path_dir = os.path.join(
+            cfg.paths.save_path,
+            cfg.graph.distance.name,
+            cfg.graph.affinity.name,
+            cfg.graph.sparsifier.name,
+        )
     print(f"[INFO]: save directory path is '{save_path_dir}'")
     save_file_name = cfg.paths.file_name
     print(f"[INFO]: save file name is '{save_file_name}'")
