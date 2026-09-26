@@ -189,7 +189,7 @@ def run(cfg: DictConfig) -> None:
     metrics_data = {}
     metrics_data["config"] = res_cfg
     # save_path_dir = cfg.paths.save_path
-    if cfg.graph.name == "common_backbone":
+    if "backbone" in cfg.graph.name:
         save_path_dir = os.path.join(
             cfg.paths.save_path,
             "backbone",
