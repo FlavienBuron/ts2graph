@@ -239,12 +239,17 @@ def run(cfg: DictConfig) -> None:
 
     spatial_graph_time = 0.0
     if cfg.use_spatial:
-        if cfg.dataset.get("missingness", {}).get("enabled", False):
-            scenario_key = dataset._scenario.config.get_cache_key()
-            OmegaConf.update(cfg, "graph.distance.scenario_key", scenario_key, force_add=True)
-        spatial_adj_matrix, distance, spatial_graph_time = get_spatial_graph(dataset, cfg)
-        dist_file_path = save_file_path.removesuffix(".json") + "_dist.npy"
-        np.save(dist_file_path, distance.detach().cpu().numpy())
+        if "backbone" in cfg.graph.name:
+            spatial_adj_matrix = torch.from_numpy(np.load(cfg.graph.path)).float()
+            distance = None
+            spatial_graph_time = 0.0
+        else:
+            if cfg.dataset.get("missingness", {}).get("enabled", False):
+                scenario_key = dataset._scenario.config.get_cache_key()
+                OmegaConf.update(cfg, "graph.distance.scenario_key", scenario_key, force_add=True)
+            spatial_adj_matrix, distance, spatial_graph_time = get_spatial_graph(dataset, cfg)
+            dist_file_path = save_file_path.removesuffix(".json") + "_dist.npy"
+            np.save(dist_file_path, distance.detach().cpu().numpy())
     else:
         spatial_adj_matrix = torch.tensor([[]])
 

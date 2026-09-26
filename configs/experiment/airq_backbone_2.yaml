@@ -1,0 +1,9 @@
+# @package _global_
+
+defaults:
+  - override /graph: backbone
+  - _self_
+
+graph:
+  name: airq_backbone_2
+  path: ./datasets/data/airq_backbone_2_adj.npy
