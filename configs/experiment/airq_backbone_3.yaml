@@ -6,4 +6,4 @@ defaults:
 
 graph:
   name: airq_backbone_3
-  path: ./datasets/data/airq_backbone_3_adj.npy
+  path: ./datasets/data/air_quality/airq_backbone_3_adj.npy
