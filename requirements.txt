@@ -14,5 +14,5 @@ maturin
 patchelf
 einops
 h5py
-hydra-core --upgrade
+hydra-core
 git+https://github.com/aras-y/DTW_with_missing_values.git
