@@ -3,9 +3,9 @@ torch
 pandas
 scikit-learn
 torch_geometric
-torch_cluster -f https://pytorch-geometric.com/whl/torch-2.9.0+cpu.html
-torch_scatter -f https://pytorch-geometric.com/whl/torch-2.9.0+cpu.html
-torch_sparse -f https://pytorch-geometric.com/whl/torch-2.9.0+cpu.html
+torch_cluster -f https://data.pyg.org/whl/torch-2.9.0+cpu.html
+torch_scatter -f https://data.pyg.org/whl/torch-2.9.0+cpu.html
+torch_sparse -f https://data.pyg.org/whl/torch-2.9.0+cpu.html
 networkx
 torch-spatiotemporal
 rpy2
