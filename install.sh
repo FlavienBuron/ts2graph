@@ -27,6 +27,6 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 echo "Building Rust extension with maturin"
-cd ./graphs_transformations/bindings/ts2graph_rs/
+cd ./graphs_transformations/ts2graph_rs/
 maturin develop --release
 
