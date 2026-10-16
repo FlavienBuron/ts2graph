@@ -31,6 +31,7 @@ class STGI(nn.Module):
 
         ModelClass = getattr(pyg_nn, layer_type)
         self.spatial_edge_index, self.spatial_edge_weight = dense_to_sparse(adj)
+        self.spatial_edge_weight = self.spatial_edge_weight.float()
         self.use_spatial = use_spatial
         self.use_temporal = use_temporal
         self.temporal_graph_fn = temporal_graph_fn
@@ -104,10 +105,6 @@ class STGI(nn.Module):
 
             # x_c: [B, N, S]
             x_flat = rearrange(x_c, "b n s -> (b s) n 1")
-
-            print(f"[DEBUG] x_c dtype: {x_c.dtype}")
-            print(f"[DEBUG] GNN parameter dtype: {next(self.gnn_layers.parameters()).dtype}")
-            print(f"[DEBUG] edge_weight dtype: {self.spatial_edge_weight.dtype}")
 
             for i, gnn_layer in enumerate(self.gnn_layers):
                 if isinstance(gnn_layer, pyg_nn.GCNConv):
