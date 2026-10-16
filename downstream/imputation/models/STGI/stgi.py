@@ -1,12 +1,12 @@
 import inspect
+from collections.abc import Callable
 from time import perf_counter
-from typing import Callable, Optional
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.nn as pyg_nn
 from einops import rearrange
+from torch import nn
 from torch_geometric.utils import dense_to_sparse
 
 
@@ -20,11 +20,11 @@ class STGI(nn.Module):
         layer_type: str = "GCNConv",
         use_spatial: bool = True,
         use_temporal: bool = False,
-        temporal_graph_fn: Optional[Callable] = None,
+        temporal_graph_fn: Callable | None = None,
         impute_only_holes=True,
         **kwargs,
     ):
-        super(STGI, self).__init__()
+        super().__init__()
 
         if not hasattr(pyg_nn, layer_type):
             raise ValueError(f"Model type '{layer_type}' not found in torch_geometric")
@@ -38,24 +38,18 @@ class STGI(nn.Module):
         self.impute_only_holes = impute_only_holes
 
         if not use_spatial and not use_temporal:
-            print(
-                "WARNING: neither spatial not temporal aspects are set to be used. Defaulting to using spatial only"
-            )
+            print("WARNING: neither spatial not temporal aspects are set to be used. Defaulting to using spatial only")
             use_spatial = True
 
         out_dim = in_dim
 
         if use_spatial:
             print("Building Spatial Block in STGI")
-            self.gnn_layers = self._build_gnn_layers(
-                ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
-            )
+            self.gnn_layers = self._build_gnn_layers(ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs)
 
         if use_temporal:
             print("Building Temporal Block in STGI")
-            self.temp_gnn_layers = self._build_gnn_layers(
-                ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs
-            )
+            self.temp_gnn_layers = self._build_gnn_layers(ModelClass, in_dim, hidden_dim, out_dim, num_layers, **kwargs)
 
     def _build_gnn_layers(
         self,
@@ -95,9 +89,7 @@ class STGI(nn.Module):
         edge_weight: Graph edges weights (from adjacency matrix)
         """
         x = rearrange(x, "batches steps nodes channels -> batches channels nodes steps")
-        mask = rearrange(
-            mask, "batches steps nodes channels -> batches channels nodes steps"
-        )
+        mask = rearrange(mask, "batches steps nodes channels -> batches channels nodes steps")
         ori_x = x.detach().clone()
         ori_mask = mask.detach().clone()
 
@@ -112,6 +104,10 @@ class STGI(nn.Module):
 
             # x_c: [B, N, S]
             x_flat = rearrange(x_c, "b n s -> (b s) n 1")
+
+            print(f"[DEBUG] x_c dtype: {x_c.dtype}")
+            print(f"[DEBUG] GNN parameter dtype: {next(self.gnn_layers.parameters()).dtype}")
+            print(f"[DEBUG] edge_weight dtype: {self.spatial_edge_weight.dtype}")
 
             for i, gnn_layer in enumerate(self.gnn_layers):
                 if isinstance(gnn_layer, pyg_nn.GCNConv):
@@ -138,21 +134,15 @@ class STGI(nn.Module):
                         x_node = x_c[batch, node, :]
                         temporal_graph_start = perf_counter()
                         if self.temporal_graph_fn is not None:
-                            temporal_edge_index, temporal_edge_weight = (
-                                self.temporal_graph_fn(x=x_node)
-                            )
+                            temporal_edge_index, temporal_edge_weight = self.temporal_graph_fn(x=x_node)
                         else:
                             temporal_edge_index = torch.empty((2, 0), dtype=torch.long)
                             temporal_edge_weight = torch.empty((0,), dtype=torch.float)
                         temporal_graph_end = perf_counter()
-                        temporal_graph_times.append(
-                            temporal_graph_end - temporal_graph_start
-                        )
+                        temporal_graph_times.append(temporal_graph_end - temporal_graph_start)
                         # Apply temporal GNN layers
                         for i, temp_gnn_layers in enumerate(self.temp_gnn_layers):
-                            x_node = temp_gnn_layers(
-                                x_node, temporal_edge_index, temporal_edge_weight
-                            )
+                            x_node = temp_gnn_layers(x_node, temporal_edge_index, temporal_edge_weight)
                             if i < len(self.temp_gnn_layers) - 1:
                                 x_node = F.relu(x_node)
                         temporal_outputs[batch, node, :]
@@ -164,9 +154,7 @@ class STGI(nn.Module):
         x_out = torch.stack(channel_outputs, dim=1)
         if self.impute_only_holes and not self.training:
             x_out = torch.where(ori_mask, ori_x, x_out)
-        x_out = rearrange(
-            x_out, "batches channels nodes steps -> batches steps nodes channels"
-        )
+        x_out = rearrange(x_out, "batches channels nodes steps -> batches steps nodes channels")
 
         # x = self.layer_norm(x)
         # x = torch.tanh(x)
