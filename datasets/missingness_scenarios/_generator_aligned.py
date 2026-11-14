@@ -1,5 +1,3 @@
-from typing import List, Optional, Set, Tuple
-
 import numpy as np
 import pandas as pd
 
@@ -28,11 +26,12 @@ class AlignedBlockCumulativeGenerator:
         # Cumulative state (instance variables, not custom dataclass)
         self._current_mask = self.baseline_mask.copy()
         self._cumulative_eval_mask = np.zeros_like(baseline_mask, dtype=bool)
-        self._fixed_eval_mask: Optional[np.ndarray] = None
-        self._first_rate: Optional[float] = None
+        self._fixed_eval_mask: np.ndarray | None = None
+        self._first_rate: float | None = None
         self._first_rate_eval_fraction: float = 0.0
-        self._affected_sensors: Set[int] = set()
-        self._last_block_end: Optional[int] = None
+        self._affected_sensors: set[int] = set()
+        self._last_block_end: int | None = None
+        self._block: tuple[int, int] | None = None
 
     def inject_to_rate(
         self,
@@ -50,14 +49,25 @@ class AlignedBlockCumulativeGenerator:
         block_size = _resolve_block_size(config.block_size, self.T)
 
         # Compute block placement (single position for all affected sensors)
-        block_start, block_end = _compute_aligned_placement(
-            block_size=block_size,
-            data_index=self.data_index,
-            placement=config.placement,
-            test_months=config.test_months,
-            rng=self.rng,
-        )
-        block_end = min(block_end, self.T)
+        # block_start, block_end = _compute_aligned_placement(
+        #     block_size=block_size,
+        #     data_index=self.data_index,
+        #     placement=config.placement,
+        #     test_months=config.test_months,
+        #     rng=self.rng,
+        # )
+        # block_end = min(block_end, self.T)
+
+        if self._block is None:
+            block_start, block_end = _compute_aligned_placement(
+                block_size=block_size,
+                data_index=self.data_index,
+                placement=config.placement,
+                test_months=config.test_months,
+                rng=self.rng,
+            )
+            self._block = (block_start, min(block_end, self.T))
+        block_start, block_end = self._block
 
         target_total = int(self.N * config.sensor_fraction)
         current_total = len(self._affected_sensors)
@@ -244,11 +254,11 @@ def _compute_aligned_placement(
     block_size: int,
     data_index: pd.DatetimeIndex,
     placement: str,
-    test_months: List[int],
+    test_months: list[int],
     rng: np.random.Generator,
     test_prob: float = 0.2,
     val_prob: float = 0.1,
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """Compute aligned block start/end respecting placement strategy."""
     T = len(data_index)
     if block_size >= T:
@@ -256,7 +266,7 @@ def _compute_aligned_placement(
 
     use_chronological_split = not test_months
 
-    def find_quarter(test_month: int) -> Optional[Tuple[int, int, int]]:
+    def find_quarter(test_month: int) -> tuple[int, int, int] | None:
         month_mask = data_index.to_series().dt.month == test_month
         if not month_mask.any():
             return None
@@ -284,7 +294,7 @@ def _compute_aligned_placement(
             quarter_start, test_start, test_end = int(quarter_start), int(test_start), int(test_end)
 
     # 🔒 Helper: clamp start to [0, T - block_size] to preserve exact length
-    def clamp_start(start: int) -> Tuple[int, int]:
+    def clamp_start(start: int) -> tuple[int, int]:
         start = max(0, min(start, T - block_size))
         return int(start), int(start + block_size)
 
@@ -327,11 +337,11 @@ def _compute_aligned_placement(
 
 def _select_aligned_sensors(
     n_new: int,
-    existing_sensors: Set[int],
+    existing_sensors: set[int],
     pattern: str,
     N: int,
     rng: np.random.Generator,
-) -> Set[int]:
+) -> set[int]:
     """Select sensors according to pattern, excluding already-affected."""
     available = [s for s in range(N) if s not in existing_sensors]
     if not available or n_new <= 0:
@@ -355,7 +365,7 @@ def _subsample_eval_mask(
     total_positions: int,  # ← T * N
     block_start: int,
     block_end: int,
-    affected_sensors: List[int],
+    affected_sensors: list[int],
     rng: np.random.Generator,
 ) -> np.ndarray:
     # 1. Target budget relative to TOTAL dataset

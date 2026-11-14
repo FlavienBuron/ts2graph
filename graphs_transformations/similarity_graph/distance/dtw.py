@@ -3,7 +3,6 @@ import multiprocessing as mp
 import os
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Optional
 
 import dtw_missing.dtw_missing as dtw_m
 import h5py
@@ -13,11 +12,15 @@ import torch
 from ..specs.registry import register_distance
 from .base import DistanceFunction
 
+# Part of the cache key. Matrices cached before the sensor-major fix compare time steps instead of
+# sensors; changing this value prevents them from being loaded again.
+DTW_CACHE_VERSION = "sensor-major-v2"
+
 
 def init_worker(X_np, mask_np):
     global _X_WORKER, _MASK_WORKER
-    _X_WORKER = X_np
-    _MASK_WORKER = mask_np
+    _X_WORKER = X_np  # (N, T, F): _X_WORKER[i] is the series of sensor i
+    _MASK_WORKER = mask_np  # (N, T, F) bool, True where observed, or None
 
 
 def _compute_dtw_pair(args):
@@ -67,8 +70,8 @@ class DTW(DistanceFunction):
         missing_value_restrictions: str = "full",
         missing_value_adjustment: str = "proportion_of_missing_values",
         use_c: bool = False,
-        cache_dir: Optional[str] = None,
-        scenario_key: Optional[str] = None,
+        cache_dir: str | None = None,
+        scenario_key: str | None = None,
         n_jobs: int = -1,
         **kwargs,
     ):
@@ -83,10 +86,29 @@ class DTW(DistanceFunction):
 
         self._memory_cache = {}
 
-    def __call__(self, X: torch.Tensor, mask: Optional[torch.Tensor]) -> torch.Tensor:
+    def __call__(self, X: torch.Tensor, mask: torch.Tensor | None) -> torch.Tensor:
         print(f"Distance: {self.name}")
         print(f"[DEBUG] Using scenario key{self.scenario_key}")
-        cache_key = self._get_cache_key()
+
+        T, N, F = X.shape
+        window_len = max(1, int(self.series_fraction * T))
+
+        # X is (T, N, F). The workers index the first axis, so the arrays are stored sensor-major,
+        # (N, T, F): _X_WORKER[i] is then the series of sensor i, as X[:, i, :] in the serial version.
+        # Without the transpose, _X_WORKER[i] is the time step i and the matrix compares the first N
+        # time steps with each other.
+        X_np = np.ascontiguousarray(X.detach().cpu().numpy().transpose(1, 0, 2))
+        mask_np = None
+        if mask is not None:
+            # bool is required: on an integer 0/1 mask, ~ is a bitwise NOT (0 -> -1, 1 -> -2) and
+            # xi[~mi] would select positions -1 and -2 instead of the missing entries.
+            m = mask.detach().cpu().numpy().astype(bool)
+            if m.ndim == 2:
+                m = m[:, :, None]
+            m = np.broadcast_to(m, (T, N, F))
+            mask_np = np.ascontiguousarray(m.transpose(1, 0, 2))
+
+        cache_key = self._get_cache_key(X_np, mask_np)
         use_cache = cache_key is not None
 
         if use_cache:
@@ -151,15 +173,9 @@ class DTW(DistanceFunction):
         #
         #         D[i, j] = D[j, i] = cost
 
-        T, N, F = X.shape
-        window_len = max(1, int(self.series_fraction * T))
-
-        X_np = np.ascontiguousarray(X.cpu().numpy())
-        mask_np = np.ascontiguousarray(mask.cpu().numpy()) if mask is not None else None
-
         tasks = [(i, j, window_len, self.missing_value_restrictions, self.missing_value_adjustment, self.use_c, F) for i in range(N) for j in range(i + 1, N)]
 
-        print(f"Computing {len(tasks):,} pairs using {self.n_jobs} cores...")
+        print(f"Computing {len(tasks):,} pairs of series of length {T:,} (window {window_len:,}) using {self.n_jobs} cores...")
 
         D = torch.full((N, N), float("inf"))
 
@@ -198,6 +214,10 @@ class DTW(DistanceFunction):
 
         D.fill_diagonal_(0.0)
 
+        n_not_finite = int((~np.isfinite(D.cpu().numpy())).sum()) // 2
+        if n_not_finite:
+            print(f"Warning: {n_not_finite:,} of {total:,} pairs have a non-finite DTW cost (no jointly observed values?)")
+
         if use_cache:
             self._memory_cache[cache_key] = D
 
@@ -212,11 +232,17 @@ class DTW(DistanceFunction):
 
         return D
 
-    def _get_cache_key(self) -> Optional[str]:
-        if self.scenario_key is None:
-            return None
+    def _get_cache_key(self, X_np: np.ndarray, mask_np: np.ndarray | None) -> str | None:
+        params = f"{DTW_CACHE_VERSION}_{self.series_fraction}_{self.missing_value_restrictions}_{self.missing_value_adjustment}_{self.use_c}"
+        h = hashlib.md5(params.encode())
+        # The matrix depends on the observed values, so the key also depends on the data and the mask:
+        # two levels or scenarios with the same scenario_key no longer share a cached matrix. Since the key
+        # identifies the input, a run without scenario_key is cached as well (the corrected computation is
+        # much slower, and the sweep over s uses the same matrix many times); scenario_key only labels the file.
+        h.update(str(X_np.shape).encode())
+        h.update(X_np.tobytes())
+        if mask_np is not None:
+            h.update(np.packbits(mask_np).tobytes())
 
-        params = f"{self.series_fraction}_{self.missing_value_restrictions}_{self.missing_value_adjustment}_{self.use_c}"
-        params_hash = hashlib.md5(params.encode()).hexdigest()[:8]
-
-        return f"{self.scenario_key}_{params_hash}"
+        prefix = self.scenario_key if self.scenario_key is not None else "nokey"
+        return f"{prefix}_{h.hexdigest()[:12]}"
